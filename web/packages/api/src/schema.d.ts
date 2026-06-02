@@ -492,6 +492,302 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListRfqs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/rfqs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetRfq"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/rfqs/{id}/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminQuoteFromRfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListQuotes"];
+        put?: never;
+        post: operations["adminCreateQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/quotes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetQuote"];
+        put: operations["adminEditQuote"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/quotes/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminSendQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListOrders"];
+        put?: never;
+        post: operations["adminCreateOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["adminPatchOrderStatus"];
+        trace?: never;
+    };
+    "/storefront/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["storefrontListRfqs"];
+        put?: never;
+        post: operations["storefrontCreateRfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/rfqs/{publicID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontGetRfq"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/rfqs/{publicID}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontSubmitRfq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/quotes/{publicID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontGetQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/quotes/{publicID}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontAcceptQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/quotes/{publicID}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontDeclineQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["storefrontListOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/orders/{publicID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontGetOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -881,6 +1177,185 @@ export interface components {
                 old_price: string;
                 new_price: string;
             }[];
+        };
+        RfqItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            sku: string;
+            name: string;
+            quantity: string;
+            unit: string;
+            target_price?: string | null;
+            notes?: string | null;
+        };
+        RfqDetail: {
+            /** Format: uuid */
+            public_id: string;
+            /** @enum {string} */
+            status: "draft" | "submitted" | "quoted" | "accepted" | "declined" | "expired" | "cancelled";
+            notes?: string | null;
+            items: components["schemas"]["RfqItem"][];
+        };
+        RfqSummary: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            customer_id?: number;
+            status: string;
+            notes?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        CreateRFQ: {
+            notes?: string;
+            items: {
+                /** Format: uuid */
+                product_public_id: string;
+                quantity: string;
+                target_price?: string | null;
+                notes?: string | null;
+            }[];
+        };
+        QuoteItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            sku: string;
+            name: string;
+            quantity: string;
+            unit: string;
+            unit_price: string;
+            discount: string;
+            row_total: string;
+        };
+        QuoteDetail: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** @enum {string} */
+            status: "draft" | "sent" | "revised" | "accepted" | "declined" | "expired";
+            currency: string;
+            version: number;
+            subtotal: string;
+            /** Format: date-time */
+            valid_until?: string | null;
+            items: components["schemas"]["QuoteItem"][];
+        };
+        QuoteSummary: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            customer_id?: number;
+            /** Format: int64 */
+            rfq_id?: number | null;
+            status: string;
+            currency: string;
+            version: number;
+            subtotal: string;
+            /** Format: date-time */
+            valid_until?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        QuoteLineInput: {
+            /** Format: int64 */
+            product_id: number;
+            quantity?: string;
+            unit?: string;
+            unit_price: string;
+            discount?: string;
+        };
+        CreateQuote: {
+            /** Format: int64 */
+            customer_id: number;
+            currency?: string;
+            /** Format: date-time */
+            valid_until?: string | null;
+            items: components["schemas"]["QuoteLineInput"][];
+        };
+        EditQuote: {
+            items: components["schemas"]["QuoteLineInput"][];
+        };
+        SendQuote: {
+            /** Format: date-time */
+            valid_until?: string | null;
+        };
+        OrderItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            sku: string;
+            name: string;
+            quantity: string;
+            unit: string;
+            unit_price: string;
+            tax_amount?: string;
+            row_total: string;
+        };
+        OrderDetail: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** @enum {string} */
+            status: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "closed" | "on_hold" | "cancelled";
+            currency: string;
+            subtotal: string;
+            grand_total: string;
+            /** Format: int64 */
+            quote_id?: number | null;
+            items: components["schemas"]["OrderItem"][];
+        };
+        OrderSummary: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            status: string;
+            currency: string;
+            subtotal?: string;
+            grand_total: string;
+            /** Format: int64 */
+            quote_id?: number | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        OrderStatusPatch: {
+            status: string;
+            note?: string | null;
+        };
+        CreateOrderOnBehalf: {
+            /** Format: int64 */
+            customer_id: number;
+            currency?: string;
+            po_number?: string | null;
+            /** Format: date */
+            requested_delivery_date?: string | null;
+            items: {
+                /** Format: int64 */
+                product_id: number;
+                quantity?: string;
+                unit?: string;
+                unit_price: string;
+            }[];
+        };
+        ListWrapperRfqSummary: {
+            items?: components["schemas"]["RfqSummary"][];
+        };
+        ListWrapperQuoteSummary: {
+            items?: components["schemas"]["QuoteSummary"][];
+        };
+        ListWrapperOrderSummary: {
+            items?: components["schemas"]["OrderSummary"][];
         };
     };
     responses: {
@@ -1991,6 +2466,488 @@ export interface operations {
                     "application/json": components["schemas"]["RevalidateResult"];
                 };
             };
+        };
+    };
+    adminListRfqs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperRfqSummary"];
+                };
+            };
+        };
+    };
+    adminGetRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminQuoteFromRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+        };
+    };
+    adminListQuotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperQuoteSummary"];
+                };
+            };
+        };
+    };
+    adminCreateQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuote"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+        };
+    };
+    adminGetQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminEditQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditQuote"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminSendQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SendQuote"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperOrderSummary"];
+                };
+            };
+        };
+    };
+    adminCreateOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderOnBehalf"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+        };
+    };
+    adminGetOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminPatchOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderStatusPatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListRfqs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperRfqSummary"];
+                };
+            };
+        };
+    };
+    storefrontCreateRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRFQ"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqDetail"];
+                };
+            };
+        };
+    };
+    storefrontGetRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontSubmitRfq: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfqDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontGetQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontAcceptQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontDeclineQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperOrderSummary"];
+                };
+            };
+        };
+    };
+    storefrontGetOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
 }

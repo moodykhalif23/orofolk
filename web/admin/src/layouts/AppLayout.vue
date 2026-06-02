@@ -24,6 +24,9 @@ const allItems: NavItem[] = [
   { label: 'Categories', icon: 'pi pi-sitemap', routeName: 'categories', permission: 'category.view' },
   { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view' },
   { label: 'Pricing', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
+  { label: 'RFQs', icon: 'pi pi-inbox', routeName: 'rfqs', permission: 'rfq.view' },
+  { label: 'Quotes', icon: 'pi pi-file-edit', routeName: 'quotes', permission: 'quote.view' },
+  { label: 'Orders', icon: 'pi pi-shopping-cart', routeName: 'orders', permission: 'order.view' },
 ]
 
 const navItems = computed<MenuItem[]>(() =>
