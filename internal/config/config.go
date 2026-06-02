@@ -14,6 +14,9 @@ type Config struct {
 	JWTTTL      time.Duration
 	Env         string
 	LogLevel    string
+	// GotenbergURL is the base URL of the Gotenberg PDF service (e.g.
+	// http://gotenberg:3000). Empty falls back to a stub PDF renderer.
+	GotenbergURL string
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -23,8 +26,9 @@ func Load() (Config, error) {
 		DatabaseURL: getenv("DATABASE_URL", ""),
 		HTTPPort:    getenv("HTTP_PORT", "8080"),
 		JWTSecret:   getenv("JWT_SECRET", ""),
-		Env:         getenv("ENV", "development"),
-		LogLevel:    getenv("LOG_LEVEL", "info"),
+		Env:          getenv("ENV", "development"),
+		LogLevel:     getenv("LOG_LEVEL", "info"),
+		GotenbergURL: getenv("GOTENBERG_URL", ""),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))

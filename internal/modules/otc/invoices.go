@@ -2,6 +2,7 @@ package otc
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -163,6 +164,26 @@ func (h *Handler) regeneratePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusAccepted, map[string]any{"enqueued": true})
+}
+
+// serveInvoicePDF streams the stored PDF for an invoice's public_id. The route
+// is unauthenticated by design (capability URL); a missing document — not yet
+// generated, or unknown id — is a 404.
+func (h *Handler) serveInvoicePDF(w http.ResponseWriter, r *http.Request) {
+	pid, err := uuid.Parse(chi.URLParam(r, "publicID"))
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid id")
+		return
+	}
+	doc, err := h.q.GetInvoiceDocument(r.Context(), pid)
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "invoice PDF not found")
+		return
+	}
+	w.Header().Set("Content-Type", doc.ContentType)
+	w.Header().Set("Content-Disposition", "inline; filename=\"invoice-"+pid.String()+".pdf\"")
+	w.Header().Set("Content-Length", strconv.Itoa(len(doc.Bytes)))
+	_, _ = w.Write(doc.Bytes)
 }
 
 // ---- storefront ----------------------------------------------------------

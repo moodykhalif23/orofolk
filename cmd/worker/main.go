@@ -9,6 +9,7 @@ import (
 
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
+	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue"
 )
 
@@ -25,7 +26,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	client, err := queue.NewWorkerClient(pool)
+	// Real PDFs need a Gotenberg service; without one, fall back to a stub
+	// renderer so the worker still runs (it just produces a placeholder PDF).
+	var renderer pdf.Renderer
+	if cfg.GotenbergURL != "" {
+		renderer = pdf.NewGotenberg(cfg.GotenbergURL)
+		log.Printf("invoice PDFs: Gotenberg at %s", cfg.GotenbergURL)
+	} else {
+		renderer = pdf.Stub{}
+		log.Println("invoice PDFs: GOTENBERG_URL unset, using stub renderer")
+	}
+
+	client, err := queue.NewWorkerClient(pool, renderer)
 	if err != nil {
 		log.Fatalf("queue: %v", err)
 	}

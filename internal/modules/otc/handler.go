@@ -35,6 +35,11 @@ func New(pool *pgxpool.Pool, pdf PDFEnqueuer) *Handler {
 }
 
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
+	// Invoice PDFs are served at an unguessable capability URL (the invoice's
+	// public_id UUID) so a plain browser download works from either frontend
+	// without forwarding a bearer token. No middleware: the UUID is the secret.
+	r.Get("/files/invoices/{publicID}.pdf", h.serveInvoicePDF)
+
 	r.Group(func(ar chi.Router) {
 		ar.Use(authMW)
 		ar.Use(mw.RequireAudience("admin"))

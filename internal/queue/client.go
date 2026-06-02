@@ -8,14 +8,17 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
+	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
 )
 
-func NewWorkerClient(pool *pgxpool.Pool) (*river.Client[pgx.Tx], error) {
+// NewWorkerClient builds the worker-side river client. renderer is used by the
+// invoice-PDF worker (Gotenberg in production, a stub when none is configured).
+func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer) (*river.Client[pgx.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &jobs.SendEmailWorker{})
 	river.AddWorker(workers, &jobs.RecomputeWorker{Pool: pool})
-	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool})
+	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool, Renderer: renderer})
 	// Register additional workers here as modules add jobs.
 
 	return river.NewClient(riverpgxv5.New(pool), &river.Config{
