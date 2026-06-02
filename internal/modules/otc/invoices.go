@@ -82,6 +82,23 @@ func (h *Handler) issueInvoice(w http.ResponseWriter, r *http.Request) {
 	h.renderInvoice(w, r, invoice)
 }
 
+func (h *Handler) adminListInvoices(w http.ResponseWriter, r *http.Request) {
+	a, ok := admin(r)
+	if !ok {
+		unauthorized(w)
+		return
+	}
+	rows, err := h.q.ListInvoicesAdmin(r.Context(), gen.ListInvoicesAdminParams{OrganizationID: a.orgID, Limit: 200, Offset: 0})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not list invoices")
+		return
+	}
+	if rows == nil {
+		rows = []gen.Invoice{}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": rows})
+}
+
 func (h *Handler) listInvoicesForOrder(w http.ResponseWriter, r *http.Request) {
 	a, ok := admin(r)
 	if !ok {

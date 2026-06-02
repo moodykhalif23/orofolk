@@ -43,6 +43,7 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("shipment.manage")).Post("/admin/orders/{id}/shipments", h.createShipment)
 		ar.With(mw.RequirePermission("shipment.manage")).Patch("/admin/shipments/{id}/status", h.patchShipmentStatus)
 
+		ar.With(mw.RequirePermission("invoice.view")).Get("/admin/invoices", h.adminListInvoices)
 		ar.With(mw.RequirePermission("invoice.view")).Get("/admin/orders/{id}/invoices", h.listInvoicesForOrder)
 		ar.With(mw.RequirePermission("invoice.manage")).Post("/admin/orders/{id}/invoices", h.issueInvoice)
 		ar.With(mw.RequirePermission("invoice.view")).Get("/admin/invoices/{id}", h.getInvoice)
