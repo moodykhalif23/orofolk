@@ -22,6 +22,7 @@ import type { components } from '@teggo/api/schema'
 type Order = components['schemas']['OrderDetail']
 type Shipment = components['schemas']['Shipment']
 type Invoice = components['schemas']['InvoiceSummary']
+type ShipmentStatus = components['schemas']['ShipmentStatusPatch']['status']
 
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending: ['confirmed', 'on_hold', 'cancelled'],
@@ -31,7 +32,7 @@ const ORDER_TRANSITIONS: Record<string, string[]> = {
   delivered: ['closed'],
   on_hold: ['confirmed', 'cancelled'],
 }
-const SHIPMENT_TRANSITIONS: Record<string, string[]> = {
+const SHIPMENT_TRANSITIONS: Record<string, ShipmentStatus[]> = {
   pending: ['shipped', 'returned'],
   shipped: ['delivered', 'returned'],
   delivered: ['returned'],
@@ -127,7 +128,7 @@ async function saveShip() {
   toast.add({ severity: 'success', summary: 'Shipment created', life: 2500 })
   load()
 }
-async function shipStatus(s: Shipment, status: string) {
+async function shipStatus(s: Shipment, status: ShipmentStatus) {
   const { error: err } = await api.PATCH('/admin/shipments/{id}/status', { params: { path: { id: s.id } }, body: { status } })
   if (err) {
     toast.add({ severity: 'error', summary: 'Failed', detail: errMessage(err), life: 4000 })
@@ -135,7 +136,7 @@ async function shipStatus(s: Shipment, status: string) {
   }
   load()
 }
-function shipNext(s: Shipment) {
+function shipNext(s: Shipment): ShipmentStatus[] {
   return SHIPMENT_TRANSITIONS[s.status] ?? []
 }
 
