@@ -1,4 +1,4 @@
-# b2bcommerce — Go skeleton
+# b2bcommerce
 
 Runnable starting point for the in-house B2B commerce platform (PRD v0.2 + Implementation Packs 1–3).
 Stack: **Go (chi + sqlc + river)**, **PostgreSQL 16**, with **Vue/Nuxt** frontends added later.
@@ -36,32 +36,6 @@ make run-api      # terminal 1
 make run-worker   # terminal 2
 ```
 
-## Project layout
-
-```
-cmd/
-  api/        HTTP server entrypoint (graceful shutdown)
-  worker/     river worker entrypoint
-  migrate/    one-shot: app migrations + river migrations
-migrations/   *.sql applied in filename order + embed.go
-internal/
-  config/     env-based configuration
-  db/         pgx pool + embedded migrator
-  auth/       JWT issue/parse, bcrypt password helpers
-  server/
-    server.go         chi router assembly (mounts modules)
-    middleware/        auth (bearer->claims), permission gate
-    response/          JSON + error envelope (matches OpenAPI Error)
-  modules/    one package per domain area; each owns its routes
-    health/   liveness/readiness
-    auth/     admin login
-    catalog/  storefront + admin product listing (example)
-  queue/      river client builders + jobs/
-  store/      hand-written pgx data access (pre-sqlc)
-    queries/  *.sql for sqlc -> generates internal/store/gen
-sqlc.yaml     sqlc config
-```
-
 ## How it's wired
 
 - **Migrations** run from the dedicated `migrate` service/binary before api/worker start (compose `depends_on: condition: service_completed_successfully`). The migrator is idempotent and tracks applied files in `schema_migrations`. River's own tables are created via `rivermigrate`.
@@ -85,9 +59,6 @@ add `queries/*.sql` and run `make generate`, the typed layer appears in
 hand-written store over time. `sqlc.yaml` is already configured for pgx/v5.
 
 ## Notes
-
-- Versions in `go.mod` are starting pins; run `go mod tidy` to resolve `go.sum`
-  and indirect dependencies. Adjust river/pgx versions to the latest you trust.
 - The full schema (Packs 1–3) is not all migrated here — only foundation +
   a minimal `products` table — so the skeleton boots with something to query.
   Add the rest module-by-module.
