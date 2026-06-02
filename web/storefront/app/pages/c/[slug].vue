@@ -21,7 +21,7 @@ const { data, error } = await useAsyncData(
 
 useSeoMeta({
   title: () => `Catalog — ${route.params.slug}`,
-  description: 'Browse products in the Oro Store catalog.',
+  description: 'Browse products in the Teggo Store catalog.',
 })
 </script>
 

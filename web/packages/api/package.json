@@ -1,9 +1,9 @@
 {
-  "name": "@oro/api",
+  "name": "@teggo/api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Typed API client for the oro-folk Go backend, generated from the OpenAPI contract (the single source of truth).",
+  "description": "Typed API client for the Teggo Go backend, generated from the OpenAPI contract (the single source of truth).",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {

@@ -2,14 +2,14 @@
 import Button from 'primevue/button'
 
 useSeoMeta({
-  title: 'Oro Store — B2B commerce',
-  description: 'Browse the catalog, request quotes, and reorder fast. Built on oro-folk.',
+  title: 'Teggo Store — B2B commerce',
+  description: 'Browse the catalog, request quotes, and reorder fast. Built on Teggo.',
 })
 </script>
 
 <template>
   <section class="hero">
-    <h1>Welcome to the Oro Store</h1>
+    <h1>Welcome to the Teggo Store</h1>
     <p>
       A server-rendered B2B storefront. Browse the catalog, see your contract pricing, build
       shopping lists, and request quotes.

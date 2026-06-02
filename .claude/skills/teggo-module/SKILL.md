@@ -1,5 +1,5 @@
 ---
-name: oro-module
+name: teggo-module
 description: >
   Steer any module of the oro-folk B2B commerce platform (the in-house Oro-equivalent:
   Go/chi/sqlc/river + Postgres + Vue/Nuxt). Use when adding or extending a backend

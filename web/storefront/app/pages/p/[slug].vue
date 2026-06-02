@@ -18,7 +18,7 @@ const { data: product, error } = await useAsyncData(
 )
 
 useSeoMeta({
-  title: () => (product.value ? `${product.value.name} — Oro Store` : 'Product'),
+  title: () => (product.value ? `${product.value.name} — Teggo Store` : 'Product'),
   description: () => product.value?.description ?? 'Product detail',
 })
 </script>

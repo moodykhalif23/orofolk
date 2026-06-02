@@ -1,4 +1,4 @@
-# oro-folk — In-House B2B Commerce Platform
+# Teggo — In-House B2B Commerce Platform
 
 A self-hosted, **API-first** B2B commerce platform for manufacturers, distributors, and
 wholesalers — an in-house equivalent of OroCommerce. It models organizations buying from
@@ -68,7 +68,7 @@ bcrypt of that password — change or remove the seed (`migrations/0003_seed.sql
 cd web
 corepack enable pnpm
 pnpm install
-pnpm --filter @oro/api generate     # generate the typed client from packages/api/openapi.yaml
+pnpm --filter @teggo/api generate     # generate the typed client from packages/api/openapi.yaml
 
 pnpm dev:admin                      # admin SPA  → http://localhost:5173
 pnpm dev:storefront                 # storefront → http://localhost:3000
@@ -97,8 +97,8 @@ Frontend checks:
 
 ```bash
 cd web
-pnpm --filter @oro/admin typecheck
-pnpm --filter @oro/storefront typecheck
+pnpm --filter @teggo/admin typecheck
+pnpm --filter @teggo/storefront typecheck
 ```
 
 ---
@@ -108,7 +108,7 @@ pnpm --filter @oro/storefront typecheck
 | Generator | When | Command |
 |---|---|---|
 | **sqlc** — typed Go from `internal/store/queries/*.sql` into `internal/store/gen` | after editing SQL | `make generate` |
-| **TypeScript client** — from `web/packages/api/openapi.yaml` | after editing the OpenAPI spec | `pnpm --filter @oro/api generate` |
+| **TypeScript client** — from `web/packages/api/openapi.yaml` | after editing the OpenAPI spec | `pnpm --filter @teggo/api generate` |
 
 The OpenAPI file is the **single source of truth** for the API contract; both frontends
 consume the generated types, so they cannot drift.

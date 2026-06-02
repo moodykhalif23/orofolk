@@ -38,7 +38,7 @@ async function submit() {
   <div class="login-wrap">
     <Card class="login-card">
       <template #title>
-        <div class="login-title"><i class="pi pi-bolt" /> Oro Admin</div>
+        <div class="login-title"><i class="pi pi-bolt" /> Teggo Admin</div>
       </template>
       <template #content>
         <form class="form" @submit.prevent="submit">

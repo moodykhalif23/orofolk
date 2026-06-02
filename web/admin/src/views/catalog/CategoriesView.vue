@@ -9,7 +9,7 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
-import type { components } from '@oro/api/schema'
+import type { components } from '@teggo/api/schema'
 
 type Category = components['schemas']['Category']
 

@@ -5,7 +5,7 @@ import Button from 'primevue/button'
 <template>
   <div class="shell">
     <header class="header">
-      <NuxtLink to="/" class="brand"><i class="pi pi-shopping-bag" /> Oro Store</NuxtLink>
+      <NuxtLink to="/" class="brand"><i class="pi pi-shopping-bag" /> Teggo Store</NuxtLink>
       <nav class="nav">
         <NuxtLink to="/">Home</NuxtLink>
         <NuxtLink to="/c/all">Catalog</NuxtLink>
@@ -19,7 +19,7 @@ import Button from 'primevue/button'
     </main>
 
     <footer class="footer">
-      <p>oro-folk storefront — server-rendered for SEO. © {{ new Date().getFullYear() }}</p>
+      <p>Teggo storefront — server-rendered for SEO. © {{ new Date().getFullYear() }}</p>
     </footer>
   </div>
 </template>

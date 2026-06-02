@@ -1,14 +1,14 @@
 {
-  "name": "oro-web",
+  "name": "teggo-web",
   "private": true,
   "type": "module",
-  "description": "Frontends for the oro-folk B2B commerce platform (Vue 3 admin SPA + Nuxt storefront SSR), sharing PrimeVue and a generated API client.",
+  "description": "Frontends for the Teggo B2B commerce platform (Vue 3 admin SPA + Nuxt storefront SSR), sharing PrimeVue and a generated API client.",
   "scripts": {
-    "dev:admin": "pnpm --filter @oro/admin dev",
-    "dev:storefront": "pnpm --filter @oro/storefront dev",
+    "dev:admin": "pnpm --filter @teggo/admin dev",
+    "dev:storefront": "pnpm --filter @teggo/storefront dev",
     "build": "pnpm -r build",
-    "build:admin": "pnpm --filter @oro/admin build",
-    "build:storefront": "pnpm --filter @oro/storefront build"
+    "build:admin": "pnpm --filter @teggo/admin build",
+    "build:storefront": "pnpm --filter @teggo/storefront build"
   },
   "engines": {
     "node": ">=20"

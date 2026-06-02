@@ -46,7 +46,7 @@ function logout() {
     <aside class="sidebar">
       <div class="brand">
         <i class="pi pi-bolt" />
-        <span>Oro Admin</span>
+        <span>Teggo Admin</span>
       </div>
       <Menu :model="navItems" class="nav" />
     </aside>
@@ -75,7 +75,7 @@ function logout() {
   min-height: 100vh;
 }
 .sidebar {
-  width: var(--oro-sidebar-width);
+  width: var(--teggo-sidebar-width);
   flex-shrink: 0;
   background: var(--p-surface-0, #fff);
   border-right: 1px solid var(--p-surface-200, #e2e8f0);

@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: oro-folk B2B Commerce API
+  title: Teggo B2B Commerce API
   version: 0.1.0
   description: >
-    The single source of truth for the oro-folk API contract. The TypeScript
+    The single source of truth for the Teggo API contract. The TypeScript
     client used by both frontends is generated from this file (do not hand-edit
     the generated schema). Grown module-by-module as the backend lands.
 servers:

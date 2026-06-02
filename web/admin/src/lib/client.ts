@@ -1,7 +1,7 @@
 // The admin app's typed API client (generated from the OpenAPI contract via
-// @oro/api). Token + 401 handling are injected from main.ts to avoid importing
+// @teggo/api). Token + 401 handling are injected from main.ts to avoid importing
 // the Pinia store here (which would create a cycle).
-import { createApiClient, type ApiClient } from '@oro/api'
+import { createApiClient, type ApiClient } from '@teggo/api'
 
 let getToken: () => string | null = () => null
 let onUnauthorized: () => void = () => {}

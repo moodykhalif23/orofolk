@@ -7,8 +7,8 @@ export default defineNuxtConfig({
 
   modules: ['@primevue/nuxt-module'],
 
-  // @oro/api ships as TypeScript source (workspace package) — transpile it.
-  build: { transpile: ['@oro/api'] },
+  // @teggo/api ships as TypeScript source (workspace package) — transpile it.
+  build: { transpile: ['@teggo/api'] },
 
   primevue: {
     options: {
@@ -41,7 +41,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'en' },
-      title: 'Oro Storefront',
+      title: 'Teggo Storefront',
       meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
     },
   },

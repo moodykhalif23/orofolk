@@ -1,4 +1,4 @@
-# oro-folk frontends
+# Teggo frontends
 
 Two apps in one pnpm workspace, both consuming the Go API (the single source of truth):
 

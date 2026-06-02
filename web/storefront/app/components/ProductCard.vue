@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
-import type { components } from '@oro/api/schema'
+import type { components } from '@teggo/api/schema'
 
 type Product = components['schemas']['StorefrontProduct']
 

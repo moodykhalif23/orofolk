@@ -12,7 +12,7 @@ const perms = computed(() => auth.permissions)
   <div class="page">
     <h1>Dashboard</h1>
     <p class="muted">
-      Back-office shell for the oro-folk B2B platform. Modules are added per the build order
+      Back-office shell for the Teggo B2B platform. Modules are added per the build order
       in <code>docs/</code> — each becomes a route + a PrimeVue view backed by the Go API.
     </p>
 

@@ -8,7 +8,7 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
-import type { components } from '@oro/api/schema'
+import type { components } from '@teggo/api/schema'
 
 type Customer = components['schemas']['Customer']
 type CustomerInput = components['schemas']['CustomerInput']

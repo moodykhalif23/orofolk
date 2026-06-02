@@ -1,4 +1,4 @@
-# Project Status & Roadmap — oro-folk
+# Project Status & Roadmap — Teggo
 
 _Last updated: 2026-06-02._ Companion to [README.md](README.md) and the specs in [`docs/`](docs/)
 (PRD v0.2 + Implementation Packs 1–3). This document is the precise, honest record of **what
@@ -64,10 +64,10 @@ gaps inside otherwise-"done" modules.
 
 ## 4. Implemented — frontend
 
-- **Workspace** (`web/`, pnpm): `@oro/api` (OpenAPI + generated `openapi-fetch` client),
+- **Workspace** (`web/`, pnpm): `@teggo/api` (OpenAPI + generated `openapi-fetch` client),
   `admin` (Vue 3), `storefront` (Nuxt). Both build; admin type-checks clean.
 - **Typed client:** `web/packages/api/openapi.yaml` covers **auth + catalog**; `pnpm --filter
-  @oro/api generate` produces the TS types both apps import.
+  @teggo/api generate` produces the TS types both apps import.
 - **Admin:** auth store + login, app shell with permission-filtered sidebar, and the **Catalog**
   screens — Products (DataTable + create/edit/delete dialog), Categories, Attributes.
 - **Storefront:** home, category browse (`/c/[slug]`, subtree), product detail (`/p/[slug]`),
@@ -169,6 +169,6 @@ builder + BI; read replicas / multi-node.
   queries), Pack 2 (CRM/CMS/workflow/integrations + OpenAPI + Vue/Nuxt breakdown), Pack 3 (V2 +
   full admin API inventory).
 - **Backend module recipe:** see [README.md](README.md) → "Adding a backend module". The
-  `oro-module` project skill encodes the conventions, the test pattern, and the per-slice
+  `teggo-module` project skill encodes the conventions, the test pattern, and the per-slice
   definition-of-done.
 - **API contract:** edit `web/packages/api/openapi.yaml`, regenerate, build screens.

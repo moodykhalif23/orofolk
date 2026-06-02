@@ -20,7 +20,7 @@ function decodeClaims(token: string): JwtClaims | null {
   }
 }
 
-const TOKEN_KEY = 'oro.admin.token'
+const TOKEN_KEY = 'teggo.admin.token'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({

@@ -1,5 +1,5 @@
 {
-  "name": "@oro/admin",
+  "name": "@teggo/admin",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,7 +16,7 @@
     "primevue": "^4.5.5",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0",
-    "@oro/api": "workspace:*"
+    "@teggo/api": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
