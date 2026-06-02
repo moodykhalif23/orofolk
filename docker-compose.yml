@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: b2b
-      POSTGRES_PASSWORD: b2b
-      POSTGRES_DB: b2b
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U b2b"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -19,8 +19,8 @@ services:
     build: .
     command: ["/app/migrate"]
     environment:
-      DATABASE_URL: postgres://b2b:b2b@postgres:5432/b2b?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -29,11 +29,11 @@ services:
     build: .
     command: ["/app/api"]
     environment:
-      DATABASE_URL: postgres://b2b:b2b@postgres:5432/b2b?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       HTTP_PORT: "8080"
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
-      JWT_TTL: 24h
-      ENV: development
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL: ${JWT_TTL:-24h}
+      ENV: ${ENV:-development}
     ports:
       - "8080:8080"
     depends_on:
@@ -44,8 +44,8 @@ services:
     build: .
     command: ["/app/worker"]
     environment:
-      DATABASE_URL: postgres://b2b:b2b@postgres:5432/b2b?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-32-bytes-min}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
       GOTENBERG_URL: http://gotenberg:3000
     depends_on:
       migrate:

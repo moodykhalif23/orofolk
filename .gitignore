@@ -1,0 +1,25 @@
+# Secrets / local env — never commit. Use .env.example as the template.
+.env
+.env.*
+!.env.example
+
+# Go build output
+/api
+/worker
+/migrate
+*.exe
+*.test
+*.out
+
+# Node / frontend
+node_modules/
+web/**/dist/
+web/**/.output/
+web/**/.nuxt/
+web/**/.data/
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+*.swp
