@@ -9,31 +9,66 @@ import (
 )
 
 type Querier interface {
+	AssignAttributeToFamily(ctx context.Context, arg AssignAttributeToFamilyParams) error
+	AssignProductToCategory(ctx context.Context, arg AssignProductToCategoryParams) error
+	// CategoryDescendantIDs returns the category and all of its descendants
+	// (subtree, Pack 1 §12.3). $1 root id, $2 organization_id.
+	CategoryDescendantIDs(ctx context.Context, arg CategoryDescendantIDsParams) ([]int64, error)
 	CountActiveProducts(ctx context.Context, organizationID int64) (int64, error)
 	CountCustomers(ctx context.Context, organizationID int64) (int64, error)
+	CountProductsAdmin(ctx context.Context, organizationID int64) (int64, error)
+	// ===== Attributes & families ==============================================
+	CreateAttribute(ctx context.Context, arg CreateAttributeParams) (Attribute, error)
+	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
+	// ===== Categories ==========================================================
+	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateCustomerAddress(ctx context.Context, arg CreateCustomerAddressParams) (CustomerAddress, error)
 	// Customers & accounts queries — Implementation Pack 1 §2 + §12.2.
 	// Every query is organization-scoped (tenant isolation enforced at the query layer).
 	CreateCustomerGroup(ctx context.Context, arg CreateCustomerGroupParams) (CustomerGroup, error)
 	CreateCustomerUser(ctx context.Context, arg CreateCustomerUserParams) (CreateCustomerUserRow, error)
+	// Catalog & PIM queries — Implementation Pack 1 §3, §12.3 (subtree), §12.5 (facets).
+	// Storefront product reads live in products.sql; this file is the admin PIM surface
+	// plus the category-subtree and JSONB-facet reads used by the storefront listing.
+	// ===== Products (admin) ====================================================
+	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	// CustomerAncestors returns all ancestors of a customer, nearest first
 	// (cycle-safe recursive CTE — Pack 1 §12.2). Used to inherit price list /
 	// settings down the account tree.
 	CustomerAncestors(ctx context.Context, arg CustomerAncestorsParams) ([]CustomerAncestorsRow, error)
+	// FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
+	// backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
+	// {"color":"red","voltage":"24"}.
+	FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]Product, error)
+	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
+	GetCategoryBySlug(ctx context.Context, arg GetCategoryBySlugParams) (Category, error)
 	GetCustomer(ctx context.Context, arg GetCustomerParams) (Customer, error)
 	GetCustomerByPublicID(ctx context.Context, arg GetCustomerByPublicIDParams) (Customer, error)
+	GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error)
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
+	// ListActiveProductsInCategory returns active products in a category's whole
+	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
+	ListActiveProductsInCategory(ctx context.Context, arg ListActiveProductsInCategoryParams) ([]ListActiveProductsInCategoryRow, error)
+	ListAttributeFamilies(ctx context.Context, organizationID int64) ([]AttributeFamily, error)
+	ListAttributes(ctx context.Context, organizationID int64) ([]Attribute, error)
+	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
 	ListCustomerUsers(ctx context.Context, customerID int64) ([]ListCustomerUsersRow, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
+	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
+	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)
+	ListProductsAdmin(ctx context.Context, arg ListProductsAdminParams) ([]Product, error)
+	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
+	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
 	TouchUserLogin(ctx context.Context, id int64) error
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 }
 
 var _ Querier = (*Queries)(nil)

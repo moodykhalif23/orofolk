@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Attribute struct {
+	ID             int64  `json:"id"`
+	OrganizationID int64  `json:"organization_id"`
+	Code           string `json:"code"`
+	Label          string `json:"label"`
+	DataType       string `json:"data_type"`
+	Options        []byte `json:"options"`
+	IsFilterable   bool   `json:"is_filterable"`
+	IsVariantAxis  bool   `json:"is_variant_axis"`
+}
+
+type AttributeFamily struct {
+	ID             int64  `json:"id"`
+	OrganizationID int64  `json:"organization_id"`
+	Name           string `json:"name"`
+}
+
+type AttributeFamilyAttribute struct {
+	FamilyID    int64 `json:"family_id"`
+	AttributeID int64 `json:"attribute_id"`
+	IsRequired  bool  `json:"is_required"`
+	SortOrder   int32 `json:"sort_order"`
+}
+
+type CatalogVisibility struct {
+	ID              int64  `json:"id"`
+	ProductID       *int64 `json:"product_id"`
+	CategoryID      *int64 `json:"category_id"`
+	CustomerID      *int64 `json:"customer_id"`
+	CustomerGroupID *int64 `json:"customer_group_id"`
+	Visible         bool   `json:"visible"`
+}
+
+type Category struct {
+	ID             int64  `json:"id"`
+	OrganizationID int64  `json:"organization_id"`
+	ParentID       *int64 `json:"parent_id"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug"`
+	SortOrder      int32  `json:"sort_order"`
+}
+
 type Customer struct {
 	ID                 int64              `json:"id"`
 	PublicID           uuid.UUID          `json:"public_id"`
@@ -72,20 +114,43 @@ type Organization struct {
 }
 
 type Product struct {
-	ID             int64              `json:"id"`
-	PublicID       uuid.UUID          `json:"public_id"`
-	OrganizationID int64              `json:"organization_id"`
-	Sku            string             `json:"sku"`
-	Type           string             `json:"type"`
-	Name           string             `json:"name"`
-	Slug           string             `json:"slug"`
-	Description    *string            `json:"description"`
-	Status         string             `json:"status"`
-	Attributes     []byte             `json:"attributes"`
-	Unit           string             `json:"unit"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	ID                int64              `json:"id"`
+	PublicID          uuid.UUID          `json:"public_id"`
+	OrganizationID    int64              `json:"organization_id"`
+	Sku               string             `json:"sku"`
+	Type              string             `json:"type"`
+	Name              string             `json:"name"`
+	Slug              string             `json:"slug"`
+	Description       *string            `json:"description"`
+	Status            string             `json:"status"`
+	Attributes        []byte             `json:"attributes"`
+	Unit              string             `json:"unit"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	ParentID          *int64             `json:"parent_id"`
+	AttributeFamilyID *int64             `json:"attribute_family_id"`
+}
+
+type ProductCategory struct {
+	ProductID  int64 `json:"product_id"`
+	CategoryID int64 `json:"category_id"`
+}
+
+type ProductMedium struct {
+	ID        int64   `json:"id"`
+	ProductID int64   `json:"product_id"`
+	Url       string  `json:"url"`
+	Type      string  `json:"type"`
+	Alt       *string `json:"alt"`
+	SortOrder int32   `json:"sort_order"`
+}
+
+type ProductTranslation struct {
+	ProductID   int64   `json:"product_id"`
+	Locale      string  `json:"locale"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 }
 
 type Role struct {

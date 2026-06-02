@@ -1,0 +1,147 @@
+-- Catalog & PIM queries — Implementation Pack 1 §3, §12.3 (subtree), §12.5 (facets).
+-- Storefront product reads live in products.sql; this file is the admin PIM surface
+-- plus the category-subtree and JSONB-facet reads used by the storefront listing.
+
+-- ===== Products (admin) ====================================================
+
+-- name: CreateProduct :one
+INSERT INTO products (
+  organization_id, sku, type, name, slug, description, status,
+  attributes, unit, parent_id, attribute_family_id
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING *;
+
+-- name: GetProductByID :one
+SELECT * FROM products
+WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL;
+
+-- name: ListProductsAdmin :many
+SELECT * FROM products
+WHERE organization_id = $1 AND deleted_at IS NULL
+ORDER BY name
+LIMIT $2 OFFSET $3;
+
+-- name: CountProductsAdmin :one
+SELECT count(*) FROM products
+WHERE organization_id = $1 AND deleted_at IS NULL;
+
+-- name: UpdateProduct :one
+UPDATE products
+SET sku                 = $3,
+    type                = $4,
+    name                = $5,
+    slug                = $6,
+    description         = $7,
+    status              = $8,
+    attributes          = $9,
+    unit                = $10,
+    parent_id           = $11,
+    attribute_family_id = $12
+WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL
+RETURNING *;
+
+-- name: SoftDeleteProduct :execrows
+UPDATE products
+SET deleted_at = now()
+WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL;
+
+-- FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
+-- backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
+-- {"color":"red","voltage":"24"}.
+-- name: FilterActiveProductsByAttributes :many
+SELECT * FROM products
+WHERE organization_id = $1
+  AND status = 'active' AND deleted_at IS NULL
+  AND attributes @> $2
+ORDER BY name
+LIMIT $3 OFFSET $4;
+
+-- ===== Categories ==========================================================
+
+-- name: CreateCategory :one
+INSERT INTO categories (organization_id, parent_id, name, slug, sort_order)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetCategory :one
+SELECT * FROM categories WHERE organization_id = $1 AND id = $2;
+
+-- name: GetCategoryBySlug :one
+SELECT * FROM categories WHERE organization_id = $1 AND slug = $2;
+
+-- name: ListCategories :many
+SELECT * FROM categories
+WHERE organization_id = $1
+ORDER BY sort_order, name;
+
+-- CategoryDescendantIDs returns the category and all of its descendants
+-- (subtree, Pack 1 §12.3). $1 root id, $2 organization_id.
+-- name: CategoryDescendantIDs :many
+WITH RECURSIVE subtree AS (
+  SELECT c0.id FROM categories c0 WHERE c0.id = $1 AND c0.organization_id = $2
+  UNION ALL
+  SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
+)
+SELECT subtree.id FROM subtree;
+
+-- ListActiveProductsInCategory returns active products in a category's whole
+-- subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
+-- name: ListActiveProductsInCategory :many
+WITH RECURSIVE subtree AS (
+  SELECT c0.id FROM categories c0 WHERE c0.id = $2 AND c0.organization_id = $1
+  UNION ALL
+  SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
+)
+SELECT DISTINCT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
+       p.status, p.attributes, p.unit
+FROM products p
+JOIN product_categories pc ON pc.product_id = p.id
+WHERE pc.category_id IN (SELECT subtree.id FROM subtree)
+  AND p.organization_id = $1
+  AND p.status = 'active' AND p.deleted_at IS NULL
+ORDER BY p.name
+LIMIT $3 OFFSET $4;
+
+-- name: AssignProductToCategory :exec
+INSERT INTO product_categories (product_id, category_id)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING;
+
+-- name: RemoveProductFromCategory :exec
+DELETE FROM product_categories WHERE product_id = $1 AND category_id = $2;
+
+-- name: ListProductCategoryIDs :many
+SELECT category_id FROM product_categories WHERE product_id = $1;
+
+-- ===== Attributes & families ==============================================
+
+-- name: CreateAttribute :one
+INSERT INTO attributes (
+  organization_id, code, label, data_type, options, is_filterable, is_variant_axis
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: ListAttributes :many
+SELECT * FROM attributes WHERE organization_id = $1 ORDER BY label;
+
+-- name: CreateAttributeFamily :one
+INSERT INTO attribute_families (organization_id, name)
+VALUES ($1, $2)
+RETURNING *;
+
+-- name: ListAttributeFamilies :many
+SELECT * FROM attribute_families WHERE organization_id = $1 ORDER BY name;
+
+-- name: AssignAttributeToFamily :exec
+INSERT INTO attribute_family_attributes (family_id, attribute_id, is_required, sort_order)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (family_id, attribute_id)
+DO UPDATE SET is_required = EXCLUDED.is_required, sort_order = EXCLUDED.sort_order;
+
+-- name: ListFamilyAttributes :many
+SELECT a.id, a.code, a.label, a.data_type, a.options, a.is_filterable, a.is_variant_axis,
+       fa.is_required, fa.sort_order
+FROM attribute_family_attributes fa
+JOIN attributes a ON a.id = fa.attribute_id
+WHERE fa.family_id = $1
+ORDER BY fa.sort_order, a.label;

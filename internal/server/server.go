@@ -31,7 +31,7 @@ func New(st *store.Store, issuer *auth.Issuer) http.Handler {
 	// Modules mount their own routes. Add new modules here as they land.
 	health.New(st).Routes(r)
 	authmod.New(st, issuer).Routes(r)
-	catalog.New(st).Routes(r, authMW)
+	catalog.New(st.Queries()).Routes(r, authMW)
 	customers.New(st.Queries()).Routes(r, authMW)
 
 	return r
