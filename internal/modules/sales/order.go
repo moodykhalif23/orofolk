@@ -93,6 +93,128 @@ func (h *Handler) acceptQuote(w http.ResponseWriter, r *http.Request) {
 	h.renderOrder(w, r, order)
 }
 
+// ---- storefront: place order from the active cart (§9) -------------------
+
+type addressInput struct {
+	Line1      string  `json:"line1"`
+	Line2      *string `json:"line2"`
+	City       string  `json:"city"`
+	Region     *string `json:"region"`
+	PostalCode *string `json:"postal_code"`
+	Country    string  `json:"country"`
+}
+
+// placeOrderFromCart converts the customer's active cart into an order in one
+// transaction: snapshot line prices (already snapshotted on the cart) + addresses,
+// mark the cart converted, write a status-history row. Credit/approval gate (§10)
+// is deferred — the order is created `pending`.
+func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
+	cc, ok := customer(r)
+	if !ok {
+		unauthorized(w)
+		return
+	}
+	var req struct {
+		PoNumber              *string       `json:"po_number"`
+		RequestedDeliveryDate *time.Time    `json:"requested_delivery_date"`
+		BillingAddress        *addressInput `json:"billing_address"`
+		ShippingAddress       *addressInput `json:"shipping_address"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	ws, err := h.q.GetDefaultWebsite(r.Context(), cc.orgID)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "no website configured")
+		return
+	}
+	cart, err := h.q.GetActiveCart(r.Context(), gen.GetActiveCartParams{CustomerID: cc.customerID, WebsiteID: ws.ID})
+	if err != nil {
+		response.Fail(w, http.StatusUnprocessableEntity, "empty_cart", "no active cart to check out")
+		return
+	}
+	items, err := h.q.ListCartItems(r.Context(), cart.ID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load cart")
+		return
+	}
+	if len(items) == 0 {
+		response.Fail(w, http.StatusUnprocessableEntity, "empty_cart", "cart is empty")
+		return
+	}
+
+	var order gen.Order
+	err = h.tx(r.Context(), func(q *gen.Queries) error {
+		var totals []string
+		type line struct {
+			pid                                int64
+			sku, name, qty, unit, price, total string
+		}
+		var lines []line
+		for _, it := range items {
+			rt, e := money.RowTotal(it.Quantity, it.UnitPrice, "0")
+			if e != nil {
+				return e
+			}
+			lines = append(lines, line{it.ProductID, it.Sku, it.Name, it.Quantity, it.Unit, it.UnitPrice, rt})
+			totals = append(totals, rt)
+		}
+		subtotal, _ := money.Sum(totals...)
+
+		billing := addrSnapshot(r.Context(), q, cc.customerID, "billing", req.BillingAddress)
+		shipping := addrSnapshot(r.Context(), q, cc.customerID, "shipping", req.ShippingAddress)
+
+		var e error
+		order, e = q.CreateOrder(r.Context(), gen.CreateOrderParams{
+			OrganizationID: cc.orgID, WebsiteID: ws.ID, CustomerID: cc.customerID,
+			CustomerUserID: cc.customerUserID, Currency: cart.Currency,
+			PoNumber: req.PoNumber, RequestedDeliveryDate: datePtr(req.RequestedDeliveryDate),
+			BillingAddress: billing, ShippingAddress: shipping,
+			Subtotal: subtotal, TaxTotal: "0", ShippingTotal: "0", GrandTotal: subtotal,
+		})
+		if e != nil {
+			return e
+		}
+		for _, ln := range lines {
+			if _, e := q.AddOrderItem(r.Context(), gen.AddOrderItemParams{
+				OrderID: order.ID, ProductID: ln.pid, Sku: ln.sku, Name: ln.name,
+				Quantity: ln.qty, Unit: ln.unit, UnitPrice: ln.price, TaxAmount: "0", RowTotal: ln.total,
+			}); e != nil {
+				return e
+			}
+		}
+		if e := q.MarkCartConverted(r.Context(), cart.ID); e != nil {
+			return e
+		}
+		by := "customer_user:0"
+		if cc.customerUserID != nil {
+			by = "customer_user:" + itoa(*cc.customerUserID)
+		}
+		return q.AddOrderStatusHistory(r.Context(), gen.AddOrderStatusHistoryParams{
+			OrderID: order.ID, FromStatus: nil, ToStatus: "pending", ChangedBy: by, Note: strPtr("placed from cart"),
+		})
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not place order")
+		return
+	}
+	h.renderOrder(w, r, order)
+}
+
+// addrSnapshot returns a JSON address: the request-provided one if present,
+// otherwise the customer's default address of that type ("{}" if none).
+func addrSnapshot(ctx context.Context, q *gen.Queries, customerID int64, typ string, provided *addressInput) []byte {
+	if provided != nil {
+		b, _ := json.Marshal(provided)
+		return b
+	}
+	addr, err := q.GetCustomerDefaultAddress(ctx, gen.GetCustomerDefaultAddressParams{CustomerID: customerID, Type: typ})
+	if err != nil {
+		return []byte("{}")
+	}
+	b, _ := json.Marshal(addr)
+	return b
+}
+
 // ---- admin: on-behalf-of order + management ------------------------------
 
 func (h *Handler) createOrderOnBehalf(w http.ResponseWriter, r *http.Request) {

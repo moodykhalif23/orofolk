@@ -63,6 +63,7 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		sr.Post("/storefront/quotes/{publicID}/accept", h.acceptQuote)
 		sr.Post("/storefront/quotes/{publicID}/decline", h.declineQuote)
 
+		sr.Post("/storefront/orders", h.placeOrderFromCart)
 		sr.Get("/storefront/orders", h.listMyOrders)
 		sr.Get("/storefront/orders/{publicID}", h.getMyOrder)
 	})
