@@ -272,6 +272,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/price-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListPriceLists"];
+        put?: never;
+        post: operations["adminCreatePriceList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetPriceList"];
+        put: operations["adminUpdatePriceList"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-lists/{id}/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListPrices"];
+        put?: never;
+        post: operations["adminUpsertPrice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-lists/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-list-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-list-assignments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteAssignment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pricing/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminResolvePrice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pricing/recompute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRecomputePricing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/combined-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminCustomerCombinedPrices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -519,6 +673,112 @@ export interface components {
         };
         ListWrapperCustomerAddress: {
             items?: components["schemas"]["CustomerAddress"][];
+        };
+        PriceList: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            organization_id?: number;
+            name: string;
+            currency: string;
+            is_default: boolean;
+            is_active: boolean;
+        };
+        PriceListInput: {
+            name: string;
+            currency: string;
+            is_default?: boolean;
+            is_active?: boolean;
+        };
+        Price: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            price_list_id: number;
+            /** Format: int64 */
+            product_id: number;
+            unit: string;
+            /** @description decimal */
+            min_quantity: string;
+            /** @description decimal */
+            value: string;
+            /** Format: date-time */
+            valid_from?: string | null;
+            /** Format: date-time */
+            valid_to?: string | null;
+        };
+        PriceInput: {
+            /** Format: int64 */
+            product_id: number;
+            unit?: string;
+            min_quantity?: string;
+            value: string;
+            /** Format: date-time */
+            valid_from?: string | null;
+            /** Format: date-time */
+            valid_to?: string | null;
+        };
+        PriceListAssignment: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            price_list_id: number;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            /** Format: int64 */
+            website_id?: number | null;
+            priority: number;
+        };
+        AssignmentInput: {
+            /** Format: int64 */
+            price_list_id: number;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            /** Format: int64 */
+            website_id?: number | null;
+            priority?: number;
+        };
+        ResolveResult: {
+            price_on_request: boolean;
+            value?: string;
+            /** Format: int64 */
+            source_price_list_id?: number;
+            currency?: string;
+        };
+        CombinedPrice: {
+            /** Format: int64 */
+            customer_id?: number;
+            /** Format: int64 */
+            product_id?: number;
+            unit?: string;
+            min_quantity?: string;
+            currency?: string;
+            value?: string;
+            /** Format: int64 */
+            source_price_list_id?: number | null;
+        };
+        RecomputeInput: {
+            /** Format: int64 */
+            customer_id: number;
+            /** Format: int64 */
+            website_id?: number | null;
+            currency?: string;
+        };
+        ListWrapperPriceList: {
+            items?: components["schemas"]["PriceList"][];
+        };
+        ListWrapperPrice: {
+            items?: components["schemas"]["Price"][];
+        };
+        ListWrapperAssignment: {
+            items?: components["schemas"]["PriceListAssignment"][];
+        };
+        ListWrapperCombinedPrice: {
+            items?: components["schemas"]["CombinedPrice"][];
         };
     };
     responses: {
@@ -1221,6 +1481,291 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerGroup"];
+                };
+            };
+        };
+    };
+    adminListPriceLists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPriceList"];
+                };
+            };
+        };
+    };
+    adminCreatePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceListInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    adminGetPriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdatePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceListInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    adminListPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPrice"];
+                };
+            };
+        };
+    };
+    adminUpsertPrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Price"];
+                };
+            };
+        };
+    };
+    adminListAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperAssignment"];
+                };
+            };
+        };
+    };
+    adminCreateAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListAssignment"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminResolvePrice: {
+        parameters: {
+            query: {
+                customer_id: number;
+                product_id: number;
+                quantity?: string;
+                currency: string;
+                website_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolveResult"];
+                };
+            };
+        };
+    };
+    adminRecomputePricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecomputeInput"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        enqueued?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    adminCustomerCombinedPrices: {
+        parameters: {
+            query: {
+                currency: string;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCombinedPrice"];
                 };
             };
         };

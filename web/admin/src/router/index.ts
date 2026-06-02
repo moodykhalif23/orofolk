@@ -56,6 +56,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/catalog/AttributesView.vue'),
         meta: { permission: 'attribute.view' },
       },
+      {
+        path: 'pricing',
+        name: 'pricing',
+        component: () => import('@/views/pricing/PriceListsView.vue'),
+        meta: { permission: 'price_list.view' },
+      },
+      {
+        path: 'pricing/:id',
+        name: 'price-list-detail',
+        component: () => import('@/views/pricing/PriceListDetailView.vue'),
+        meta: { permission: 'price_list.view' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

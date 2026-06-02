@@ -13,6 +13,7 @@ tags:
   - { name: Auth }
   - { name: Catalog }
   - { name: Customers }
+  - { name: Pricing }
 
 components:
   securitySchemes:
@@ -291,6 +292,116 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/CustomerAddress' } }
+
+    PriceList:
+      type: object
+      required: [id, name, currency, is_default, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        organization_id: { type: integer, format: int64 }
+        name: { type: string }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        is_default: { type: boolean }
+        is_active: { type: boolean }
+
+    PriceListInput:
+      type: object
+      required: [name, currency]
+      properties:
+        name: { type: string }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        is_default: { type: boolean }
+        is_active: { type: boolean }
+
+    Price:
+      type: object
+      required: [id, price_list_id, product_id, unit, min_quantity, value]
+      properties:
+        id: { type: integer, format: int64 }
+        price_list_id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64 }
+        unit: { type: string }
+        min_quantity: { type: string, description: decimal }
+        value: { type: string, description: decimal }
+        valid_from: { type: string, format: date-time, nullable: true }
+        valid_to: { type: string, format: date-time, nullable: true }
+
+    PriceInput:
+      type: object
+      required: [product_id, value]
+      properties:
+        product_id: { type: integer, format: int64 }
+        unit: { type: string }
+        min_quantity: { type: string }
+        value: { type: string }
+        valid_from: { type: string, format: date-time, nullable: true }
+        valid_to: { type: string, format: date-time, nullable: true }
+
+    PriceListAssignment:
+      type: object
+      required: [id, price_list_id, priority]
+      properties:
+        id: { type: integer, format: int64 }
+        price_list_id: { type: integer, format: int64 }
+        customer_id: { type: integer, format: int64, nullable: true }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        website_id: { type: integer, format: int64, nullable: true }
+        priority: { type: integer }
+
+    AssignmentInput:
+      type: object
+      required: [price_list_id]
+      properties:
+        price_list_id: { type: integer, format: int64 }
+        customer_id: { type: integer, format: int64, nullable: true }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        website_id: { type: integer, format: int64, nullable: true }
+        priority: { type: integer }
+
+    ResolveResult:
+      type: object
+      required: [price_on_request]
+      properties:
+        price_on_request: { type: boolean }
+        value: { type: string }
+        source_price_list_id: { type: integer, format: int64 }
+        currency: { type: string }
+
+    CombinedPrice:
+      type: object
+      properties:
+        customer_id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64 }
+        unit: { type: string }
+        min_quantity: { type: string }
+        currency: { type: string }
+        value: { type: string }
+        source_price_list_id: { type: integer, format: int64, nullable: true }
+
+    RecomputeInput:
+      type: object
+      required: [customer_id]
+      properties:
+        customer_id: { type: integer, format: int64 }
+        website_id: { type: integer, format: int64, nullable: true }
+        currency: { type: string }
+
+    ListWrapperPriceList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PriceList' } }
+    ListWrapperPrice:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Price' } }
+    ListWrapperAssignment:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PriceListAssignment' } }
+    ListWrapperCombinedPrice:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CombinedPrice' } }
 
   responses:
     ErrorResponse:
@@ -659,3 +770,151 @@ paths:
         '201':
           description: Created
           content: { application/json: { schema: { $ref: '#/components/schemas/CustomerGroup' } } }
+
+  /admin/price-lists:
+    get:
+      tags: [Pricing]
+      operationId: adminListPriceLists
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperPriceList' } } }
+    post:
+      tags: [Pricing]
+      operationId: adminCreatePriceList
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PriceListInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/PriceList' } } }
+
+  /admin/price-lists/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Pricing]
+      operationId: adminGetPriceList
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/PriceList' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Pricing]
+      operationId: adminUpdatePriceList
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PriceListInput' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/PriceList' } } }
+
+  /admin/price-lists/{id}/prices:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Pricing]
+      operationId: adminListPrices
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperPrice' } } }
+    post:
+      tags: [Pricing]
+      operationId: adminUpsertPrice
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PriceInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Price' } } }
+
+  /admin/price-lists/{id}/assignments:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Pricing]
+      operationId: adminListAssignments
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperAssignment' } } }
+
+  /admin/price-list-assignments:
+    post:
+      tags: [Pricing]
+      operationId: adminCreateAssignment
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AssignmentInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/PriceListAssignment' } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/price-list-assignments/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Pricing]
+      operationId: adminDeleteAssignment
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: No Content }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/pricing/resolve:
+    get:
+      tags: [Pricing]
+      operationId: adminResolvePrice
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: customer_id, in: query, required: true, schema: { type: integer, format: int64 } }
+        - { name: product_id, in: query, required: true, schema: { type: integer, format: int64 } }
+        - { name: quantity, in: query, schema: { type: string } }
+        - { name: currency, in: query, required: true, schema: { type: string } }
+        - { name: website_id, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ResolveResult' } } }
+
+  /admin/pricing/recompute:
+    post:
+      tags: [Pricing]
+      operationId: adminRecomputePricing
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RecomputeInput' } } }
+      responses:
+        '202':
+          description: Accepted
+          content: { application/json: { schema: { type: object, properties: { enqueued: { type: boolean } } } } }
+
+  /admin/customers/{id}/combined-prices:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Pricing]
+      operationId: adminCustomerCombinedPrices
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: currency, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCombinedPrice' } } }

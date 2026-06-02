@@ -23,6 +23,7 @@ const allItems: NavItem[] = [
   { label: 'Products', icon: 'pi pi-box', routeName: 'products', permission: 'product.view' },
   { label: 'Categories', icon: 'pi pi-sitemap', routeName: 'categories', permission: 'category.view' },
   { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view' },
+  { label: 'Pricing', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
 ]
 
 const navItems = computed<MenuItem[]>(() =>
