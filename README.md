@@ -1,67 +1,150 @@
-# b2bcommerce
+# oro-folk — In-House B2B Commerce Platform
 
-Runnable starting point for the in-house B2B commerce platform (PRD v0.2 + Implementation Packs 1–3).
-Stack: **Go (chi + sqlc + river)**, **PostgreSQL 16**, with **Vue/Nuxt** frontends in [`web/`](web/) (Vue 3 admin SPA + Nuxt storefront, both on **PrimeVue** — see [web/README.md](web/README.md)).
+A self-hosted, **API-first** B2B commerce platform for manufacturers, distributors, and
+wholesalers — an in-house equivalent of OroCommerce. It models organizations buying from
+organizations: per-customer catalogs and pricing, quote negotiation (RFQ → Quote → Order),
+order-to-cash (shipments, invoices, payments), and an audited inventory ledger.
 
-## Quick start (Docker)
+Built as a **modular monolith**. The Go service is the single source of truth; the two
+frontends are pure API consumers.
+
+| Layer | Choice |
+|---|---|
+| API | **Go** — `chi` router · `sqlc` (type-safe SQL) · `river` (Postgres-backed job queue) |
+| Database | **PostgreSQL 16** — also carries the job queue (river) and search (FTS, planned) |
+| Admin UI | **Vue 3** SPA (Vite · Pinia · Vue Router · **PrimeVue**) — login-gated back office |
+| Storefront | **Nuxt** SSR (**PrimeVue**) — crawlable, customer-facing |
+| Frontend ↔ API | **OpenAPI 3.1** contract → generated **TypeScript client** (`openapi-typescript` + `openapi-fetch`) |
+| PDF / Edge / Deploy | Gotenberg (planned) · Nginx (planned) · Docker Compose |
+
+The full product specification lives in [`docs/`](docs/) (PRD v0.2 + Implementation Packs 1–3).
+**Current state, implemented modules, gaps, and the phased roadmap are in [STATUS.md](STATUS.md).**
+
+> **TL;DR status:** the MVP commerce spine is complete and integration-tested
+> (Customers · Catalog/PIM · Pricing · Cart · RFQ→Quote→Order · Order-to-cash · Inventory).
+> The frontends are scaffolded with a typed API client; the **Catalog** module is built on
+> both. See [STATUS.md](STATUS.md).
+
+## Prerequisites
+
+- **Go** ≥ 1.22 · **Docker** (for Compose, and for integration tests via testcontainers)
+- **Node** ≥ 20 + **pnpm** (`corepack enable pnpm`) — for the frontends
+- **sqlc** (only if you change SQL): `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+
+---
+
+## Run the backend
+
+### Option A — Docker Compose (everything)
 
 ```bash
 cp .env.example .env          # adjust JWT_SECRET
 docker compose up --build
 ```
 
-This brings up Postgres, runs migrations + seed (one-shot `migrate` service), then starts the API and the worker.
+This starts Postgres, runs migrations + seed (one-shot `migrate` service), then the API and
+worker. The API is on http://localhost:8080.
 
-- API:        http://localhost:8080
-- Health:     `GET /healthz`, `GET /readyz`
-- Storefront: `GET /storefront/products`
-- Admin login:`POST /admin/auth/login`  body `{"email":"admin@demo.test","password":"admin1234","org_id":1}`
-- Admin list: `GET /admin/products`  with header `Authorization: Bearer <token>`
-
-> The seeded admin password hash in `migrations/0003_seed.sql` is a placeholder.
-> Generate a real one and replace it before logging in:
-> ```bash
-> # any Go scratch: bcrypt.GenerateFromPassword([]byte("admin1234"), bcrypt.DefaultCost)
-> ```
-> Or register a proper user-creation endpoint and drop the seed.
-
-## Quick start (local, no Docker)
+### Option B — Local (no Docker for the app)
 
 ```bash
-# Postgres running locally; set DATABASE_URL to localhost
+# 1. Start Postgres (matches the default DSN in .env.example)
+docker run --rm -d --name oro-pg \
+  -e POSTGRES_USER=b2b -e POSTGRES_PASSWORD=b2b -e POSTGRES_DB=b2b \
+  -p 5432:5432 postgres:16-alpine
+
+# 2. Configuration
+cp .env.example .env
 export $(grep -v '^#' .env | xargs)
+
+# 3. Dependencies, schema, run
 go mod tidy
-make migrate
-make run-api      # terminal 1
-make run-worker   # terminal 2
+make migrate        # app migrations + river tables + seed
+make run-api        # terminal 1  (http://localhost:8080)
+make run-worker     # terminal 2  (processes queued jobs)
 ```
 
-## How it's wired
+### Verify it's up
 
-- **Migrations** run from the dedicated `migrate` service/binary before api/worker start (compose `depends_on: condition: service_completed_successfully`). The migrator is idempotent and tracks applied files in `schema_migrations`. River's own tables are created via `rivermigrate`.
-- **Auth**: `POST /admin/auth/login` verifies bcrypt and issues a JWT carrying `org_id`, audience, and the user's permissions. The `Authenticator` middleware parses the bearer token into context; `RequirePermission("...")` gates routes.
-- **Queue**: the API uses an insert-only river client to enqueue; the worker registers workers and processes. The sample `send_email` job shows the pattern for real actions (invoice PDF, ERP sync, price recompute).
-- **Two security contexts**: `/storefront/*` is public/customer-facing; `/admin/*` is bearer + permission gated. Catalog shows both off the same handler.
+```bash
+curl http://localhost:8080/healthz                      # {"status":"ok"}
+curl 'http://localhost:8080/storefront/products'        # seeded products (public)
 
-## Adding a module (the repeatable pattern)
+# Admin login → bearer token (seeded demo admin)
+curl -s -X POST http://localhost:8080/admin/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@demo.test","password":"admin1234","org_id":1}'
+```
 
-1. Add tables as a new `migrations/000N_<name>.sql` (copy DDL from the Implementation Packs).
-2. Add queries in `internal/store/queries/<name>.sql`, run `make generate`.
-3. Create `internal/modules/<name>/handler.go` with a `Routes(r chi.Router, ...)` method.
+**Seeded demo login:** `admin@demo.test` / `admin1234` (org `1`). The seed hash is a real
+bcrypt of that password — change or remove the seed (`migrations/0003_seed.sql`) for production.
+
+---
+
+## Run the frontends
+
+```bash
+cd web
+corepack enable pnpm
+pnpm install
+pnpm --filter @oro/api generate     # generate the typed client from packages/api/openapi.yaml
+
+pnpm dev:admin                      # admin SPA  → http://localhost:5173
+pnpm dev:storefront                 # storefront → http://localhost:3000
+
+pnpm build                          # production build of all packages
+```
+
+The Vite dev server proxies `/admin` and `/storefront` to the API at `localhost:8080`
+(override with `VITE_API_BASE_URL`). The storefront reads `NUXT_PUBLIC_API_BASE`
+(default `http://localhost:8080`). See [web/README.md](web/README.md).
+
+---
+
+## Tests
+
+```bash
+make test          
+make vet            # go vet ./...
+make fmt            # gofmt -w .
+```
+
+Set `TEST_DATABASE_URL` to run integration tests against an existing Postgres instead of a
+throwaway container (e.g. in CI).
+
+Frontend checks:
+
+```bash
+cd web
+pnpm --filter @oro/admin typecheck
+pnpm --filter @oro/storefront typecheck
+```
+
+---
+
+## Code generation
+
+| Generator | When | Command |
+|---|---|---|
+| **sqlc** — typed Go from `internal/store/queries/*.sql` into `internal/store/gen` | after editing SQL | `make generate` |
+| **TypeScript client** — from `web/packages/api/openapi.yaml` | after editing the OpenAPI spec | `pnpm --filter @oro/api generate` |
+
+The OpenAPI file is the **single source of truth** for the API contract; both frontends
+consume the generated types, so they cannot drift.
+
+---
+
+## Adding a backend module (the repeatable pattern)
+
+1. Add a `migrations/00NN_<name>.sql` (copy DDL from the Implementation Packs in `docs/`).
+2. Add `internal/store/queries/<name>.sql`, run `make generate`.
+3. Create `internal/modules/<name>/handler.go` with a `Routes(r chi.Router, authMW ...)` method,
+   org-scoped and permission/audience gated.
 4. Mount it in `internal/server/server.go`.
-5. For async work, add a job in `internal/queue/jobs/` and register it in `queue/client.go`.
+5. Async work → add a job in `internal/queue/jobs/` and register it in `internal/queue/client.go`.
+6. Add integration tests (real Postgres via `testsupport.NewDB(t)`): query-level + HTTP-level
+   (assert the auth gate and tenant isolation).
+7. Extend `web/packages/api/openapi.yaml`, regenerate, and build the screens.
 
-## Moving from hand-written store to sqlc
-
-`internal/store/store.go` is hand-written pgx so the app runs immediately. As you
-add `queries/*.sql` and run `make generate`, the typed layer appears in
-`internal/store/gen`. Migrate handlers to the generated methods and shrink the
-hand-written store over time. `sqlc.yaml` is already configured for pgx/v5.
-
-## Notes
-- The full schema (Packs 1–3) is not all migrated here — only foundation +
-  a minimal `products` table — so the skeleton boots with something to query.
-  Add the rest module-by-module.
-- Keep the OpenAPI file (Pack 2 §5 + Pack 3 §5) as the source of truth and
-  generate the TS client for Vue/Nuxt from it.
-```
+Conventions (money as decimal strings, `public_id` in URLs, `organization_id` tenant scoping,
+`text + CHECK` statuses, JSONB+GIN attributes) are documented in `docs/` Pack 1 §0.
