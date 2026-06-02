@@ -95,7 +95,29 @@ Each module = one Go package + one set of sqlc queries + (usually) one OpenAPI t
   conditions→actions). Transitions are atomic (state update + log in one tx); actions run as
   river jobs AFTER commit so a failed action never corrupts state.
 
-## 4. Definition of done for a module slice
+## 4. Testing (end-to-end, against real Postgres)
+
+Tests run against a real Postgres 16 — mocks don't exercise the CTEs/JSONB/pricing
+SQL that carry the business logic. The harness is `internal/testsupport`:
+
+- `pool := testsupport.NewDB(t)` returns an isolated, freshly-migrated database
+  (cloned from a migrated template; dropped at test end). It starts a throwaway
+  Postgres via **testcontainers** (Docker required), or uses `TEST_DATABASE_URL`
+  if set. The template applies the embedded migrations **and** river's tables,
+  mirroring `cmd/migrate`, so tests see the production schema + seed.
+- **Query-level tests:** `q := gen.New(pool)` then call the sqlc methods directly —
+  use these for the tricky queries (ancestor/subtree CTEs, price resolution, ATP,
+  facets) and tenant isolation. See `customers/handler_test.go::TestCustomerAncestors`.
+- **HTTP-level tests:** build the full stack with `server.New(store.New(pool), issuer)`,
+  mint a scoped token via `issuer.Issue("1", orgID, "admin", perms)`, and drive
+  endpoints with `httptest`. Always assert the **auth gate** (401 no token, 403
+  wrong perm, 200/201 with perm), **org scoping**, and **money round-trips as a
+  decimal string**. Pattern: `customers/handler_test.go`.
+- Run with `make test` (or `go test ./...`). Every new module ships with both
+  query- and HTTP-level tests; the migration-compatibility gate
+  (`testsupport.TestMigrationsApply`) must stay green as migrations are added.
+
+## 5. Definition of done for a module slice
 
 - Tenant isolation (`organization_id`) enforced in every query.
 - Permission-gated on `/admin/*`; correct security context.
@@ -104,3 +126,5 @@ Each module = one Go package + one set of sqlc queries + (usually) one OpenAPI t
 - Async/side-effecting work goes through river, not inline in the request.
 - OpenAPI updated; `make vet` / `make build` clean; `gofmt` applied.
 - Only the current phase's scope built; no silent V1/V2 creep.
+- Query- and HTTP-level tests added and green (`make test`); auth gate + tenant
+  isolation explicitly asserted.

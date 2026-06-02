@@ -1,10 +1,11 @@
-.PHONY: help tidy generate build run-api run-worker migrate up down logs psql fmt vet
+.PHONY: help tidy generate build test run-api run-worker migrate up down logs psql fmt vet
 
 help:
 	@echo "Targets:"
 	@echo "  tidy        go mod tidy (pin deps)"
 	@echo "  generate    sqlc generate (typed query layer -> internal/store/gen)"
 	@echo "  build       build all three binaries"
+	@echo "  test        go test ./... (integration tests start Postgres via testcontainers; needs Docker)"
 	@echo "  up          docker compose up (postgres + migrate + api + worker)"
 	@echo "  down        docker compose down"
 	@echo "  logs        tail compose logs"
@@ -21,6 +22,9 @@ generate:
 
 build:
 	go build ./...
+
+test:
+	go test ./... $(TESTFLAGS)
 
 run-api:
 	go run ./cmd/api
