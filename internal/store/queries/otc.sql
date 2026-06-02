@@ -76,6 +76,10 @@ UPDATE invoices SET pdf_url = $2 WHERE id = $1;
 
 -- name: SetInvoiceStatus :one
 UPDATE invoices SET status = $2 WHERE id = $1 RETURNING *;
+
+-- GetInvoiceForRender gathers everything the PDF template needs in one row:
+-- the invoice, its order context, and the customer/organization names.
+-- name: GetInvoiceForRender :one
 SELECT
   i.id, i.public_id, i.status, i.currency,
   i.subtotal, i.tax_total, i.grand_total, i.issued_at, i.due_at,
