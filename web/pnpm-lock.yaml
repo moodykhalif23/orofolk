@@ -10,12 +10,12 @@ importers:
 
   admin:
     dependencies:
-      '@oro/api':
-        specifier: workspace:*
-        version: link:../packages/api
       '@primeuix/themes':
         specifier: ^2.0.0
         version: 2.0.3
+      '@teggo/api':
+        specifier: workspace:*
+        version: link:../packages/api
       pinia:
         specifier: ^3.0.0
         version: 3.0.4(typescript@5.9.3)(vue@3.5.35(typescript@5.9.3))
@@ -60,15 +60,15 @@ importers:
 
   storefront:
     dependencies:
-      '@oro/api':
-        specifier: workspace:*
-        version: link:../packages/api
       '@primeuix/themes':
         specifier: ^2.0.0
         version: 2.0.3
       '@primevue/nuxt-module':
         specifier: ^4.5.5
         version: 4.5.5(@babel/parser@7.29.7)(magicast@0.5.3)(vue@3.5.35(typescript@5.9.3))
+      '@teggo/api':
+        specifier: workspace:*
+        version: link:../packages/api
       nuxt:
         specifier: ^4.0.0
         version: 4.4.6(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7))(@parcel/watcher@2.5.6)(@vue/compiler-sfc@3.5.35)(cac@6.7.14)(db0@0.3.4)(ioredis@5.11.0)(magicast@0.5.3)(pinia@3.0.4(typescript@5.9.3)(vue@3.5.35(typescript@5.9.3)))(rollup-plugin-visualizer@7.0.1(rollup@4.61.0))(rollup@4.61.0)(srvx@0.11.16)(terser@5.48.0)(typescript@5.9.3)(vite@7.3.5(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))(vue-tsc@2.2.12(typescript@5.9.3))(yaml@2.9.0)
