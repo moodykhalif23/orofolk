@@ -168,6 +168,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListCustomers"];
+        put?: never;
+        post: operations["adminCreateCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetCustomer"];
+        put: operations["adminUpdateCustomer"];
+        post?: never;
+        delete: operations["adminDeleteCustomer"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/hierarchy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminCustomerHierarchy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListCustomerUsers"];
+        put?: never;
+        post: operations["adminCreateCustomerUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListCustomerAddresses"];
+        put?: never;
+        post: operations["adminCreateCustomerAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customer-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListCustomerGroups"];
+        put?: never;
+        post: operations["adminCreateCustomerGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -305,6 +409,116 @@ export interface components {
         };
         ListWrapperAttributeFamily: {
             items?: components["schemas"]["AttributeFamily"][];
+        };
+        Customer: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            parent_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            name: string;
+            tax_id?: string | null;
+            payment_terms_days: number;
+            /** @description decimal */
+            credit_limit: string;
+            /** Format: int64 */
+            default_price_list_id?: number | null;
+            /** Format: int64 */
+            assigned_sales_rep_id?: number | null;
+            is_active: boolean;
+        };
+        CustomerInput: {
+            name: string;
+            tax_id?: string | null;
+            payment_terms_days?: number;
+            credit_limit?: string;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            /** Format: int64 */
+            parent_id?: number | null;
+            /** Format: int64 */
+            assigned_sales_rep_id?: number | null;
+        };
+        CustomerList: {
+            items: components["schemas"]["Customer"][];
+            page: number;
+            /** Format: int64 */
+            total?: number;
+        };
+        CustomerHierarchy: {
+            /** Format: int64 */
+            customer_id?: number;
+            ancestors?: {
+                /** Format: int64 */
+                id?: number;
+                depth?: number;
+            }[];
+        };
+        CustomerGroup: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            organization_id?: number;
+            name: string;
+        };
+        CustomerUser: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            customer_id: number;
+            email: string;
+            full_name: string;
+            /** @enum {string} */
+            role: "buyer" | "approver" | "admin";
+            spending_limit?: string | null;
+            is_active: boolean;
+        };
+        CustomerUserInput: {
+            /** Format: email */
+            email: string;
+            password: string;
+            full_name: string;
+            /** @enum {string} */
+            role?: "buyer" | "approver" | "admin";
+            spending_limit?: string | null;
+        };
+        CustomerAddress: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            customer_id: number;
+            /** @enum {string} */
+            type: "billing" | "shipping";
+            is_default?: boolean;
+            line1: string;
+            line2?: string | null;
+            city: string;
+            region?: string | null;
+            postal_code?: string | null;
+            country: string;
+        };
+        CustomerAddressInput: {
+            /** @enum {string} */
+            type: "billing" | "shipping";
+            is_default?: boolean;
+            line1: string;
+            line2?: string | null;
+            city: string;
+            region?: string | null;
+            postal_code?: string | null;
+            country: string;
+        };
+        ListWrapperCustomerGroup: {
+            items?: components["schemas"]["CustomerGroup"][];
+        };
+        ListWrapperCustomerUser: {
+            items?: components["schemas"]["CustomerUser"][];
+        };
+        ListWrapperCustomerAddress: {
+            items?: components["schemas"]["CustomerAddress"][];
         };
     };
     responses: {
@@ -724,6 +938,289 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttributeFamily"];
+                };
+            };
+        };
+    };
+    adminListCustomers: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerList"];
+                };
+            };
+        };
+    };
+    adminCreateCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCustomerHierarchy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerHierarchy"];
+                };
+            };
+        };
+    };
+    adminListCustomerUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerUser"];
+                };
+            };
+        };
+    };
+    adminCreateCustomerUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerUser"];
+                };
+            };
+        };
+    };
+    adminListCustomerAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerAddress"];
+                };
+            };
+        };
+    };
+    adminCreateCustomerAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerAddressInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerAddress"];
+                };
+            };
+        };
+    };
+    adminListCustomerGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerGroup"];
+                };
+            };
+        };
+    };
+    adminCreateCustomerGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerGroup"];
                 };
             };
         };

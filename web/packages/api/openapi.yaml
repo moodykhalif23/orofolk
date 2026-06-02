@@ -12,6 +12,7 @@ servers:
 tags:
   - { name: Auth }
   - { name: Catalog }
+  - { name: Customers }
 
 components:
   securitySchemes:
@@ -170,6 +171,125 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/AttributeFamily' } }
+
+    Customer:
+      type: object
+      required: [id, public_id, name, payment_terms_days, credit_limit, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string, format: uuid }
+        parent_id: { type: integer, format: int64, nullable: true }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        name: { type: string }
+        tax_id: { type: string, nullable: true }
+        payment_terms_days: { type: integer }
+        credit_limit: { type: string, description: 'decimal' }
+        default_price_list_id: { type: integer, format: int64, nullable: true }
+        assigned_sales_rep_id: { type: integer, format: int64, nullable: true }
+        is_active: { type: boolean }
+
+    CustomerInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        tax_id: { type: string, nullable: true }
+        payment_terms_days: { type: integer }
+        credit_limit: { type: string }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        parent_id: { type: integer, format: int64, nullable: true }
+        assigned_sales_rep_id: { type: integer, format: int64, nullable: true }
+
+    CustomerList:
+      type: object
+      required: [items, page]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        page: { type: integer }
+        total: { type: integer, format: int64 }
+
+    CustomerHierarchy:
+      type: object
+      properties:
+        customer_id: { type: integer, format: int64 }
+        ancestors:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, format: int64 }
+              depth: { type: integer }
+
+    CustomerGroup:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        organization_id: { type: integer, format: int64 }
+        name: { type: string }
+
+    CustomerUser:
+      type: object
+      required: [id, customer_id, email, full_name, role, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        customer_id: { type: integer, format: int64 }
+        email: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [buyer, approver, admin] }
+        spending_limit: { type: string, nullable: true }
+        is_active: { type: boolean }
+
+    CustomerUserInput:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [buyer, approver, admin] }
+        spending_limit: { type: string, nullable: true }
+
+    CustomerAddress:
+      type: object
+      required: [id, customer_id, type, line1, city, country]
+      properties:
+        id: { type: integer, format: int64 }
+        customer_id: { type: integer, format: int64 }
+        type: { type: string, enum: [billing, shipping] }
+        is_default: { type: boolean }
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string }
+        region: { type: string, nullable: true }
+        postal_code: { type: string, nullable: true }
+        country: { type: string, minLength: 2, maxLength: 2 }
+
+    CustomerAddressInput:
+      type: object
+      required: [type, line1, city, country]
+      properties:
+        type: { type: string, enum: [billing, shipping] }
+        is_default: { type: boolean }
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string }
+        region: { type: string, nullable: true }
+        postal_code: { type: string, nullable: true }
+        country: { type: string, minLength: 2, maxLength: 2 }
+
+    ListWrapperCustomerGroup:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CustomerGroup' } }
+    ListWrapperCustomerUser:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CustomerUser' } }
+    ListWrapperCustomerAddress:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CustomerAddress' } }
 
   responses:
     ErrorResponse:
@@ -396,3 +516,145 @@ paths:
         '201':
           description: Created
           content: { application/json: { schema: { $ref: '#/components/schemas/AttributeFamily' } } }
+
+  /admin/customers:
+    get:
+      tags: [Customers]
+      operationId: adminListCustomers
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: page_size, in: query, schema: { type: integer, default: 24 } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/CustomerList' } } }
+    post:
+      tags: [Customers]
+      operationId: adminCreateCustomer
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/customers/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Customers]
+      operationId: adminGetCustomer
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Customers]
+      operationId: adminUpdateCustomer
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Customers]
+      operationId: adminDeleteCustomer
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: No Content }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/customers/{id}/hierarchy:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Customers]
+      operationId: adminCustomerHierarchy
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/CustomerHierarchy' } } }
+
+  /admin/customers/{id}/users:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Customers]
+      operationId: adminListCustomerUsers
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerUser' } } }
+    post:
+      tags: [Customers]
+      operationId: adminCreateCustomerUser
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUserInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUser' } } }
+
+  /admin/customers/{id}/addresses:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Customers]
+      operationId: adminListCustomerAddresses
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerAddress' } } }
+    post:
+      tags: [Customers]
+      operationId: adminCreateCustomerAddress
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddressInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddress' } } }
+
+  /admin/customer-groups:
+    get:
+      tags: [Customers]
+      operationId: adminListCustomerGroups
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerGroup' } } }
+    post:
+      tags: [Customers]
+      operationId: adminCreateCustomerGroup
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/CustomerGroup' } } }

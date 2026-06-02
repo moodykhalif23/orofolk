@@ -45,25 +45,6 @@ docker compose up --build
 This starts Postgres, runs migrations + seed (one-shot `migrate` service), then the API and
 worker. The API is on http://localhost:8080.
 
-### Option B — Local (no Docker for the app)
-
-```bash
-# 1. Start Postgres (matches the default DSN in .env.example)
-docker run --rm -d --name oro-pg \
-  -e POSTGRES_USER=b2b -e POSTGRES_PASSWORD=b2b -e POSTGRES_DB=b2b \
-  -p 5432:5432 postgres:16-alpine
-
-# 2. Configuration
-cp .env.example .env
-export $(grep -v '^#' .env | xargs)
-
-# 3. Dependencies, schema, run
-go mod tidy
-make migrate        # app migrations + river tables + seed
-make run-api        # terminal 1  (http://localhost:8080)
-make run-worker     # terminal 2  (processes queued jobs)
-```
-
 ### Verify it's up
 
 ```bash
