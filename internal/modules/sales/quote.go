@@ -257,6 +257,23 @@ func (h *Handler) adminGetQuote(w http.ResponseWriter, r *http.Request) {
 
 // ---- storefront ----------------------------------------------------------
 
+func (h *Handler) listMyQuotes(w http.ResponseWriter, r *http.Request) {
+	cc, ok := customer(r)
+	if !ok {
+		unauthorized(w)
+		return
+	}
+	rows, err := h.q.ListQuotesForCustomer(r.Context(), cc.customerID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not list quotes")
+		return
+	}
+	if rows == nil {
+		rows = []gen.Quote{}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": rows})
+}
+
 func (h *Handler) getMyQuote(w http.ResponseWriter, r *http.Request) {
 	cc, ok := customer(r)
 	if !ok {
