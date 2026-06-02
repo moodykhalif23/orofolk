@@ -15,6 +15,10 @@ RETURNING *;
 SELECT * FROM products
 WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL;
 
+-- name: GetProductIDByPublicID :one
+SELECT id FROM products
+WHERE organization_id = $1 AND public_id = $2 AND deleted_at IS NULL;
+
 -- name: ListProductsAdmin :many
 SELECT * FROM products
 WHERE organization_id = $1 AND deleted_at IS NULL

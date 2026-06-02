@@ -77,6 +77,16 @@ INSERT INTO customer_users (
 ) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at;
 
+-- GetCustomerUserForLogin resolves a customer-user by email within an org for
+-- storefront authentication (email is citext, so case-insensitive).
+-- name: GetCustomerUserForLogin :one
+SELECT cu.id, cu.customer_id, c.organization_id, cu.password_hash, cu.is_active
+FROM customer_users cu
+JOIN customers c ON c.id = cu.customer_id
+WHERE c.organization_id = $1 AND cu.email = $2
+  AND cu.is_active = true AND c.deleted_at IS NULL
+LIMIT 1;
+
 -- name: ListCustomerUsers :many
 SELECT id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at
 FROM customer_users

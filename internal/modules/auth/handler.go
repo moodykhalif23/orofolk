@@ -10,6 +10,7 @@ import (
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store"
+	"b2bcommerce/internal/store/gen"
 )
 
 type Handler struct {
@@ -23,6 +24,7 @@ func New(s *store.Store, issuer *auth.Issuer) *Handler {
 
 func (h *Handler) Routes(r chi.Router) {
 	r.Post("/admin/auth/login", h.login)
+	r.Post("/storefront/auth/login", h.storefrontLogin)
 }
 
 type loginRequest struct {
@@ -58,6 +60,35 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token, err := h.issuer.Issue(strconv.FormatInt(u.ID, 10), u.OrgID, "admin", perms)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not issue token")
+		return
+	}
+	response.JSON(w, http.StatusOK, loginResponse{Token: token})
+}
+
+// storefrontLogin authenticates a customer-user and issues a storefront token
+// carrying their org and buying company (customer_id).
+func (h *Handler) storefrontLogin(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	if req.OrgID == 0 {
+		req.OrgID = 1 // demo convenience; resolve from website/host in production
+	}
+
+	cu, err := h.store.Queries().GetCustomerUserForLogin(r.Context(), gen.GetCustomerUserForLoginParams{
+		OrganizationID: req.OrgID,
+		Email:          req.Email,
+	})
+	if err != nil || !auth.CheckPassword(cu.PasswordHash, req.Password) {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "invalid credentials")
+		return
+	}
+
+	token, err := h.issuer.IssueStorefront(cu.ID, cu.OrganizationID, cu.CustomerID)
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not issue token")
 		return

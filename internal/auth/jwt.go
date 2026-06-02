@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,6 +13,9 @@ type Claims struct {
 	OrgID       int64    `json:"org_id"`
 	Audience    string   `json:"aud"` // "admin" or "storefront"
 	Permissions []string `json:"perms,omitempty"`
+	// CustomerID is set for storefront tokens: the buying company the
+	// authenticated customer-user belongs to. Subject holds the customer_user id.
+	CustomerID int64 `json:"cust_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -34,6 +38,24 @@ func (i *Issuer) Issue(subject string, orgID int64, audience string, perms []str
 		Permissions: perms,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   subject,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(i.ttl)),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return tok.SignedString(i.secret)
+}
+
+// IssueStorefront mints a storefront token for a customer-user. Subject is the
+// customer_user id; CustomerID carries the buying company.
+func (i *Issuer) IssueStorefront(customerUserID, orgID, customerID int64) (string, error) {
+	now := time.Now()
+	claims := Claims{
+		OrgID:      orgID,
+		Audience:   "storefront",
+		CustomerID: customerID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   strconv.FormatInt(customerUserID, 10),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(i.ttl)),
 		},

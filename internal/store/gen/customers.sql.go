@@ -310,6 +310,43 @@ func (q *Queries) GetCustomerByPublicID(ctx context.Context, arg GetCustomerByPu
 	return i, err
 }
 
+const getCustomerUserForLogin = `-- name: GetCustomerUserForLogin :one
+SELECT cu.id, cu.customer_id, c.organization_id, cu.password_hash, cu.is_active
+FROM customer_users cu
+JOIN customers c ON c.id = cu.customer_id
+WHERE c.organization_id = $1 AND cu.email = $2
+  AND cu.is_active = true AND c.deleted_at IS NULL
+LIMIT 1
+`
+
+type GetCustomerUserForLoginParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Email          string `json:"email"`
+}
+
+type GetCustomerUserForLoginRow struct {
+	ID             int64  `json:"id"`
+	CustomerID     int64  `json:"customer_id"`
+	OrganizationID int64  `json:"organization_id"`
+	PasswordHash   string `json:"password_hash"`
+	IsActive       bool   `json:"is_active"`
+}
+
+// GetCustomerUserForLogin resolves a customer-user by email within an org for
+// storefront authentication (email is citext, so case-insensitive).
+func (q *Queries) GetCustomerUserForLogin(ctx context.Context, arg GetCustomerUserForLoginParams) (GetCustomerUserForLoginRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerUserForLogin, arg.OrganizationID, arg.Email)
+	var i GetCustomerUserForLoginRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.OrganizationID,
+		&i.PasswordHash,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const listCustomerAddresses = `-- name: ListCustomerAddresses :many
 SELECT id, customer_id, type, is_default, line1, line2, city, region, postal_code, country, created_at, updated_at FROM customer_addresses
 WHERE customer_id = $1

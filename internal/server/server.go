@@ -9,6 +9,7 @@ import (
 
 	"b2bcommerce/internal/auth"
 	authmod "b2bcommerce/internal/modules/auth"
+	"b2bcommerce/internal/modules/cart"
 	"b2bcommerce/internal/modules/catalog"
 	"b2bcommerce/internal/modules/customers"
 	"b2bcommerce/internal/modules/health"
@@ -55,6 +56,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	catalog.New(st.Queries()).Routes(r, authMW)
 	customers.New(st.Queries()).Routes(r, authMW)
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
+	cart.New(st.Queries()).Routes(r, authMW)
 
 	return r
 }

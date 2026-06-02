@@ -20,6 +20,7 @@ type Querier interface {
 	// ===== Attributes & families ==============================================
 	CreateAttribute(ctx context.Context, arg CreateAttributeParams) (Attribute, error)
 	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
+	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
 	// ===== Categories ==========================================================
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
@@ -40,6 +41,8 @@ type Querier interface {
 	// plus the category-subtree and JSONB-facet reads used by the storefront listing.
 	// ===== Products (admin) ====================================================
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
+	// ===== Shopping lists ======================================================
+	CreateShoppingList(ctx context.Context, arg CreateShoppingListParams) (ShoppingList, error)
 	// CustomerAncestors returns all ancestors of a customer, nearest first
 	// (cycle-safe recursive CTE — Pack 1 §12.2). Used to inherit price list /
 	// settings down the account tree.
@@ -49,11 +52,17 @@ type Querier interface {
 	// assignment of the list). Used to fan out recompute jobs.
 	CustomersAffectedByPriceList(ctx context.Context, id int64) ([]int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
+	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
 	// FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
 	// backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
 	// {"color":"red","voltage":"24"}.
 	FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]Product, error)
+	// Cart & shopping list queries — Implementation Pack 1 §5.
+	// ===== Carts ===============================================================
+	GetActiveCart(ctx context.Context, arg GetActiveCartParams) (Cart, error)
+	GetCartByID(ctx context.Context, id int64) (Cart, error)
+	GetCartItem(ctx context.Context, arg GetCartItemParams) (CartItem, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
 	GetCategoryBySlug(ctx context.Context, arg GetCategoryBySlugParams) (Category, error)
 	// ===== combined_prices (precomputed read path) =============================
@@ -62,10 +71,15 @@ type Querier interface {
 	GetCombinedPrice(ctx context.Context, arg GetCombinedPriceParams) (GetCombinedPriceRow, error)
 	GetCustomer(ctx context.Context, arg GetCustomerParams) (Customer, error)
 	GetCustomerByPublicID(ctx context.Context, arg GetCustomerByPublicIDParams) (Customer, error)
+	// GetCustomerUserForLogin resolves a customer-user by email within an org for
+	// storefront authentication (email is citext, so case-insensitive).
+	GetCustomerUserForLogin(ctx context.Context, arg GetCustomerUserForLoginParams) (GetCustomerUserForLoginRow, error)
 	GetDefaultWebsite(ctx context.Context, organizationID int64) (GetDefaultWebsiteRow, error)
 	GetPriceList(ctx context.Context, arg GetPriceListParams) (PriceList, error)
 	GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error)
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
+	GetProductIDByPublicID(ctx context.Context, arg GetProductIDByPublicIDParams) (int64, error)
+	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
@@ -75,6 +89,7 @@ type Querier interface {
 	ListAssignmentsForList(ctx context.Context, priceListID int64) ([]PriceListAssignment, error)
 	ListAttributeFamilies(ctx context.Context, organizationID int64) ([]AttributeFamily, error)
 	ListAttributes(ctx context.Context, organizationID int64) ([]Attribute, error)
+	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCombinedPricesForCustomer(ctx context.Context, arg ListCombinedPricesForCustomerParams) ([]CombinedPrice, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
@@ -86,6 +101,9 @@ type Querier interface {
 	ListPricesForList(ctx context.Context, priceListID int64) ([]Price, error)
 	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)
 	ListProductsAdmin(ctx context.Context, arg ListProductsAdminParams) ([]Product, error)
+	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
+	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
+	MarkCartConverted(ctx context.Context, id int64) error
 	// RecomputeCombinedPricesForCustomer rebuilds the cache for one customer in one
 	// currency: for each product it picks the winning candidate list (highest
 	// level, then priority) that has a valid price, and flattens that list's tiers.
@@ -103,11 +121,18 @@ type Querier interface {
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
 	TouchUserLogin(ctx context.Context, id int64) error
+	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
+	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
+	// ===== Cart items ==========================================================
+	// UpsertCartItem snapshots unit_price at add-time; re-adding the same product
+	// sets the quantity and refreshes the price.
+	UpsertCartItem(ctx context.Context, arg UpsertCartItemParams) (CartItem, error)
 	// ===== Prices (tiers) ======================================================
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) (Price, error)
+	UpsertShoppingListItem(ctx context.Context, arg UpsertShoppingListItemParams) (ShoppingListItem, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -35,6 +35,27 @@ type AttributeFamilyAttribute struct {
 	SortOrder   int32 `json:"sort_order"`
 }
 
+type Cart struct {
+	ID             int64     `json:"id"`
+	PublicID       uuid.UUID `json:"public_id"`
+	CustomerID     int64     `json:"customer_id"`
+	CustomerUserID *int64    `json:"customer_user_id"`
+	WebsiteID      int64     `json:"website_id"`
+	Currency       string    `json:"currency"`
+	Status         string    `json:"status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type CartItem struct {
+	ID        int64  `json:"id"`
+	CartID    int64  `json:"cart_id"`
+	ProductID int64  `json:"product_id"`
+	Quantity  string `json:"quantity"`
+	Unit      string `json:"unit"`
+	UnitPrice string `json:"unit_price"`
+}
+
 type CatalogVisibility struct {
 	ID              int64  `json:"id"`
 	ProductID       *int64 `json:"product_id"`
@@ -207,6 +228,24 @@ type Role struct {
 type RolePermission struct {
 	RoleID     int64  `json:"role_id"`
 	Permission string `json:"permission"`
+}
+
+type ShoppingList struct {
+	ID             int64     `json:"id"`
+	CustomerID     int64     `json:"customer_id"`
+	CustomerUserID *int64    `json:"customer_user_id"`
+	Name           string    `json:"name"`
+	IsDefault      bool      `json:"is_default"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type ShoppingListItem struct {
+	ID             int64  `json:"id"`
+	ShoppingListID int64  `json:"shopping_list_id"`
+	ProductID      int64  `json:"product_id"`
+	Quantity       string `json:"quantity"`
+	Unit           string `json:"unit"`
 }
 
 type User struct {

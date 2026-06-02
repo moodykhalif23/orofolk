@@ -401,6 +401,23 @@ func (q *Queries) GetProductByID(ctx context.Context, arg GetProductByIDParams) 
 	return i, err
 }
 
+const getProductIDByPublicID = `-- name: GetProductIDByPublicID :one
+SELECT id FROM products
+WHERE organization_id = $1 AND public_id = $2 AND deleted_at IS NULL
+`
+
+type GetProductIDByPublicIDParams struct {
+	OrganizationID int64     `json:"organization_id"`
+	PublicID       uuid.UUID `json:"public_id"`
+}
+
+func (q *Queries) GetProductIDByPublicID(ctx context.Context, arg GetProductIDByPublicIDParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getProductIDByPublicID, arg.OrganizationID, arg.PublicID)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listActiveProductsInCategory = `-- name: ListActiveProductsInCategory :many
 WITH RECURSIVE subtree AS (
   SELECT c0.id FROM categories c0 WHERE c0.id = $2 AND c0.organization_id = $1
