@@ -878,6 +878,45 @@ func (q *Queries) ListQuotesAdmin(ctx context.Context, arg ListQuotesAdminParams
 	return items, nil
 }
 
+const listQuotesForCustomer = `-- name: ListQuotesForCustomer :many
+SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at FROM quotes WHERE customer_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListQuotesForCustomer(ctx context.Context, customerID int64) ([]Quote, error) {
+	rows, err := q.db.Query(ctx, listQuotesForCustomer, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Quote
+	for rows.Next() {
+		var i Quote
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.OrganizationID,
+			&i.WebsiteID,
+			&i.CustomerID,
+			&i.RfqID,
+			&i.SalesRepUserID,
+			&i.Status,
+			&i.Currency,
+			&i.Version,
+			&i.ValidUntil,
+			&i.Subtotal,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRFQItems = `-- name: ListRFQItems :many
 SELECT ri.id, ri.product_id, p.sku, p.name, ri.quantity, ri.unit, ri.target_price, ri.notes
 FROM rfq_items ri

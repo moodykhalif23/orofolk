@@ -64,6 +64,13 @@ SELECT * FROM invoices WHERE order_id = $1 ORDER BY created_at;
 -- name: ListInvoicesForCustomer :many
 SELECT * FROM invoices WHERE customer_id = $1 ORDER BY created_at DESC;
 
+-- name: ListInvoicesAdmin :many
+SELECT i.* FROM invoices i
+JOIN customers c ON c.id = i.customer_id
+WHERE c.organization_id = $1
+ORDER BY i.created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: SetInvoicePDFURL :exec
 UPDATE invoices SET pdf_url = $2 WHERE id = $1;
 

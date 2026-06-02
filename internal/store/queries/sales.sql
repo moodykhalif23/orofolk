@@ -67,6 +67,9 @@ ORDER BY qi.id;
 -- name: ListQuotesAdmin :many
 SELECT * FROM quotes WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
 
+-- name: ListQuotesForCustomer :many
+SELECT * FROM quotes WHERE customer_id = $1 ORDER BY created_at DESC;
+
 -- name: SetQuoteSubtotal :exec
 UPDATE quotes SET subtotal = $2 WHERE id = $1;
 

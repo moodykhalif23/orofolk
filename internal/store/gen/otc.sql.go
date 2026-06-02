@@ -427,6 +427,55 @@ func (q *Queries) ListInvoiceItems(ctx context.Context, invoiceID int64) ([]Invo
 	return items, nil
 }
 
+const listInvoicesAdmin = `-- name: ListInvoicesAdmin :many
+SELECT i.id, i.public_id, i.order_id, i.customer_id, i.status, i.currency, i.subtotal, i.tax_total, i.grand_total, i.issued_at, i.due_at, i.pdf_url, i.created_at, i.updated_at FROM invoices i
+JOIN customers c ON c.id = i.customer_id
+WHERE c.organization_id = $1
+ORDER BY i.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListInvoicesAdminParams struct {
+	OrganizationID int64 `json:"organization_id"`
+	Limit          int32 `json:"limit"`
+	Offset         int32 `json:"offset"`
+}
+
+func (q *Queries) ListInvoicesAdmin(ctx context.Context, arg ListInvoicesAdminParams) ([]Invoice, error) {
+	rows, err := q.db.Query(ctx, listInvoicesAdmin, arg.OrganizationID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Invoice
+	for rows.Next() {
+		var i Invoice
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.OrderID,
+			&i.CustomerID,
+			&i.Status,
+			&i.Currency,
+			&i.Subtotal,
+			&i.TaxTotal,
+			&i.GrandTotal,
+			&i.IssuedAt,
+			&i.DueAt,
+			&i.PdfUrl,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listInvoicesForCustomer = `-- name: ListInvoicesForCustomer :many
 SELECT id, public_id, order_id, customer_id, status, currency, subtotal, tax_total, grand_total, issued_at, due_at, pdf_url, created_at, updated_at FROM invoices WHERE customer_id = $1 ORDER BY created_at DESC
 `

@@ -58,6 +58,7 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		sr.Get("/storefront/rfqs/{publicID}", h.getMyRFQ)
 		sr.Post("/storefront/rfqs/{publicID}/submit", h.submitRFQ)
 
+		sr.Get("/storefront/quotes", h.listMyQuotes)
 		sr.Get("/storefront/quotes/{publicID}", h.getMyQuote)
 		sr.Post("/storefront/quotes/{publicID}/accept", h.acceptQuote)
 		sr.Post("/storefront/quotes/{publicID}/decline", h.declineQuote)
