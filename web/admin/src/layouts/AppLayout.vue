@@ -18,6 +18,8 @@ interface NavItem extends MenuItem {
 
 const allItems: NavItem[] = [
   { label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' },
+  { label: 'Customers', icon: 'pi pi-building', routeName: 'customers', permission: 'customer.view' },
+  { label: 'Customer groups', icon: 'pi pi-users', routeName: 'customer-groups', permission: 'customer.view' },
   { label: 'Products', icon: 'pi pi-box', routeName: 'products', permission: 'product.view' },
   { label: 'Categories', icon: 'pi pi-sitemap', routeName: 'categories', permission: 'category.view' },
   { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view' },

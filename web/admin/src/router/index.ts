@@ -21,6 +21,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/DashboardView.vue'),
       },
       {
+        path: 'customers',
+        name: 'customers',
+        component: () => import('@/views/customers/CustomerListView.vue'),
+        meta: { permission: 'customer.view' },
+      },
+      {
+        path: 'customers/:id',
+        name: 'customer-detail',
+        component: () => import('@/views/customers/CustomerDetailView.vue'),
+        meta: { permission: 'customer.view' },
+      },
+      {
+        path: 'customer-groups',
+        name: 'customer-groups',
+        component: () => import('@/views/customers/CustomerGroupsView.vue'),
+        meta: { permission: 'customer.view' },
+      },
+      {
         path: 'products',
         name: 'products',
         component: () => import('@/views/products/ProductListView.vue'),

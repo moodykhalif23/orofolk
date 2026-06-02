@@ -453,8 +453,8 @@ export interface components {
             customer_id?: number;
             ancestors?: {
                 /** Format: int64 */
-                id?: number;
-                depth?: number;
+                id: number;
+                depth: number;
             }[];
         };
         CustomerGroup: {

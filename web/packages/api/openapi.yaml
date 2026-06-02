@@ -216,6 +216,7 @@ components:
           type: array
           items:
             type: object
+            required: [id, depth]
             properties:
               id: { type: integer, format: int64 }
               depth: { type: integer }
