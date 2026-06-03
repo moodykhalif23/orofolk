@@ -1,6 +1,7 @@
 packages:
   - 'admin'
   - 'storefront'
+  - 'docs'
   - 'packages/*'
 allowBuilds:
   '@parcel/watcher': true
