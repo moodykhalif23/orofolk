@@ -38,7 +38,7 @@ const createActivity = `-- name: CreateActivity :one
 
 INSERT INTO activities (organization_id, type, subject, body, customer_id, contact_id, opportunity_id, lead_id, owner_user_id, status, due_at, occurred_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, organization_id, type, subject, body, customer_id, contact_id, opportunity_id, lead_id, owner_user_id, status, due_at, occurred_at, created_at
+RETURNING id, organization_id, type, subject, body, customer_id, contact_id, opportunity_id, lead_id, owner_user_id, status, due_at, occurred_at, created_at, updated_at
 `
 
 type CreateActivityParams struct {
@@ -88,6 +88,7 @@ func (q *Queries) CreateActivity(ctx context.Context, arg CreateActivityParams) 
 		&i.DueAt,
 		&i.OccurredAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -244,7 +245,7 @@ func (q *Queries) CreateOpportunity(ctx context.Context, arg CreateOpportunityPa
 }
 
 const customerTimeline = `-- name: CustomerTimeline :many
-SELECT a.id, a.organization_id, a.type, a.subject, a.body, a.customer_id, a.contact_id, a.opportunity_id, a.lead_id, a.owner_user_id, a.status, a.due_at, a.occurred_at, a.created_at FROM activities a
+SELECT a.id, a.organization_id, a.type, a.subject, a.body, a.customer_id, a.contact_id, a.opportunity_id, a.lead_id, a.owner_user_id, a.status, a.due_at, a.occurred_at, a.created_at, a.updated_at FROM activities a
 WHERE a.organization_id = $1
   AND (
     a.customer_id = $2
@@ -286,6 +287,7 @@ func (q *Queries) CustomerTimeline(ctx context.Context, arg CustomerTimelinePara
 			&i.DueAt,
 			&i.OccurredAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

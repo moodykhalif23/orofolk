@@ -26,6 +26,7 @@ type Activity struct {
 	DueAt          pgtype.Timestamptz `json:"due_at"`
 	OccurredAt     time.Time          `json:"occurred_at"`
 	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
 }
 
 type Attribute struct {
@@ -109,6 +110,17 @@ type Category struct {
 	Name           string `json:"name"`
 	Slug           string `json:"slug"`
 	SortOrder      int32  `json:"sort_order"`
+}
+
+type ChangeLog struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	ScopeRepID     *int64    `json:"scope_rep_id"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       int64     `json:"entity_id"`
+	Op             string    `json:"op"`
+	Payload        []byte    `json:"payload"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type CombinedPrice struct {
@@ -218,6 +230,16 @@ type EdiDocument struct {
 	Error             *string            `json:"error"`
 	CreatedAt         time.Time          `json:"created_at"`
 	ProcessedAt       pgtype.Timestamptz `json:"processed_at"`
+}
+
+type FieldDevice struct {
+	ID             int64              `json:"id"`
+	UserID         int64              `json:"user_id"`
+	DeviceUuid     uuid.UUID          `json:"device_uuid"`
+	Platform       *string            `json:"platform"`
+	LastSyncCursor int64              `json:"last_sync_cursor"`
+	LastSeenAt     pgtype.Timestamptz `json:"last_seen_at"`
+	CreatedAt      time.Time          `json:"created_at"`
 }
 
 type InventoryLevel struct {
@@ -719,6 +741,18 @@ type ShoppingListItem struct {
 	ProductID      int64  `json:"product_id"`
 	Quantity       string `json:"quantity"`
 	Unit           string `json:"unit"`
+}
+
+type SyncPushLog struct {
+	ID             int64     `json:"id"`
+	DeviceID       int64     `json:"device_id"`
+	ClientChangeID uuid.UUID `json:"client_change_id"`
+	EntityType     string    `json:"entity_type"`
+	Op             string    `json:"op"`
+	Status         string    `json:"status"`
+	ServerEntityID *int64    `json:"server_entity_id"`
+	Detail         []byte    `json:"detail"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type TradingPartner struct {

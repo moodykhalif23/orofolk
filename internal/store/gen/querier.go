@@ -52,6 +52,8 @@ type Querier interface {
 	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
 	// ===== Categories ==========================================================
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
+	// ===== Change log (cursor outbox) ==========================================
+	CreateChangeLog(ctx context.Context, arg CreateChangeLogParams) (int64, error)
 	// ===== Contacts ============================================================
 	CreateContact(ctx context.Context, arg CreateContactParams) (Contact, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
@@ -96,6 +98,7 @@ type Querier interface {
 	CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error)
 	// ===== Punchout sessions ===================================================
 	CreatePunchoutSession(ctx context.Context, arg CreatePunchoutSessionParams) (PunchoutSession, error)
+	CreatePushLog(ctx context.Context, arg CreatePushLogParams) (SyncPushLog, error)
 	// ===== Quote ===============================================================
 	CreateQuote(ctx context.Context, arg CreateQuoteParams) (Quote, error)
 	CreateQuoteRevision(ctx context.Context, arg CreateQuoteRevisionParams) error
@@ -160,6 +163,8 @@ type Querier interface {
 	// Cart & shopping list queries — Implementation Pack 1 §5.
 	// ===== Carts ===============================================================
 	GetActiveCart(ctx context.Context, arg GetActiveCartParams) (Cart, error)
+	// ===== Activity get/update (writable on device) ============================
+	GetActivity(ctx context.Context, arg GetActivityParams) (Activity, error)
 	GetAutomationRule(ctx context.Context, arg GetAutomationRuleParams) (AutomationRule, error)
 	GetCartByID(ctx context.Context, id int64) (Cart, error)
 	GetCartItem(ctx context.Context, arg GetCartItemParams) (CartItem, error)
@@ -230,6 +235,8 @@ type Querier interface {
 	// storefront read path).
 	GetPublishedPage(ctx context.Context, arg GetPublishedPageParams) (ContentPage, error)
 	GetPunchoutSessionByPublicID(ctx context.Context, publicID uuid.UUID) (PunchoutSession, error)
+	// ===== Push idempotency log ================================================
+	GetPushLog(ctx context.Context, arg GetPushLogParams) (SyncPushLog, error)
 	GetQuoteByID(ctx context.Context, arg GetQuoteByIDParams) (Quote, error)
 	GetQuoteByPublicID(ctx context.Context, publicID uuid.UUID) (Quote, error)
 	GetRFQByID(ctx context.Context, arg GetRFQByIDParams) (Rfq, error)
@@ -297,6 +304,7 @@ type Querier interface {
 	// passed — the quote-expiry sweep's working set.
 	ListExpirableQuotes(ctx context.Context, validUntil pgtype.Timestamptz) ([]Quote, error)
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
+	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
 	ListInventoryLevelsForProduct(ctx context.Context, productID int64) ([]ListInventoryLevelsForProductRow, error)
 	ListInventoryMovements(ctx context.Context, arg ListInventoryMovementsParams) ([]InventoryMovement, error)
 	ListInvoiceItems(ctx context.Context, invoiceID int64) ([]InvoiceItem, error)
@@ -352,12 +360,18 @@ type Querier interface {
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
 	MarkLeadConverted(ctx context.Context, arg MarkLeadConvertedParams) (Lead, error)
+	// MaxScopedCursor is the current high-water mark for the rep's scope (used when
+	// a pull returns no rows so the client still advances its cursor).
+	MaxScopedCursor(ctx context.Context, arg MaxScopedCursorParams) (int64, error)
 	// PipelineBoard: per-stage open count, total and probability-weighted amounts
 	// (Pack 2 §1.4). Sums cast to text via the numeric override; count is bigint.
 	PipelineBoard(ctx context.Context, pipelineID int64) ([]PipelineBoardRow, error)
 	// ProductFacets unnests the JSONB attributes of the filtered result set into
 	// (attribute, value, count) for the storefront filter sidebar.
 	ProductFacets(ctx context.Context, arg ProductFacetsParams) ([]ProductFacetsRow, error)
+	// PullChanges returns the rep's scoped delta after a cursor (rep-scoped rows
+	// plus globals), bounded by a batch limit and resumable by id.
+	PullChanges(ctx context.Context, arg PullChangesParams) ([]PullChangesRow, error)
 	// RecomputeCombinedPricesForCustomer rebuilds the cache for one customer in one
 	// currency: for each product it picks the winning candidate list (highest
 	// level, then priority) that has a valid price, and flattens that list's tiers.
@@ -395,6 +409,7 @@ type Querier interface {
 	// SendQuote moves the quote to 'sent' and bumps the version; the caller writes
 	// the matching quote_revisions snapshot in the same transaction.
 	SendQuote(ctx context.Context, arg SendQuoteParams) (Quote, error)
+	SetDeviceCursor(ctx context.Context, arg SetDeviceCursorParams) error
 	SetEDIResult(ctx context.Context, arg SetEDIResultParams) (EdiDocument, error)
 	SetInventoryLevelConfig(ctx context.Context, arg SetInventoryLevelConfigParams) (InventoryLevel, error)
 	SetInvoicePDFURL(ctx context.Context, arg SetInvoicePDFURLParams) error
@@ -426,6 +441,7 @@ type Querier interface {
 	// TopProducts ranks products by revenue in a month, joined to product names.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)
 	TouchUserLogin(ctx context.Context, id int64) error
+	UpdateActivity(ctx context.Context, arg UpdateActivityParams) (Activity, error)
 	UpdateAutomationRule(ctx context.Context, arg UpdateAutomationRuleParams) (AutomationRule, error)
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
@@ -444,6 +460,11 @@ type Querier interface {
 	// UpsertCartItem snapshots unit_price at add-time; re-adding the same product
 	// sets the quantity and refreshes the price.
 	UpsertCartItem(ctx context.Context, arg UpsertCartItemParams) (CartItem, error)
+	// Field-sales offline sync (Pack 3 §4).
+	// ===== Devices =============================================================
+	// UpsertFieldDevice registers a device on first contact and refreshes its
+	// last-seen on every sync.
+	UpsertFieldDevice(ctx context.Context, arg UpsertFieldDeviceParams) (FieldDevice, error)
 	// UpsertInvoiceDocument stores (or replaces, on regeneration) the rendered PDF.
 	UpsertInvoiceDocument(ctx context.Context, arg UpsertInvoiceDocumentParams) error
 	// ===== Prices (tiers) ======================================================

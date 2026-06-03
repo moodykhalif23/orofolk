@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"b2bcommerce/internal/auth"
+	"b2bcommerce/internal/changelog"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -181,6 +182,8 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not create customer")
 		return
 	}
+	// Record for field-sync: visible to the assigned rep's device.
+	changelog.Record(r.Context(), h.q, org, c.AssignedSalesRepID, "customer", c.ID, "upsert", toCustomerDTO(c))
 	response.JSON(w, http.StatusCreated, toCustomerDTO(c))
 }
 
@@ -268,6 +271,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not update customer")
 		return
 	}
+	changelog.Record(r.Context(), h.q, org, c.AssignedSalesRepID, "customer", c.ID, "upsert", toCustomerDTO(c))
 	response.JSON(w, http.StatusOK, toCustomerDTO(c))
 }
 
