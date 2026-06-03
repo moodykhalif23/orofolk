@@ -16,6 +16,14 @@ import (
 // pending→confirmed→processing→shipped→delivered→closed plus on_hold/cancelled,
 // with transitions mirroring the old hardcoded map.
 
+// newEngine builds an engine with the built-in guards registered (the seeded
+// order_default `confirm` transition references amount_lte_limit, migration 0017).
+func newEngine(pool *pgxpool.Pool) *workflow.Engine {
+	reg := workflow.NewRegistry()
+	reg.RegisterGuard(workflow.AmountLteLimit{})
+	return workflow.New(pool, reg)
+}
+
 func defID(t *testing.T, pool *pgxpool.Pool) int64 {
 	t.Helper()
 	def, err := gen.New(pool).GetWorkflowDefByCode(context.Background(), gen.GetWorkflowDefByCodeParams{OrganizationID: 1, Code: "order_default"})
@@ -37,7 +45,7 @@ func newInstance(t *testing.T, eng *workflow.Engine, entityID int64) gen.Workflo
 
 func TestEngineValidTransitionUpdatesStateAndLogs(t *testing.T) {
 	pool := testsupport.NewDB(t)
-	eng := workflow.New(pool, nil)
+	eng := newEngine(pool)
 	ctx := context.Background()
 	inst := newInstance(t, eng, 1)
 
@@ -62,7 +70,7 @@ func TestEngineValidTransitionUpdatesStateAndLogs(t *testing.T) {
 
 func TestEngineRejectsIllegalAndFinalTransitions(t *testing.T) {
 	pool := testsupport.NewDB(t)
-	eng := workflow.New(pool, nil)
+	eng := newEngine(pool)
 	ctx := context.Background()
 	inst := newInstance(t, eng, 2)
 
@@ -84,7 +92,7 @@ func TestEngineRejectsIllegalAndFinalTransitions(t *testing.T) {
 
 func TestEngineOneActiveInstancePerEntity(t *testing.T) {
 	pool := testsupport.NewDB(t)
-	eng := workflow.New(pool, nil)
+	eng := newEngine(pool)
 	ctx := context.Background()
 
 	a := newInstance(t, eng, 3)
@@ -160,7 +168,7 @@ func TestEngineGuardVetoAndActionRun(t *testing.T) {
 
 func TestEngineCommitHookRollsBackOnError(t *testing.T) {
 	pool := testsupport.NewDB(t)
-	eng := workflow.New(pool, nil)
+	eng := newEngine(pool)
 	ctx := context.Background()
 	inst := newInstance(t, eng, 5)
 

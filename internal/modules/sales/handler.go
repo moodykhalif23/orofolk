@@ -34,9 +34,12 @@ type Handler struct {
 }
 
 func New(pool *pgxpool.Pool, notify Notifier) *Handler {
-	// Order transitions are governed by the DB-defined `order_default` workflow
-	// (no guards/actions configured for it yet → an empty registry suffices).
-	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, nil)}
+	// Order transitions are governed by the DB-defined `order_default` workflow.
+	// Register the built-in guards its transitions may reference (e.g. the
+	// amount_lte_limit approval gate on `confirm`, migration 0017).
+	reg := workflow.NewRegistry()
+	reg.RegisterGuard(workflow.AmountLteLimit{})
+	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, reg)}
 }
 
 // primaryContact returns the email + name of a customer's first user (the

@@ -365,6 +365,14 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	actor := workflow.Actor{Type: "rep", ID: a.userID}
 	data := map[string]any{"grand_total": order.GrandTotal}
+	// Supply the buyer's spending limit so the amount_lte_limit guard on the
+	// `confirm` transition can gate over-limit orders for approval. Absent/zero
+	// limit → the guard is inert (most orders confirm freely).
+	if order.CustomerUserID != nil {
+		if lim, err := h.q.GetCustomerUserSpendingLimit(r.Context(), *order.CustomerUserID); err == nil && lim != nil {
+			data["spending_limit"] = *lim
+		}
+	}
 	if _, err := h.wf.ApplyTransitionTo(r.Context(), inst.ID, req.Status, actor, data, hook); err != nil {
 		switch {
 		case errors.Is(err, workflow.ErrNoTransition), errors.Is(err, workflow.ErrFinalState):

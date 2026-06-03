@@ -546,3 +546,42 @@ func TestStorefrontListMyQuotes(t *testing.T) {
 		t.Error("expected my quote in the list")
 	}
 }
+
+// ---- order approval gate (amount_lte_limit guard, Pack 2 §3.6) -----------
+
+func TestOrderApprovalGate(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+
+	// Give the buyer a spending limit of 50.
+	if _, err := f.pool.Exec(ctx, `UPDATE customer_users SET spending_limit='50' WHERE customer_id=$1`, f.customerID); err != nil {
+		t.Fatalf("set spending limit: %v", err)
+	}
+
+	// Place an order over the limit (10 × 10.0000 = 100) from the buyer's cart.
+	f.seedCart(t, [3]any{f.p1ID, "10", "10.0000"})
+	rr := f.do(t, http.MethodPost, "/storefront/orders", f.custTok, map[string]any{})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("place order: %d (%s)", rr.Code, rr.Body.String())
+	}
+	var order struct {
+		ID int64 `json:"id"`
+	}
+	decode(t, rr, &order)
+	oid := strconv.FormatInt(order.ID, 10)
+
+	// Confirming is blocked by the approval gate (100 > 50).
+	blocked := f.do(t, http.MethodPatch, "/admin/orders/"+oid+"/status", f.adminTok, map[string]any{"status": "confirmed"})
+	if blocked.Code != http.StatusConflict {
+		t.Fatalf("over-limit confirm: want 409, got %d (%s)", blocked.Code, blocked.Body.String())
+	}
+
+	// Raise the limit above the order total; confirm now succeeds.
+	if _, err := f.pool.Exec(ctx, `UPDATE customer_users SET spending_limit='1000' WHERE customer_id=$1`, f.customerID); err != nil {
+		t.Fatalf("raise limit: %v", err)
+	}
+	ok := f.do(t, http.MethodPatch, "/admin/orders/"+oid+"/status", f.adminTok, map[string]any{"status": "confirmed"})
+	if ok.Code != http.StatusOK {
+		t.Errorf("within-limit confirm: want 200, got %d (%s)", ok.Code, ok.Body.String())
+	}
+}

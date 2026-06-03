@@ -140,6 +140,9 @@ type Querier interface {
 	// GetCustomerUserForLogin resolves a customer-user by email within an org for
 	// storefront authentication (email is citext, so case-insensitive).
 	GetCustomerUserForLogin(ctx context.Context, arg GetCustomerUserForLoginParams) (GetCustomerUserForLoginRow, error)
+	// GetCustomerUserSpendingLimit returns a customer-user's approval/spending
+	// limit (NULL = no limit), used by the order-approval guard.
+	GetCustomerUserSpendingLimit(ctx context.Context, id int64) (*string, error)
 	// ===== Pipelines & stages ==================================================
 	GetDefaultPipeline(ctx context.Context, organizationID int64) (Pipeline, error)
 	GetDefaultWarehouse(ctx context.Context, organizationID int64) (Warehouse, error)

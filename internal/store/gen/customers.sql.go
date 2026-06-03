@@ -347,6 +347,19 @@ func (q *Queries) GetCustomerUserForLogin(ctx context.Context, arg GetCustomerUs
 	return i, err
 }
 
+const getCustomerUserSpendingLimit = `-- name: GetCustomerUserSpendingLimit :one
+SELECT spending_limit FROM customer_users WHERE id = $1
+`
+
+// GetCustomerUserSpendingLimit returns a customer-user's approval/spending
+// limit (NULL = no limit), used by the order-approval guard.
+func (q *Queries) GetCustomerUserSpendingLimit(ctx context.Context, id int64) (*string, error) {
+	row := q.db.QueryRow(ctx, getCustomerUserSpendingLimit, id)
+	var spending_limit *string
+	err := row.Scan(&spending_limit)
+	return spending_limit, err
+}
+
 const listCustomerAddresses = `-- name: ListCustomerAddresses :many
 SELECT id, customer_id, type, is_default, line1, line2, city, region, postal_code, country, created_at, updated_at FROM customer_addresses
 WHERE customer_id = $1
