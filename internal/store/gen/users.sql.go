@@ -9,6 +9,46 @@ import (
 	"context"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (organization_id, email, password_hash, full_name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, organization_id, email, full_name, is_active
+`
+
+type CreateUserParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Email          string `json:"email"`
+	PasswordHash   string `json:"password_hash"`
+	FullName       string `json:"full_name"`
+}
+
+type CreateUserRow struct {
+	ID             int64  `json:"id"`
+	OrganizationID int64  `json:"organization_id"`
+	Email          string `json:"email"`
+	FullName       string `json:"full_name"`
+	IsActive       bool   `json:"is_active"`
+}
+
+// CreateUser provisions a seller-side user (used by SSO JIT provisioning).
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.OrganizationID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.FullName,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Email,
+		&i.FullName,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, organization_id, email, password_hash, full_name, is_active
 FROM users

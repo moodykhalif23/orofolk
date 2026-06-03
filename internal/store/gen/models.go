@@ -240,6 +240,16 @@ type EdiDocument struct {
 	ProcessedAt       pgtype.Timestamptz `json:"processed_at"`
 }
 
+type ExternalIdentity struct {
+	ID             int64     `json:"id"`
+	ProviderID     int64     `json:"provider_id"`
+	Subject        string    `json:"subject"`
+	UserID         *int64    `json:"user_id"`
+	CustomerUserID *int64    `json:"customer_user_id"`
+	Email          *string   `json:"email"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type ExternalRef struct {
 	ID           int64              `json:"id"`
 	ConnectionID int64              `json:"connection_id"`
@@ -257,6 +267,18 @@ type FieldDevice struct {
 	LastSyncCursor int64              `json:"last_sync_cursor"`
 	LastSeenAt     pgtype.Timestamptz `json:"last_seen_at"`
 	CreatedAt      time.Time          `json:"created_at"`
+}
+
+type IdentityProvider struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Type           string    `json:"type"`
+	Name           string    `json:"name"`
+	Audience       string    `json:"audience"`
+	CustomerID     *int64    `json:"customer_id"`
+	IsActive       bool      `json:"is_active"`
+	Config         []byte    `json:"config"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type IntegrationConnection struct {
@@ -814,6 +836,16 @@ type ShoppingListItem struct {
 	ProductID      int64  `json:"product_id"`
 	Quantity       string `json:"quantity"`
 	Unit           string `json:"unit"`
+}
+
+type SsoState struct {
+	ID         int64     `json:"id"`
+	ProviderID int64     `json:"provider_id"`
+	State      string    `json:"state"`
+	Nonce      string    `json:"nonce"`
+	RedirectTo *string   `json:"redirect_to"`
+	CreatedAt  time.Time `json:"created_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
 }
 
 type SyncLog struct {

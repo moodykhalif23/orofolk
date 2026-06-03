@@ -67,8 +67,12 @@ type Querier interface {
 	CreateCustomerUser(ctx context.Context, arg CreateCustomerUserParams) (CreateCustomerUserRow, error)
 	// ===== EDI documents =======================================================
 	CreateEDIDocument(ctx context.Context, arg CreateEDIDocumentParams) (EdiDocument, error)
+	CreateExternalIdentity(ctx context.Context, arg CreateExternalIdentityParams) (ExternalIdentity, error)
 	// ===== External refs + sync logs ===========================================
 	CreateExternalRef(ctx context.Context, arg CreateExternalRefParams) (ExternalRef, error)
+	// SSO / federated identity (PRD §15).
+	// ===== Identity providers ==================================================
+	CreateIdentityProvider(ctx context.Context, arg CreateIdentityProviderParams) (IdentityProvider, error)
 	// ERP / accounting sync (Pack 2 §4.6).
 	// ===== Connections =========================================================
 	CreateIntegrationConnection(ctx context.Context, arg CreateIntegrationConnectionParams) (IntegrationConnection, error)
@@ -127,6 +131,8 @@ type Querier interface {
 	CreateReportRun(ctx context.Context, arg CreateReportRunParams) (int64, error)
 	// ===== Schedules ===========================================================
 	CreateReportSchedule(ctx context.Context, arg CreateReportScheduleParams) (ReportSchedule, error)
+	// ===== Login state (CSRF/replay) ===========================================
+	CreateSSOState(ctx context.Context, arg CreateSSOStateParams) (SsoState, error)
 	// Order-to-cash queries — Implementation Pack 1 §7.
 	// ===== Shipments ===========================================================
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (Shipment, error)
@@ -135,6 +141,8 @@ type Querier interface {
 	CreateSyncLog(ctx context.Context, arg CreateSyncLogParams) (int64, error)
 	// ===== Trading partners ====================================================
 	CreateTradingPartner(ctx context.Context, arg CreateTradingPartnerParams) (TradingPartner, error)
+	// CreateUser provisions a seller-side user (used by SSO JIT provisioning).
+	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
@@ -163,6 +171,7 @@ type Querier interface {
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
 	DeleteReportDefinition(ctx context.Context, arg DeleteReportDefinitionParams) error
 	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
+	DeleteSSOState(ctx context.Context, id int64) error
 	DeleteShippingRate(ctx context.Context, arg DeleteShippingRateParams) error
 	DeleteTaxRate(ctx context.Context, arg DeleteTaxRateParams) error
 	// ===== Levels ==============================================================
@@ -201,6 +210,8 @@ type Querier interface {
 	// GetCustomerDefaultAddress returns the default (or first) address of a type
 	// for snapshotting onto an order.
 	GetCustomerDefaultAddress(ctx context.Context, arg GetCustomerDefaultAddressParams) (GetCustomerDefaultAddressRow, error)
+	// GetCustomerUserByEmail links a buyer SSO subject to an existing customer-user.
+	GetCustomerUserByEmail(ctx context.Context, arg GetCustomerUserByEmailParams) (GetCustomerUserByEmailRow, error)
 	// GetCustomerUserForLogin resolves a customer-user by email within an org for
 	// storefront authentication (email is citext, so case-insensitive).
 	GetCustomerUserForLogin(ctx context.Context, arg GetCustomerUserForLoginParams) (GetCustomerUserForLoginRow, error)
@@ -215,6 +226,11 @@ type Querier interface {
 	GetDefaultWarehouse(ctx context.Context, organizationID int64) (Warehouse, error)
 	GetDefaultWebsite(ctx context.Context, organizationID int64) (GetDefaultWebsiteRow, error)
 	GetEDIDocument(ctx context.Context, arg GetEDIDocumentParams) (EdiDocument, error)
+	// ===== External identities (IdP subject ↔ local user) ======================
+	GetExternalIdentity(ctx context.Context, arg GetExternalIdentityParams) (ExternalIdentity, error)
+	GetIdentityProvider(ctx context.Context, arg GetIdentityProviderParams) (IdentityProvider, error)
+	// GetIdentityProviderByID resolves a provider without org (public login/callback).
+	GetIdentityProviderByID(ctx context.Context, id int64) (IdentityProvider, error)
 	GetInstanceForEntity(ctx context.Context, arg GetInstanceForEntityParams) (WorkflowInstance, error)
 	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
 	// GetIntegrationConnectionByID resolves a connection without org (inbound
@@ -276,6 +292,7 @@ type Querier interface {
 	GetRendition(ctx context.Context, arg GetRenditionParams) (MediaRendition, error)
 	GetReportDefinition(ctx context.Context, arg GetReportDefinitionParams) (ReportDefinition, error)
 	GetReportRunArtifact(ctx context.Context, arg GetReportRunArtifactParams) (GetReportRunArtifactRow, error)
+	GetSSOState(ctx context.Context, state string) (SsoState, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
 	// GetShipmentWithOrg authorizes a shipment by org (via its order) and returns
 	// the destination address for label region resolution.
@@ -340,6 +357,7 @@ type Querier interface {
 	ListExpirableQuotes(ctx context.Context, validUntil pgtype.Timestamptz) ([]Quote, error)
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
 	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
+	ListIdentityProviders(ctx context.Context, organizationID int64) ([]IdentityProvider, error)
 	ListIntegrationConnections(ctx context.Context, organizationID int64) ([]IntegrationConnection, error)
 	ListInventoryLevelsForProduct(ctx context.Context, productID int64) ([]ListInventoryLevelsForProductRow, error)
 	ListInventoryMovements(ctx context.Context, arg ListInventoryMovementsParams) ([]InventoryMovement, error)
@@ -501,6 +519,7 @@ type Querier interface {
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateIdentityProvider(ctx context.Context, arg UpdateIdentityProviderParams) (IdentityProvider, error)
 	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)

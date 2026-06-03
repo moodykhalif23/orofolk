@@ -31,6 +31,7 @@ import (
 	"b2bcommerce/internal/modules/reporting"
 	"b2bcommerce/internal/modules/sales"
 	shippingmod "b2bcommerce/internal/modules/shipping"
+	ssomod "b2bcommerce/internal/modules/sso"
 	taxmod "b2bcommerce/internal/modules/tax"
 	"b2bcommerce/internal/modules/tenancy"
 	"b2bcommerce/internal/modules/wfadmin"
