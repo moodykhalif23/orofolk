@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +25,10 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if p.Type == "saml" {
+		h.samlLogin(w, r, p)
+		return
+	}
 	cfg := h.providerConfig(r, p)
 	if cfg.AuthorizationEndpoint == "" || cfg.ClientID == "" {
 		response.Fail(w, http.StatusFailedDependency, "misconfigured", "provider is missing OIDC config")
@@ -39,6 +44,95 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, cfg.AuthURL(state, nonce), http.StatusFound)
+}
+
+// samlLogin builds a SAML AuthnRequest and redirects to the IdP (HTTP-Redirect
+// binding). The relay state token lets the ACS recover the post-login redirect.
+func (h *Handler) samlLogin(w http.ResponseWriter, r *http.Request, p gen.IdentityProvider) {
+	cfg, acs := h.samlConfig(r, p)
+	sp, err := ssoeng.NewSAMLSP(cfg, acs)
+	if err != nil {
+		response.Fail(w, http.StatusFailedDependency, "misconfigured", "invalid SAML config")
+		return
+	}
+	relay := randToken()
+	if _, err := h.q.CreateSSOState(r.Context(), gen.CreateSSOStateParams{
+		ProviderID: p.ID, State: relay, Nonce: "saml",
+		RedirectTo: optStr(r.URL.Query().Get("redirect")),
+		ExpiresAt:  time.Now().Add(10 * time.Minute),
+	}); err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not start login")
+		return
+	}
+	authURL, err := ssoeng.SAMLAuthRedirect(sp, relay)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not build SAML request")
+		return
+	}
+	http.Redirect(w, r, authURL, http.StatusFound)
+}
+
+// acs is the SAML assertion consumer (HTTP-POST binding): it verifies the signed
+// SAMLResponse, provisions/links the identity, and issues our JWT.
+func (h *Handler) acs(w http.ResponseWriter, r *http.Request) {
+	p, ok := h.publicProvider(w, r)
+	if !ok {
+		return
+	}
+	if p.Type != "saml" {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "provider is not SAML")
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "could not parse form")
+		return
+	}
+	encoded := r.FormValue("SAMLResponse")
+	if encoded == "" {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "missing SAMLResponse")
+		return
+	}
+	cfg, acs := h.samlConfig(r, p)
+	sp, err := ssoeng.NewSAMLSP(cfg, acs)
+	if err != nil {
+		response.Fail(w, http.StatusFailedDependency, "misconfigured", "invalid SAML config")
+		return
+	}
+	identity, err := ssoeng.VerifySAMLResponse(sp, encoded)
+	if err != nil {
+		response.Fail(w, http.StatusUnauthorized, "invalid_assertion", "SAML assertion verification failed")
+		return
+	}
+	if identity.Email == "" {
+		response.Fail(w, http.StatusUnprocessableEntity, "no_email", "assertion has no email")
+		return
+	}
+
+	// RelayState (if present + known) carries the post-login redirect; it's
+	// one-time. Unknown/absent relay still authenticates (the assertion is the
+	// trust anchor) but won't redirect.
+	var redirectTo string
+	if relay := r.FormValue("RelayState"); relay != "" {
+		if st, err := h.q.GetSSOState(r.Context(), relay); err == nil && st.ProviderID == p.ID {
+			_ = h.q.DeleteSSOState(r.Context(), st.ID)
+			redirectTo = deref(st.RedirectTo)
+		}
+	}
+
+	token, err := h.provision(r.Context(), p, identity)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "provision_failed", err.Error())
+		return
+	}
+	if redirectTo != "" && r.URL.Query().Get("format") != "json" {
+		sep := "?"
+		if strings.Contains(redirectTo, "?") {
+			sep = "&"
+		}
+		http.Redirect(w, r, redirectTo+sep+"token="+token, http.StatusFound)
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"token": token, "audience": p.Audience})
 }
 
 // callback completes the flow: validates state, exchanges the code, verifies the
