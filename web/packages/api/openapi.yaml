@@ -1241,6 +1241,100 @@ components:
         month: { type: string }
         items: { type: array, items: { $ref: '#/components/schemas/TopProduct' } }
 
+    # ----- Custom report builder (Pack 3 §1) -----
+    ReportMeasure:
+      type: object
+      required: [agg]
+      properties:
+        field: { type: string }
+        agg: { type: string, enum: [sum, avg, count, min, max] }
+    ReportFilter:
+      type: object
+      required: [field, op]
+      properties:
+        field: { type: string }
+        op: { type: string, enum: [eq, ne, gt, gte, lt, lte] }
+        value: {}
+    ReportDefinition:
+      type: object
+      required: [id, name, entity]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        entity: { type: string }
+        dimensions: { type: array, items: { type: string } }
+        measures: { type: array, items: { $ref: '#/components/schemas/ReportMeasure' } }
+        filters: { type: array, items: { $ref: '#/components/schemas/ReportFilter' } }
+        created_at: { type: string }
+    ReportDefinitionInput:
+      type: object
+      required: [name, entity, measures]
+      properties:
+        name: { type: string }
+        entity: { type: string }
+        dimensions: { type: array, items: { type: string } }
+        measures: { type: array, items: { $ref: '#/components/schemas/ReportMeasure' } }
+        filters: { type: array, items: { $ref: '#/components/schemas/ReportFilter' } }
+    ReportRun:
+      type: object
+      required: [id, status, trigger]
+      properties:
+        id: { type: integer, format: int64 }
+        status: { type: string, enum: [running, ok, error] }
+        trigger: { type: string, enum: [manual, schedule] }
+        row_count: { type: integer, nullable: true }
+        file_name: { type: string, nullable: true }
+        file_url: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+        started_at: { type: string, nullable: true }
+        finished_at: { type: string, nullable: true }
+    ReportRunResult:
+      type: object
+      properties:
+        columns: { type: array, items: { type: string } }
+        rows: { type: array, items: { type: array, items: { type: string, nullable: true } } }
+        row_count: { type: integer }
+        run_id: { type: integer, format: int64 }
+    ReportSchedule:
+      type: object
+      required: [id, cadence, format, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        cadence: { type: string, enum: [daily, weekly, monthly] }
+        format: { type: string, enum: [csv, xlsx] }
+        recipients: { type: array, items: { type: string } }
+        is_active: { type: boolean }
+        last_run_at: { type: string, nullable: true }
+    ReportScheduleInput:
+      type: object
+      required: [cadence]
+      properties:
+        cadence: { type: string, enum: [daily, weekly, monthly] }
+        format: { type: string, enum: [csv, xlsx] }
+        recipients: { type: array, items: { type: string } }
+    ReportEntitySchema:
+      type: object
+      properties:
+        dimensions: { type: array, items: { type: string } }
+        measures: { type: array, items: { type: string } }
+        filters: { type: array, items: { type: string } }
+    ReportEntities:
+      type: object
+      properties:
+        entities: { type: object, additionalProperties: { $ref: '#/components/schemas/ReportEntitySchema' } }
+    ListWrapperReportDefinition:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ReportDefinition' } }
+    ListWrapperReportRun:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ReportRun' } }
+    ListWrapperReportSchedule:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ReportSchedule' } }
+
     # ----- Multi-org / multi-website (PRD §4) -----
     Organization:
       type: object
@@ -2676,6 +2770,113 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK }
+
+  # ----- Custom report builder (Pack 3 §1) -----
+  /admin/reports/entities:
+    get:
+      tags: [Reporting]
+      operationId: adminReportEntities
+      summary: Allow-listed entities/dimensions/measures/filters for the builder
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReportEntities' } } } }
+  /admin/reports:
+    get:
+      tags: [Reporting]
+      operationId: adminListReports
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperReportDefinition' } } } }
+    post:
+      tags: [Reporting]
+      operationId: adminCreateReport
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReportDefinitionInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ReportDefinition' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/reports/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Reporting]
+      operationId: adminGetReport
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReportDefinition' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Reporting]
+      operationId: adminUpdateReport
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReportDefinitionInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReportDefinition' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Reporting]
+      operationId: adminDeleteReport
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /admin/reports/{id}/run:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: format, in: query, required: false, schema: { type: string, enum: [csv] } }
+    post:
+      tags: [Reporting]
+      operationId: adminRunReport
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ReportRunResult' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/reports/{id}/runs:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Reporting]
+      operationId: adminListReportRuns
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperReportRun' } } } }
+  /admin/reports/{id}/schedules:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Reporting]
+      operationId: adminListReportSchedules
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperReportSchedule' } } } }
+    post:
+      tags: [Reporting]
+      operationId: adminCreateReportSchedule
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ReportScheduleInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ReportSchedule' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/reports/{id}/schedules/{schedID}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: schedID, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Reporting]
+      operationId: adminDeleteReportSchedule
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /admin/reports/runs/{runID}/download:
+    parameters:
+      - { name: runID, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Reporting]
+      operationId: adminDownloadReportRun
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: CSV artifact, content: { text/csv: { schema: { type: string, format: binary } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
 
   # ----- Multi-org / multi-website admin (PRD §4) -----
   /admin/organization:

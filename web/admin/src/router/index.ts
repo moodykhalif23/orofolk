@@ -171,6 +171,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'report.view' },
       },
       {
+        path: 'report-builder',
+        name: 'report-builder',
+        component: () => import('@/views/reporting/ReportBuilderView.vue'),
+        meta: { permission: 'report.view' },
+      },
+      {
         path: 'websites',
         name: 'websites',
         component: () => import('@/views/tenancy/WebsitesView.vue'),

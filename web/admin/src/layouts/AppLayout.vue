@@ -37,6 +37,7 @@ const allItems: NavItem[] = [
   { label: 'Pages', icon: 'pi pi-file', routeName: 'pages', permission: 'cms.view' },
   { label: 'Media', icon: 'pi pi-images', routeName: 'media', permission: 'cms.view' },
   { label: 'Analytics', icon: 'pi pi-chart-line', routeName: 'analytics', permission: 'report.view' },
+  { label: 'Report builder', icon: 'pi pi-table', routeName: 'report-builder', permission: 'report.view' },
   { label: 'Websites', icon: 'pi pi-globe', routeName: 'websites', permission: 'tenant.view' },
 ]
 

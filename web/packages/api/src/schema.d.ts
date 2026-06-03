@@ -1570,6 +1570,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/reports/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Allow-listed entities/dimensions/measures/filters for the builder */
+        get: operations["adminReportEntities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListReports"];
+        put?: never;
+        post: operations["adminCreateReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetReport"];
+        put: operations["adminUpdateReport"];
+        post?: never;
+        delete: operations["adminDeleteReport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/{id}/run": {
+        parameters: {
+            query?: {
+                format?: "csv";
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRunReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListReportRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/{id}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListReportSchedules"];
+        put?: never;
+        post: operations["adminCreateReportSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/{id}/schedules/{schedID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                schedID: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteReportSchedule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reports/runs/{runID}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runID: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminDownloadReportRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/organization": {
         parameters: {
             query?: never;
@@ -2823,6 +2967,92 @@ export interface components {
         TopProductsResult: {
             month?: string;
             items?: components["schemas"]["TopProduct"][];
+        };
+        ReportMeasure: {
+            field?: string;
+            /** @enum {string} */
+            agg: "sum" | "avg" | "count" | "min" | "max";
+        };
+        ReportFilter: {
+            field: string;
+            /** @enum {string} */
+            op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
+            value?: unknown;
+        };
+        ReportDefinition: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            entity: string;
+            dimensions?: string[];
+            measures?: components["schemas"]["ReportMeasure"][];
+            filters?: components["schemas"]["ReportFilter"][];
+            created_at?: string;
+        };
+        ReportDefinitionInput: {
+            name: string;
+            entity: string;
+            dimensions?: string[];
+            measures: components["schemas"]["ReportMeasure"][];
+            filters?: components["schemas"]["ReportFilter"][];
+        };
+        ReportRun: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            status: "running" | "ok" | "error";
+            /** @enum {string} */
+            trigger: "manual" | "schedule";
+            row_count?: number | null;
+            file_name?: string | null;
+            file_url?: string | null;
+            error?: string | null;
+            started_at?: string | null;
+            finished_at?: string | null;
+        };
+        ReportRunResult: {
+            columns?: string[];
+            rows?: (string | null)[][];
+            row_count?: number;
+            /** Format: int64 */
+            run_id?: number;
+        };
+        ReportSchedule: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            cadence: "daily" | "weekly" | "monthly";
+            /** @enum {string} */
+            format: "csv" | "xlsx";
+            recipients?: string[];
+            is_active: boolean;
+            last_run_at?: string | null;
+        };
+        ReportScheduleInput: {
+            /** @enum {string} */
+            cadence: "daily" | "weekly" | "monthly";
+            /** @enum {string} */
+            format?: "csv" | "xlsx";
+            recipients?: string[];
+        };
+        ReportEntitySchema: {
+            dimensions?: string[];
+            measures?: string[];
+            filters?: string[];
+        };
+        ReportEntities: {
+            entities?: {
+                [key: string]: components["schemas"]["ReportEntitySchema"];
+            };
+        };
+        ListWrapperReportDefinition: {
+            items?: components["schemas"]["ReportDefinition"][];
+        };
+        ListWrapperReportRun: {
+            items?: components["schemas"]["ReportRun"][];
+        };
+        ListWrapperReportSchedule: {
+            items?: components["schemas"]["ReportSchedule"][];
         };
         Organization: {
             /** Format: int64 */
@@ -5832,6 +6062,282 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    adminReportEntities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportEntities"];
+                };
+            };
+        };
+    };
+    adminListReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReportDefinition"];
+                };
+            };
+        };
+    };
+    adminCreateReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportDefinitionInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDefinition"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDefinition"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportDefinitionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDefinition"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminRunReport: {
+        parameters: {
+            query?: {
+                format?: "csv";
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportRunResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListReportRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReportRun"];
+                };
+            };
+        };
+    };
+    adminListReportSchedules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReportSchedule"];
+                };
+            };
+        };
+    };
+    adminCreateReportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSchedule"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteReportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                schedID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminDownloadReportRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV artifact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminGetOrganization: {
