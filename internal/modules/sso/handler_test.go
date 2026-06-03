@@ -5,8 +5,11 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -224,5 +227,52 @@ func TestSSOAdminAuth(t *testing.T) {
 	cust, _ := issuer.IssueStorefront(0, 1, 1)
 	if rr := do(t, h, http.MethodGet, "/admin/identity-providers", cust, nil); rr.Code != http.StatusForbidden {
 		t.Errorf("storefront token: want 403, got %d", rr.Code)
+	}
+}
+
+// genCertPEM returns a throwaway self-signed cert (PEM) for SAML provider config.
+func genCertPEM(t *testing.T) string {
+	t.Helper()
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	tmpl := x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "idp"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour)}
+	der, _ := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &key.PublicKey, key)
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+}
+
+func TestSSOSamlProviderAndACS(t *testing.T) {
+	h, issuer, _ := newServer(t)
+	at := tok(t, issuer)
+
+	// Create a SAML provider (requires idp_sso_url + idp_certificate).
+	if rr := do(t, h, http.MethodPost, "/admin/identity-providers", at, map[string]any{
+		"type": "saml", "name": "Bad", "audience": "admin", "config": map[string]any{"idp_sso_url": "https://idp/sso"},
+	}); rr.Code != http.StatusBadRequest {
+		t.Fatalf("saml without cert: want 400, got %d", rr.Code)
+	}
+	pid := createProvider(t, h, at, map[string]any{
+		"type": "saml", "name": "Okta SAML", "audience": "admin",
+		"config": map[string]any{"idp_entity_id": "idp", "idp_sso_url": "https://idp/sso", "idp_certificate": genCertPEM(t), "sp_entity_id": "teggo"},
+	})
+	ps := strconv.FormatInt(pid, 10)
+
+	// login builds a SAML AuthnRequest redirect to the IdP SSO URL.
+	lr := do(t, h, http.MethodGet, "/auth/sso/"+ps+"/login", "", nil)
+	if lr.Code != http.StatusFound {
+		t.Fatalf("saml login: want 302, got %d (%s)", lr.Code, lr.Body.String())
+	}
+	loc, _ := url.Parse(lr.Header().Get("Location"))
+	if loc.Host == "" || loc.Query().Get("SAMLRequest") == "" {
+		t.Errorf("saml login redirect missing SAMLRequest: %s", lr.Header().Get("Location"))
+	}
+
+	// ACS rejects a garbage (unsigned) SAMLResponse.
+	form := bytes.NewBufferString("SAMLResponse=" + url.QueryEscape("PG5vdC1zYW1sLz4=")) // base64 "<not-saml/>"
+	req := httptest.NewRequest(http.MethodPost, "/auth/sso/"+ps+"/acs", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("garbage SAMLResponse: want 401, got %d (%s)", rr.Code, rr.Body.String())
 	}
 }
