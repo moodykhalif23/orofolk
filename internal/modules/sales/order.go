@@ -15,6 +15,7 @@ import (
 	"b2bcommerce/internal/money"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/workflow"
 )
 
 // ---- storefront: accept quote -> order -----------------------------------
@@ -332,39 +333,57 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusBadRequest, "bad_request", "status is required")
 		return
 	}
-	if !canTransition(orderTransitions, order.Status, req.Status) {
-		response.Fail(w, http.StatusConflict, "invalid_transition", "cannot move from "+order.Status+" to "+req.Status)
-		return
-	}
-	from := order.Status
 	by := "rep:0"
 	if a.userID != nil {
 		by = "rep:" + itoa(*a.userID)
 	}
-	var updated gen.Order
-	err = h.tx(r.Context(), func(q *gen.Queries) error {
-		var e error
-		updated, e = q.SetOrderStatus(r.Context(), gen.SetOrderStatusParams{ID: order.ID, Status: req.Status})
-		if e != nil {
+
+	// The allowed transitions come from the `order_default` workflow definition
+	// (migration 0014), not a hardcoded map. The engine validates current→target
+	// against the DB, then atomically updates the instance + log together with
+	// our in-tx hook (sync orders.status, reserve stock on confirm, history row).
+	inst, err := h.wf.EnsureInstance(r.Context(), a.orgID, "order_default", "order", order.ID, order.Status)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load order workflow")
+		return
+	}
+	hook := func(q *gen.Queries, from, to gen.WorkflowState) error {
+		if _, e := q.SetOrderStatus(r.Context(), gen.SetOrderStatusParams{ID: order.ID, Status: to.Code}); e != nil {
 			return e
 		}
 		// Confirming an order reserves stock for tracked lines (§8). Untracked
 		// products are skipped; insufficient stock (no backorder) aborts the tx.
-		if req.Status == "confirmed" {
+		if to.Code == "confirmed" {
 			if e := inventory.ReserveForOrder(r.Context(), q, a.orgID, order.ID, by); e != nil {
 				return e
 			}
 		}
+		fromCode := from.Code
 		return q.AddOrderStatusHistory(r.Context(), gen.AddOrderStatusHistoryParams{
-			OrderID: order.ID, FromStatus: &from, ToStatus: req.Status, ChangedBy: by, Note: req.Note,
+			OrderID: order.ID, FromStatus: &fromCode, ToStatus: to.Code, ChangedBy: by, Note: req.Note,
 		})
-	})
-	if err != nil {
-		if errors.Is(err, inventory.ErrInsufficientStock) {
+	}
+	actor := workflow.Actor{Type: "rep", ID: a.userID}
+	data := map[string]any{"grand_total": order.GrandTotal}
+	if _, err := h.wf.ApplyTransitionTo(r.Context(), inst.ID, req.Status, actor, data, hook); err != nil {
+		switch {
+		case errors.Is(err, workflow.ErrNoTransition), errors.Is(err, workflow.ErrFinalState):
+			response.Fail(w, http.StatusConflict, "invalid_transition", "cannot move from "+order.Status+" to "+req.Status)
+		case errors.Is(err, inventory.ErrInsufficientStock):
 			response.Fail(w, http.StatusConflict, "insufficient_stock", "not enough stock to confirm this order")
-			return
+		default:
+			var ge *workflow.GuardError
+			if errors.As(err, &ge) {
+				response.Fail(w, http.StatusConflict, "blocked", ge.Reason)
+				return
+			}
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not update status")
 		}
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not update status")
+		return
+	}
+	updated, err := h.q.GetOrderByID(r.Context(), gen.GetOrderByIDParams{OrganizationID: a.orgID, ID: order.ID})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load order")
 		return
 	}
 	h.renderOrder(w, r, updated)

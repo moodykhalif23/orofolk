@@ -17,6 +17,7 @@ import (
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/workflow"
 )
 
 // Notifier schedules a transactional email (template key + data). Satisfied by
@@ -29,10 +30,13 @@ type Handler struct {
 	pool   *pgxpool.Pool
 	q      *gen.Queries
 	notify Notifier
+	wf     *workflow.Engine
 }
 
 func New(pool *pgxpool.Pool, notify Notifier) *Handler {
-	return &Handler{pool: pool, q: gen.New(pool), notify: notify}
+	// Order transitions are governed by the DB-defined `order_default` workflow
+	// (no guards/actions configured for it yet → an empty registry suffices).
+	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, nil)}
 }
 
 // primaryContact returns the email + name of a customer's first user (the
@@ -142,25 +146,9 @@ func (h *Handler) tx(ctx context.Context, fn func(*gen.Queries) error) error {
 	return t.Commit(ctx)
 }
 
-// ---- state machines (§6) --------------------------------------------------
-
-var orderTransitions = map[string][]string{
-	"pending":    {"confirmed", "on_hold", "cancelled"},
-	"confirmed":  {"processing", "on_hold", "cancelled"},
-	"processing": {"shipped", "on_hold", "cancelled"},
-	"shipped":    {"delivered"},
-	"delivered":  {"closed"},
-	"on_hold":    {"confirmed", "cancelled"},
-}
-
-func canTransition(m map[string][]string, from, to string) bool {
-	for _, t := range m[from] {
-		if t == to {
-			return true
-		}
-	}
-	return false
-}
+// Order lifecycle transitions are no longer hardcoded here — they live in the
+// `order_default` workflow definition (migration 0014) and are applied via the
+// configurable workflow engine in patchOrderStatus.
 
 func unauthorized(w http.ResponseWriter) {
 	response.Fail(w, http.StatusUnauthorized, "unauthorized", "no valid context")

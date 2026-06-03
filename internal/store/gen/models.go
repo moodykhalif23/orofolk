@@ -52,6 +52,26 @@ type AttributeFamilyAttribute struct {
 	SortOrder   int32 `json:"sort_order"`
 }
 
+type AutomationExecution struct {
+	ID           int64     `json:"id"`
+	RuleID       int64     `json:"rule_id"`
+	EventPayload []byte    `json:"event_payload"`
+	Status       string    `json:"status"`
+	Result       []byte    `json:"result"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type AutomationRule struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Name           string    `json:"name"`
+	TriggerEvent   string    `json:"trigger_event"`
+	Conditions     []byte    `json:"conditions"`
+	Actions        []byte    `json:"actions"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type Cart struct {
 	ID             int64     `json:"id"`
 	PublicID       uuid.UUID `json:"public_id"`
@@ -574,4 +594,57 @@ type Website struct {
 	IsActive        bool      `json:"is_active"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type WorkflowDefinition struct {
+	ID             int64  `json:"id"`
+	OrganizationID int64  `json:"organization_id"`
+	Code           string `json:"code"`
+	EntityType     string `json:"entity_type"`
+	Name           string `json:"name"`
+	IsActive       bool   `json:"is_active"`
+}
+
+type WorkflowInstance struct {
+	ID             int64     `json:"id"`
+	DefinitionID   int64     `json:"definition_id"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       int64     `json:"entity_id"`
+	CurrentStateID int64     `json:"current_state_id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type WorkflowState struct {
+	ID           int64  `json:"id"`
+	DefinitionID int64  `json:"definition_id"`
+	Code         string `json:"code"`
+	Label        string `json:"label"`
+	IsInitial    bool   `json:"is_initial"`
+	IsFinal      bool   `json:"is_final"`
+	SortOrder    int32  `json:"sort_order"`
+}
+
+type WorkflowTransition struct {
+	ID           int64  `json:"id"`
+	DefinitionID int64  `json:"definition_id"`
+	Code         string `json:"code"`
+	Label        string `json:"label"`
+	FromStateID  *int64 `json:"from_state_id"`
+	ToStateID    int64  `json:"to_state_id"`
+	Guards       []byte `json:"guards"`
+	Actions      []byte `json:"actions"`
+	SortOrder    int32  `json:"sort_order"`
+}
+
+type WorkflowTransitionLog struct {
+	ID           int64     `json:"id"`
+	InstanceID   int64     `json:"instance_id"`
+	TransitionID int64     `json:"transition_id"`
+	FromStateID  *int64    `json:"from_state_id"`
+	ToStateID    int64     `json:"to_state_id"`
+	ActorType    string    `json:"actor_type"`
+	ActorID      *int64    `json:"actor_id"`
+	Context      []byte    `json:"context"`
+	CreatedAt    time.Time `json:"created_at"`
 }

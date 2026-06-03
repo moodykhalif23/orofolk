@@ -20,6 +20,7 @@ type Querier interface {
 	AddQuoteItem(ctx context.Context, arg AddQuoteItemParams) (QuoteItem, error)
 	AddRFQItem(ctx context.Context, arg AddRFQItemParams) (RfqItem, error)
 	AddShipmentItem(ctx context.Context, arg AddShipmentItemParams) (ShipmentItem, error)
+	AddWorkflowTransitionLog(ctx context.Context, arg AddWorkflowTransitionLogParams) error
 	// AdjustInventoryLevel applies signed deltas to on-hand and reserved.
 	AdjustInventoryLevel(ctx context.Context, arg AdjustInventoryLevelParams) (InventoryLevel, error)
 	AssignAttributeToFamily(ctx context.Context, arg AssignAttributeToFamilyParams) error
@@ -33,6 +34,7 @@ type Querier interface {
 	CountCustomers(ctx context.Context, organizationID int64) (int64, error)
 	CountProductsAdmin(ctx context.Context, organizationID int64) (int64, error)
 	CountSearchProductsAdmin(ctx context.Context, arg CountSearchProductsAdminParams) (int64, error)
+	CountTransitionLog(ctx context.Context, instanceID int64) (int64, error)
 	// ===== Activities ==========================================================
 	CreateActivity(ctx context.Context, arg CreateActivityParams) (Activity, error)
 	// ===== Attributes & families ==============================================
@@ -88,6 +90,7 @@ type Querier interface {
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
+	CreateWorkflowInstance(ctx context.Context, arg CreateWorkflowInstanceParams) (WorkflowInstance, error)
 	// CustomerAncestors returns all ancestors of a customer, nearest first
 	// (cycle-safe recursive CTE — Pack 1 §12.2). Used to inherit price list /
 	// settings down the account tree.
@@ -138,6 +141,7 @@ type Querier interface {
 	GetDefaultPipeline(ctx context.Context, organizationID int64) (Pipeline, error)
 	GetDefaultWarehouse(ctx context.Context, organizationID int64) (Warehouse, error)
 	GetDefaultWebsite(ctx context.Context, organizationID int64) (GetDefaultWebsiteRow, error)
+	GetInstanceForEntity(ctx context.Context, arg GetInstanceForEntityParams) (WorkflowInstance, error)
 	GetInventoryLevel(ctx context.Context, arg GetInventoryLevelParams) (InventoryLevel, error)
 	GetInvoice(ctx context.Context, arg GetInvoiceParams) (Invoice, error)
 	GetInvoiceByIDInternal(ctx context.Context, id int64) (Invoice, error)
@@ -166,9 +170,22 @@ type Querier interface {
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
 	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetStage(ctx context.Context, id int64) (PipelineStage, error)
+	GetTransitionByCode(ctx context.Context, arg GetTransitionByCodeParams) (WorkflowTransition, error)
+	// GetTransitionToState resolves the move from the instance's current state to a
+	// target state code: a transition whose to_state has that code and whose
+	// from_state is the current state (or null = from any). Specific from-states
+	// win over wildcard ones.
+	GetTransitionToState(ctx context.Context, arg GetTransitionToStateParams) (WorkflowTransition, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	GetWarehouse(ctx context.Context, arg GetWarehouseParams) (Warehouse, error)
+	// Workflow engine queries — Pack 2 §3.
+	// ===== Definitions / states / transitions ==================================
+	GetWorkflowDefByCode(ctx context.Context, arg GetWorkflowDefByCodeParams) (WorkflowDefinition, error)
+	// ===== Instances ===========================================================
+	GetWorkflowInstance(ctx context.Context, id int64) (WorkflowInstance, error)
+	GetWorkflowState(ctx context.Context, id int64) (WorkflowState, error)
+	GetWorkflowStateByCode(ctx context.Context, arg GetWorkflowStateByCodeParams) (WorkflowState, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
 	// ListActiveProductsInCategory returns active products in a category's whole
 	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
@@ -218,6 +235,8 @@ type Querier interface {
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
+	ListWorkflowStates(ctx context.Context, definitionID int64) ([]WorkflowState, error)
+	ListWorkflowTransitions(ctx context.Context, definitionID int64) ([]WorkflowTransition, error)
 	MarkCartConverted(ctx context.Context, id int64) error
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
@@ -260,6 +279,7 @@ type Querier interface {
 	SetQuoteSubtotal(ctx context.Context, arg SetQuoteSubtotalParams) error
 	SetRFQStatus(ctx context.Context, arg SetRFQStatusParams) (Rfq, error)
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
+	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
 	// ShippedQtyForOrderItem returns the total already shipped for an order line,
 	// used to cap new shipment quantities (§7 AC).
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
