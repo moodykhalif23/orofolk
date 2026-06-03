@@ -188,6 +188,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/integration/IntegrationView.vue'),
         meta: { permission: 'integration.view' },
       },
+      {
+        path: 'field-devices',
+        name: 'field-devices',
+        component: () => import('@/views/field/FieldDevicesView.vue'),
+        meta: { permission: 'field.sync' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
