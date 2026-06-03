@@ -3053,3 +3053,62 @@ paths:
       responses:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/TransformationPreset' } } } }
         '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/trading-partners:
+    get:
+      tags: [Integration]
+      operationId: adminListTradingPartners
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperTradingPartner' } } } }
+    post:
+      tags: [Integration]
+      operationId: adminCreateTradingPartner
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TradingPartnerInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/TradingPartner' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/trading-partners/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Integration]
+      operationId: adminGetTradingPartner
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TradingPartner' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Integration]
+      operationId: adminUpdateTradingPartner
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TradingPartnerInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TradingPartner' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/edi/documents:
+    get:
+      tags: [Integration]
+      operationId: adminListEDIDocuments
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperEDIDocument' } } } }
+  /admin/edi/810:
+    post:
+      tags: [Integration]
+      operationId: adminGenerate810
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EDI810Input' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/EDIOutboundResult' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/edi/856:
+    post:
+      tags: [Integration]
+      operationId: adminGenerate856
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EDI856Input' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/EDIOutboundResult' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }

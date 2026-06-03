@@ -1814,6 +1814,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/trading-partners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListTradingPartners"];
+        put?: never;
+        post: operations["adminCreateTradingPartner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/trading-partners/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetTradingPartner"];
+        put: operations["adminUpdateTradingPartner"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/edi/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListEDIDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/edi/810": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminGenerate810"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/edi/856": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminGenerate856"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3152,6 +3234,79 @@ export interface components {
         };
         ListWrapperTransformationPreset: {
             items?: components["schemas"]["TransformationPreset"][];
+        };
+        TradingPartner: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** @enum {string} */
+            protocol: "cxml" | "oci" | "edi_x12" | "edifact";
+            /** @enum {string|null} */
+            transport?: "https" | "as2" | "sftp" | "van" | null;
+            /** Format: int64 */
+            customer_id?: number | null;
+            identity?: string | null;
+            has_secret?: boolean;
+            config?: {
+                [key: string]: unknown;
+            };
+            is_active: boolean;
+            created_at?: string;
+        };
+        TradingPartnerInput: {
+            name: string;
+            /** @enum {string} */
+            protocol: "cxml" | "oci" | "edi_x12" | "edifact";
+            /** @enum {string} */
+            transport?: "https" | "as2" | "sftp" | "van";
+            /** Format: int64 */
+            customer_id?: number | null;
+            identity?: string | null;
+            shared_secret?: string | null;
+            config?: {
+                [key: string]: unknown;
+            };
+            is_active?: boolean;
+        };
+        ListWrapperTradingPartner: {
+            items?: components["schemas"]["TradingPartner"][];
+        };
+        EDIDocument: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            trading_partner_id: number;
+            /** @enum {string} */
+            direction: "inbound" | "outbound";
+            doc_type: string;
+            status: string;
+            control_number?: string | null;
+            related_entity_type?: string | null;
+            /** Format: int64 */
+            related_entity_id?: number | null;
+            error?: string | null;
+            created_at?: string;
+        };
+        ListWrapperEDIDocument: {
+            items?: components["schemas"]["EDIDocument"][];
+        };
+        EDI810Input: {
+            /** Format: int64 */
+            invoice_id: number;
+            /** Format: int64 */
+            trading_partner_id: number;
+        };
+        EDI856Input: {
+            /** Format: int64 */
+            order_id: number;
+            /** Format: int64 */
+            trading_partner_id: number;
+        };
+        EDIOutboundResult: {
+            /** Format: int64 */
+            document_id?: number;
+            control_number?: string;
+            payload?: string;
         };
     };
     responses: {
@@ -6614,6 +6769,172 @@ export interface operations {
                 };
             };
             409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListTradingPartners: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperTradingPartner"];
+                };
+            };
+        };
+    };
+    adminCreateTradingPartner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradingPartnerInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingPartner"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetTradingPartner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingPartner"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateTradingPartner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TradingPartnerInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TradingPartner"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListEDIDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperEDIDocument"];
+                };
+            };
+        };
+    };
+    adminGenerate810: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EDI810Input"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EDIOutboundResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGenerate856: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EDI856Input"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EDIOutboundResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
 }

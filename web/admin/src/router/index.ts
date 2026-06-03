@@ -182,6 +182,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/tenancy/WebsitesView.vue'),
         meta: { permission: 'tenant.view' },
       },
+      {
+        path: 'integrations',
+        name: 'integrations',
+        component: () => import('@/views/integration/IntegrationView.vue'),
+        meta: { permission: 'integration.view' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
