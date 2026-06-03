@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -64,6 +65,20 @@ func pathID(r *http.Request) (int64, error) {
 	return strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 }
 
+// resolveOrg maps a storefront request to its organization via the website
+// serving the request host (PRD §4 multi-website). Falls back to the demo org
+// (1) when the host matches no configured website domain.
+func (h *Handler) resolveOrg(r *http.Request) int64 {
+	host := r.Host
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i] // strip port
+	}
+	if ws, err := h.q.GetWebsiteByDomain(r.Context(), host); err == nil {
+		return ws.OrganizationID
+	}
+	return 1
+}
+
 // ---- DTOs ----------------------------------------------------------------
 
 // storefrontProduct is the customer-facing projection (no internal id/org).
@@ -114,7 +129,7 @@ func toAdminProduct(p gen.Product) adminProduct {
 
 func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 	// Org is resolved from the website/host in production; demo uses org 1.
-	orgID := int64(1)
+	orgID := h.resolveOrg(r)
 	limit := atoiDefault(r.URL.Query().Get("page_size"), 24)
 	page := atoiDefault(r.URL.Query().Get("page"), 1)
 	if page < 1 {
@@ -209,7 +224,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
-	orgID := int64(1)
+	orgID := h.resolveOrg(r)
 	p, err := h.q.GetProductBySlug(r.Context(), gen.GetProductBySlugParams{
 		OrganizationID: orgID, Slug: chi.URLParam(r, "slug"),
 	})
@@ -228,7 +243,7 @@ func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
 // the total count, and per-attribute facet value counts for the filter sidebar.
 // sort ∈ {relevance, newest, name(default)}.
 func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request) {
-	orgID := int64(1)
+	orgID := h.resolveOrg(r)
 	q := r.URL.Query()
 	limit := atoiDefault(q.Get("page_size"), 24)
 	page := atoiDefault(q.Get("page"), 1)

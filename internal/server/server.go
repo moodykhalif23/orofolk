@@ -21,6 +21,7 @@ import (
 	"b2bcommerce/internal/modules/pricing"
 	"b2bcommerce/internal/modules/reporting"
 	"b2bcommerce/internal/modules/sales"
+	"b2bcommerce/internal/modules/tenancy"
 	"b2bcommerce/internal/modules/wfadmin"
 	"b2bcommerce/internal/payments/gateway"
 	mw "b2bcommerce/internal/server/middleware"
@@ -101,6 +102,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	wfadmin.New(st.Pool()).Routes(r, authMW)
 	cms.New(st.Pool(), issuer).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)
+	tenancy.New(st.Pool()).Routes(r, authMW)
 
 	return r
 }

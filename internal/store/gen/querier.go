@@ -103,6 +103,7 @@ type Querier interface {
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
+	CreateWebsite(ctx context.Context, arg CreateWebsiteParams) (Website, error)
 	CreateWorkflowInstance(ctx context.Context, arg CreateWorkflowInstanceParams) (WorkflowInstance, error)
 	// CustomerAncestors returns all ancestors of a customer, nearest first
 	// (cycle-safe recursive CTE — Pack 1 §12.2). Used to inherit price list /
@@ -180,6 +181,7 @@ type Querier interface {
 	GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Order, error)
 	GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (Order, error)
 	GetOrderItem(ctx context.Context, arg GetOrderItemParams) (OrderItem, error)
+	GetOrganization(ctx context.Context, id int64) (Organization, error)
 	// GetPageAdmin fetches any page (any status) by id, org-scoped via its website.
 	GetPageAdmin(ctx context.Context, arg GetPageAdminParams) (ContentPage, error)
 	GetPayment(ctx context.Context, id int64) (Payment, error)
@@ -209,6 +211,10 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	GetWarehouse(ctx context.Context, arg GetWarehouseParams) (Warehouse, error)
+	GetWebsite(ctx context.Context, arg GetWebsiteParams) (Website, error)
+	// Multi-org / multi-website tenancy queries — PRD §4.
+	// GetWebsiteByDomain resolves the website (and thus org) serving a request host.
+	GetWebsiteByDomain(ctx context.Context, domain string) (Website, error)
 	// Workflow engine queries — Pack 2 §3.
 	// ===== Definitions / states / transitions ==================================
 	GetWorkflowDefByCode(ctx context.Context, arg GetWorkflowDefByCodeParams) (WorkflowDefinition, error)
@@ -280,6 +286,7 @@ type Querier interface {
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
+	ListWebsites(ctx context.Context, organizationID int64) ([]Website, error)
 	ListWorkflowDefinitions(ctx context.Context, organizationID int64) ([]WorkflowDefinition, error)
 	ListWorkflowStates(ctx context.Context, definitionID int64) ([]WorkflowState, error)
 	ListWorkflowTransitions(ctx context.Context, definitionID int64) ([]WorkflowTransition, error)
@@ -298,6 +305,7 @@ type Querier interface {
 	// level, then priority) that has a valid price, and flattens that list's tiers.
 	// Run after DeleteCombinedPricesForCustomerCurrency inside one tx.
 	// params: $1 customer_id, $2 website_id, $3 currency, $4 at
+	// Same precedence as ResolvePrice: customer (4) > ancestor (3) > group (2) > website (1).
 	RecomputeCombinedPricesForCustomer(ctx context.Context, arg RecomputeCombinedPricesForCustomerParams) error
 	RecordAutomationExecution(ctx context.Context, arg RecordAutomationExecutionParams) error
 	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
@@ -307,6 +315,9 @@ type Querier interface {
 	// > group (2) > website default (1); higher priority wins within a level; ties
 	// broken by the most specific qty tier <= requested.
 	// params: $1 customer_id, $2 product_id, $3 quantity, $4 currency, $5 website_id, $6 at
+	// Precedence: own customer (4) > inherited from an ancestor (3) > group (2) >
+	// website (1). Account-hierarchy inheritance (PRD §5.1): a child with no list of
+	// its own falls back to the nearest ancestor's assignment.
 	ResolvePrice(ctx context.Context, arg ResolvePriceParams) (ResolvePriceRow, error)
 	// SalesSummary is the headline KPI rollup since a date.
 	SalesSummary(ctx context.Context, arg SalesSummaryParams) (SalesSummaryRow, error)
@@ -359,6 +370,7 @@ type Querier interface {
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
+	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).
 	UpdateWorkflowTransitionConfig(ctx context.Context, arg UpdateWorkflowTransitionConfigParams) (WorkflowTransition, error)

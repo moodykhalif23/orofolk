@@ -1266,6 +1266,39 @@ components:
         month: { type: string }
         items: { type: array, items: { $ref: '#/components/schemas/TopProduct' } }
 
+    # ----- Multi-org / multi-website (PRD §4) -----
+    Organization:
+      type: object
+      required: [id, name, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        is_active: { type: boolean }
+    Website:
+      type: object
+      required: [id, organization_id, name, domain, default_currency, default_locale, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        organization_id: { type: integer, format: int64 }
+        name: { type: string }
+        domain: { type: string }
+        default_currency: { type: string }
+        default_locale: { type: string }
+        is_active: { type: boolean }
+    WebsiteInput:
+      type: object
+      required: [name, domain, default_currency]
+      properties:
+        name: { type: string }
+        domain: { type: string }
+        default_currency: { type: string }
+        default_locale: { type: string }
+        is_active: { type: boolean }
+    ListWrapperWebsite:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Website' } }
+
   responses:
     ErrorResponse:
       description: Error
@@ -2615,3 +2648,47 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK }
+
+  # ----- Multi-org / multi-website admin (PRD §4) -----
+  /admin/organization:
+    get:
+      tags: [Tenancy]
+      operationId: adminGetOrganization
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Organization' } } } }
+  /admin/websites:
+    get:
+      tags: [Tenancy]
+      operationId: adminListWebsites
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperWebsite' } } } }
+    post:
+      tags: [Tenancy]
+      operationId: adminCreateWebsite
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WebsiteInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Website' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/websites/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Tenancy]
+      operationId: adminGetWebsite
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Website' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Tenancy]
+      operationId: adminUpdateWebsite
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WebsiteInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Website' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }

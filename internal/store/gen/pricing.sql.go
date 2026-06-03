@@ -380,12 +380,23 @@ func (q *Queries) ListPricesForList(ctx context.Context, priceListID int64) ([]P
 }
 
 const recomputeCombinedPricesForCustomer = `-- name: RecomputeCombinedPricesForCustomer :exec
-WITH cust AS (
+WITH RECURSIVE ancestors AS (
+  SELECT c0.id, c0.parent_id, 0 AS depth
+    FROM customers c0 WHERE c0.id = $1
+  UNION ALL
+  SELECT p.id, p.parent_id, ancestors.depth + 1
+    FROM customers p JOIN ancestors ON p.id = ancestors.parent_id
+),
+cust AS (
   SELECT customers.id, customers.customer_group_id FROM customers WHERE customers.id = $1
 ),
 candidate_lists AS (
-  SELECT pla.price_list_id, 3 AS level, pla.priority
+  SELECT pla.price_list_id, 4 AS level, pla.priority
     FROM price_list_assignments pla WHERE pla.customer_id = $1
+  UNION ALL
+  SELECT pla.price_list_id, 3, pla.priority
+    FROM price_list_assignments pla
+    JOIN ancestors a ON a.id = pla.customer_id AND a.depth > 0
   UNION ALL
   SELECT pla.price_list_id, 2, pla.priority
     FROM price_list_assignments pla
@@ -430,6 +441,7 @@ type RecomputeCombinedPricesForCustomerParams struct {
 // level, then priority) that has a valid price, and flattens that list's tiers.
 // Run after DeleteCombinedPricesForCustomerCurrency inside one tx.
 // params: $1 customer_id, $2 website_id, $3 currency, $4 at
+// Same precedence as ResolvePrice: customer (4) > ancestor (3) > group (2) > website (1).
 func (q *Queries) RecomputeCombinedPricesForCustomer(ctx context.Context, arg RecomputeCombinedPricesForCustomerParams) error {
 	_, err := q.db.Exec(ctx, recomputeCombinedPricesForCustomer,
 		arg.CustomerID,
@@ -442,12 +454,23 @@ func (q *Queries) RecomputeCombinedPricesForCustomer(ctx context.Context, arg Re
 
 const resolvePrice = `-- name: ResolvePrice :one
 
-WITH cust AS (
+WITH RECURSIVE ancestors AS (
+  SELECT c0.id, c0.parent_id, 0 AS depth
+    FROM customers c0 WHERE c0.id = $1
+  UNION ALL
+  SELECT p.id, p.parent_id, ancestors.depth + 1
+    FROM customers p JOIN ancestors ON p.id = ancestors.parent_id
+),
+cust AS (
   SELECT customers.id, customers.customer_group_id FROM customers WHERE customers.id = $1
 ),
 candidate_lists AS (
-  SELECT pla.price_list_id, 3 AS level, pla.priority
+  SELECT pla.price_list_id, 4 AS level, pla.priority
     FROM price_list_assignments pla WHERE pla.customer_id = $1
+  UNION ALL
+  SELECT pla.price_list_id, 3, pla.priority
+    FROM price_list_assignments pla
+    JOIN ancestors a ON a.id = pla.customer_id AND a.depth > 0
   UNION ALL
   SELECT pla.price_list_id, 2, pla.priority
     FROM price_list_assignments pla
@@ -493,6 +516,9 @@ type ResolvePriceRow struct {
 // > group (2) > website default (1); higher priority wins within a level; ties
 // broken by the most specific qty tier <= requested.
 // params: $1 customer_id, $2 product_id, $3 quantity, $4 currency, $5 website_id, $6 at
+// Precedence: own customer (4) > inherited from an ancestor (3) > group (2) >
+// website (1). Account-hierarchy inheritance (PRD §5.1): a child with no list of
+// its own falls back to the nearest ancestor's assignment.
 func (q *Queries) ResolvePrice(ctx context.Context, arg ResolvePriceParams) (ResolvePriceRow, error) {
 	row := q.db.QueryRow(ctx, resolvePrice,
 		arg.ID,

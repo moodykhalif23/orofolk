@@ -381,3 +381,62 @@ func TestTenantIsolation_PriceLists(t *testing.T) {
 		}
 	}
 }
+
+// ---- account-hierarchy price inheritance (PRD §5.1) ----------------------
+
+func TestResolvePrice_InheritsFromAncestor(t *testing.T) {
+	pool := testsupport.NewDB(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+	const website = int64(1)
+
+	prod := mkProduct(t, q, 1, "HP-1", "hp-1")
+
+	parent := mkCustomer(t, q, 1, "Parent Co", nil)
+	child := mkCustomer(t, q, 1, "Child Co", nil)
+	if _, err := pool.Exec(ctx, `UPDATE customers SET parent_id=$1 WHERE id=$2`, parent, child); err != nil {
+		t.Fatalf("set parent: %v", err)
+	}
+
+	// A contract list assigned to the PARENT only.
+	parentList := mkList(t, q, 1, "Parent Contract", "USD")
+	addPrice(t, q, parentList.ID, prod, "1", "42.0000", nil)
+	if _, err := q.CreatePriceListAssignment(ctx, gen.CreatePriceListAssignmentParams{PriceListID: parentList.ID, CustomerID: ptr(parent)}); err != nil {
+		t.Fatalf("assign parent: %v", err)
+	}
+
+	resolve := func(cust int64) (gen.ResolvePriceRow, error) {
+		return q.ResolvePrice(ctx, gen.ResolvePriceParams{ID: cust, ProductID: prod, Column3: "1", Currency: "USD", WebsiteID: ptr(website), ValidFrom: nowTs()})
+	}
+
+	// The child has no list of its own → inherits the parent's contract price.
+	if row, err := resolve(child); err != nil || row.Value != "42.0000" {
+		t.Fatalf("child inherits ancestor price: want 42.0000, got %q err=%v", row.Value, err)
+	}
+
+	// A child's OWN assignment still beats the inherited one.
+	childList := mkList(t, q, 1, "Child Contract", "USD")
+	addPrice(t, q, childList.ID, prod, "1", "30.0000", nil)
+	if _, err := q.CreatePriceListAssignment(ctx, gen.CreatePriceListAssignmentParams{PriceListID: childList.ID, CustomerID: ptr(child)}); err != nil {
+		t.Fatalf("assign child: %v", err)
+	}
+	if row, err := resolve(child); err != nil || row.Value != "30.0000" {
+		t.Fatalf("own price beats inherited: want 30.0000, got %q err=%v", row.Value, err)
+	}
+
+	// Inheritance also flows through the precomputed combined_prices path: a
+	// fresh customer whose only price source is its parent's list (42).
+	niece := mkCustomer(t, q, 1, "Niece Co", nil)
+	if _, err := pool.Exec(ctx, `UPDATE customers SET parent_id=$1 WHERE id=$2`, parent, niece); err != nil {
+		t.Fatalf("set niece parent: %v", err)
+	}
+	if err := q.RecomputeCombinedPricesForCustomer(ctx, gen.RecomputeCombinedPricesForCustomerParams{
+		CustomerID: niece, WebsiteID: ptr(int64(website)), Currency: "USD", ComputedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("recompute niece: %v", err)
+	}
+	cp, err := q.GetCombinedPrice(ctx, gen.GetCombinedPriceParams{CustomerID: niece, ProductID: prod, Unit: "each", Currency: "USD", Column4: "1"})
+	if err != nil || cp.Value != "42.0000" {
+		t.Fatalf("niece inherits parent price via combined_prices: want 42.0000, got %q err=%v", cp.Value, err)
+	}
+}

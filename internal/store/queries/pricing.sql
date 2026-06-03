@@ -78,12 +78,26 @@ ORDER BY id LIMIT 1;
 -- broken by the most specific qty tier <= requested.
 -- params: $1 customer_id, $2 product_id, $3 quantity, $4 currency, $5 website_id, $6 at
 -- name: ResolvePrice :one
-WITH cust AS (
+WITH RECURSIVE ancestors AS (
+  SELECT c0.id, c0.parent_id, 0 AS depth
+    FROM customers c0 WHERE c0.id = $1
+  UNION ALL
+  SELECT p.id, p.parent_id, ancestors.depth + 1
+    FROM customers p JOIN ancestors ON p.id = ancestors.parent_id
+),
+cust AS (
   SELECT customers.id, customers.customer_group_id FROM customers WHERE customers.id = $1
 ),
+-- Precedence: own customer (4) > inherited from an ancestor (3) > group (2) >
+-- website (1). Account-hierarchy inheritance (PRD §5.1): a child with no list of
+-- its own falls back to the nearest ancestor's assignment.
 candidate_lists AS (
-  SELECT pla.price_list_id, 3 AS level, pla.priority
+  SELECT pla.price_list_id, 4 AS level, pla.priority
     FROM price_list_assignments pla WHERE pla.customer_id = $1
+  UNION ALL
+  SELECT pla.price_list_id, 3, pla.priority
+    FROM price_list_assignments pla
+    JOIN ancestors a ON a.id = pla.customer_id AND a.depth > 0
   UNION ALL
   SELECT pla.price_list_id, 2, pla.priority
     FROM price_list_assignments pla
@@ -133,12 +147,24 @@ DELETE FROM combined_prices WHERE customer_id = $1 AND currency = $2;
 -- Run after DeleteCombinedPricesForCustomerCurrency inside one tx.
 -- params: $1 customer_id, $2 website_id, $3 currency, $4 at
 -- name: RecomputeCombinedPricesForCustomer :exec
-WITH cust AS (
+WITH RECURSIVE ancestors AS (
+  SELECT c0.id, c0.parent_id, 0 AS depth
+    FROM customers c0 WHERE c0.id = $1
+  UNION ALL
+  SELECT p.id, p.parent_id, ancestors.depth + 1
+    FROM customers p JOIN ancestors ON p.id = ancestors.parent_id
+),
+cust AS (
   SELECT customers.id, customers.customer_group_id FROM customers WHERE customers.id = $1
 ),
+-- Same precedence as ResolvePrice: customer (4) > ancestor (3) > group (2) > website (1).
 candidate_lists AS (
-  SELECT pla.price_list_id, 3 AS level, pla.priority
+  SELECT pla.price_list_id, 4 AS level, pla.priority
     FROM price_list_assignments pla WHERE pla.customer_id = $1
+  UNION ALL
+  SELECT pla.price_list_id, 3, pla.priority
+    FROM price_list_assignments pla
+    JOIN ancestors a ON a.id = pla.customer_id AND a.depth > 0
   UNION ALL
   SELECT pla.price_list_id, 2, pla.priority
     FROM price_list_assignments pla
