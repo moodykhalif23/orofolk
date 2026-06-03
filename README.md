@@ -27,7 +27,7 @@ The full product specification lives in [`docs/`](docs/) (PRD v0.2 + Implementat
 
 ## Prerequisites
 
-- **Go** ≥ 1.22 · **Docker** (for Compose, and for integration tests via testcontainers)
+- **Go** ≥ 1.25 · **Docker** (for Compose, and for integration tests via testcontainers)
 - **Node** ≥ 20 + **pnpm** (`corepack enable pnpm`) — for the frontends
 - **sqlc** (only if you change SQL): `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
 
