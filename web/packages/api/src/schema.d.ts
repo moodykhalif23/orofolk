@@ -1944,6 +1944,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/{id}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetProductConfig"];
+        put: operations["adminUpsertProductConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/option-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateOptionGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/option-groups/{gid}/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                gid: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateOption"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/config-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateConfigRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/quotes/{id}/configured-lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminAddConfiguredLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/products/{publicID}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontProductConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/products/{publicID}/configure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontConfigure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3405,6 +3531,94 @@ export interface components {
                 server_record?: unknown;
                 detail?: string;
             }[];
+        };
+        CpqOption: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            group_id?: number;
+            code?: string;
+            name?: string;
+            price_delta?: string;
+            is_default?: boolean;
+        };
+        CpqGroup: {
+            /** Format: int64 */
+            id?: number;
+            code?: string;
+            name?: string;
+            required?: boolean;
+            min_select?: number;
+            max_select?: number;
+            options?: components["schemas"]["CpqOption"][];
+        };
+        CpqRule: {
+            /** @enum {string} */
+            kind?: "requires" | "excludes";
+            /** Format: int64 */
+            option_id?: number;
+            /** Format: int64 */
+            related_option_id?: number;
+        };
+        CpqDefinition: {
+            /** Format: int64 */
+            product_id?: number;
+            base_price?: string;
+            currency?: string;
+            groups?: components["schemas"]["CpqGroup"][];
+            rules?: components["schemas"]["CpqRule"][];
+        };
+        ProductConfigInput: {
+            base_price: string;
+            currency?: string;
+            is_active?: boolean;
+        };
+        OptionGroupInput: {
+            code: string;
+            name: string;
+            required?: boolean;
+            min_select?: number;
+            max_select?: number;
+            sort_order?: number;
+        };
+        OptionInput: {
+            code: string;
+            name: string;
+            price_delta?: string;
+            is_default?: boolean;
+            sort_order?: number;
+        };
+        ConfigRuleInput: {
+            /** @enum {string} */
+            kind: "requires" | "excludes";
+            /** Format: int64 */
+            option_id: number;
+            /** Format: int64 */
+            related_option_id: number;
+        };
+        ConfigureInput: {
+            selections?: number[];
+        };
+        ConfigureResult: {
+            valid?: boolean;
+            errors?: string[];
+            base_price?: string;
+            unit_price?: string;
+            currency?: string;
+            selected?: {
+                /** Format: int64 */
+                option_id?: number;
+                group_code?: string;
+                option_code?: string;
+                name?: string;
+                price_delta?: string;
+            }[];
+        };
+        ConfiguredLineInput: {
+            /** Format: int64 */
+            product_id: number;
+            quantity?: string;
+            selections?: number[];
         };
     };
     responses: {
@@ -7099,6 +7313,203 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListWrapperFieldDevice"];
+                };
+            };
+        };
+    };
+    adminGetProductConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CpqDefinition"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpsertProductConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductConfigInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateOptionGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionGroupInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateOption: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                gid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OptionInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateConfigRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigRuleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminAddConfiguredLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfiguredLineInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontProductConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CpqDefinition"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontConfigure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigureInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigureResult"];
                 };
             };
         };

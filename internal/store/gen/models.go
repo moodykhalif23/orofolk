@@ -134,6 +134,14 @@ type CombinedPrice struct {
 	ComputedAt        time.Time `json:"computed_at"`
 }
 
+type ConfigRule struct {
+	ID              int64  `json:"id"`
+	ProductID       int64  `json:"product_id"`
+	Kind            string `json:"kind"`
+	OptionID        int64  `json:"option_id"`
+	RelatedOptionID int64  `json:"related_option_id"`
+}
+
 type Contact struct {
 	ID             int64     `json:"id"`
 	OrganizationID int64     `json:"organization_id"`
@@ -434,16 +442,17 @@ type Order struct {
 }
 
 type OrderItem struct {
-	ID        int64  `json:"id"`
-	OrderID   int64  `json:"order_id"`
-	ProductID int64  `json:"product_id"`
-	Sku       string `json:"sku"`
-	Name      string `json:"name"`
-	Quantity  string `json:"quantity"`
-	Unit      string `json:"unit"`
-	UnitPrice string `json:"unit_price"`
-	TaxAmount string `json:"tax_amount"`
-	RowTotal  string `json:"row_total"`
+	ID            int64  `json:"id"`
+	OrderID       int64  `json:"order_id"`
+	ProductID     int64  `json:"product_id"`
+	Sku           string `json:"sku"`
+	Name          string `json:"name"`
+	Quantity      string `json:"quantity"`
+	Unit          string `json:"unit"`
+	UnitPrice     string `json:"unit_price"`
+	TaxAmount     string `json:"tax_amount"`
+	RowTotal      string `json:"row_total"`
+	Configuration []byte `json:"configuration"`
 }
 
 type OrderStatusHistory struct {
@@ -557,6 +566,14 @@ type ProductCategory struct {
 	CategoryID int64 `json:"category_id"`
 }
 
+type ProductConfig struct {
+	ProductID int64     `json:"product_id"`
+	BasePrice string    `json:"base_price"`
+	Currency  string    `json:"currency"`
+	IsActive  bool      `json:"is_active"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type ProductMedium struct {
 	ID        int64   `json:"id"`
 	ProductID int64   `json:"product_id"`
@@ -564,6 +581,27 @@ type ProductMedium struct {
 	Type      string  `json:"type"`
 	Alt       *string `json:"alt"`
 	SortOrder int32   `json:"sort_order"`
+}
+
+type ProductOption struct {
+	ID         int64  `json:"id"`
+	GroupID    int64  `json:"group_id"`
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	PriceDelta string `json:"price_delta"`
+	IsDefault  bool   `json:"is_default"`
+	SortOrder  int32  `json:"sort_order"`
+}
+
+type ProductOptionGroup struct {
+	ID        int64  `json:"id"`
+	ProductID int64  `json:"product_id"`
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	Required  bool   `json:"required"`
+	MinSelect int32  `json:"min_select"`
+	MaxSelect int32  `json:"max_select"`
+	SortOrder int32  `json:"sort_order"`
 }
 
 type ProductTranslation struct {
@@ -605,14 +643,15 @@ type Quote struct {
 }
 
 type QuoteItem struct {
-	ID        int64  `json:"id"`
-	QuoteID   int64  `json:"quote_id"`
-	ProductID int64  `json:"product_id"`
-	Quantity  string `json:"quantity"`
-	Unit      string `json:"unit"`
-	UnitPrice string `json:"unit_price"`
-	Discount  string `json:"discount"`
-	RowTotal  string `json:"row_total"`
+	ID            int64  `json:"id"`
+	QuoteID       int64  `json:"quote_id"`
+	ProductID     int64  `json:"product_id"`
+	Quantity      string `json:"quantity"`
+	Unit          string `json:"unit"`
+	UnitPrice     string `json:"unit_price"`
+	Discount      string `json:"discount"`
+	RowTotal      string `json:"row_total"`
+	Configuration []byte `json:"configuration"`
 }
 
 type QuoteRevision struct {

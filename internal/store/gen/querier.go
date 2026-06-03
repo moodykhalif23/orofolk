@@ -12,6 +12,7 @@ import (
 )
 
 type Querier interface {
+	AddConfiguredQuoteItem(ctx context.Context, arg AddConfiguredQuoteItemParams) (QuoteItem, error)
 	// ===== Movements ===========================================================
 	AddInventoryMovement(ctx context.Context, arg AddInventoryMovementParams) (InventoryMovement, error)
 	AddInvoiceItem(ctx context.Context, arg AddInvoiceItemParams) (InvoiceItem, error)
@@ -54,6 +55,8 @@ type Querier interface {
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	// ===== Change log (cursor outbox) ==========================================
 	CreateChangeLog(ctx context.Context, arg CreateChangeLogParams) (int64, error)
+	// ===== Rules ===============================================================
+	CreateConfigRule(ctx context.Context, arg CreateConfigRuleParams) (ConfigRule, error)
 	// ===== Contacts ============================================================
 	CreateContact(ctx context.Context, arg CreateContactParams) (Contact, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
@@ -76,6 +79,9 @@ type Querier interface {
 	CreateMenu(ctx context.Context, arg CreateMenuParams) (Menu, error)
 	// ===== Opportunities =======================================================
 	CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error)
+	CreateOption(ctx context.Context, arg CreateOptionParams) (ProductOption, error)
+	// ===== Option groups + options =============================================
+	CreateOptionGroup(ctx context.Context, arg CreateOptionGroupParams) (ProductOptionGroup, error)
 	// ===== Order ===============================================================
 	CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error)
 	// CMS queries — Pack 2 §2.
@@ -175,6 +181,10 @@ type Querier interface {
 	// params: $1 customer_id, $2 product_id, $3 unit, $4 quantity, $5 currency
 	GetCombinedPrice(ctx context.Context, arg GetCombinedPriceParams) (GetCombinedPriceRow, error)
 	GetContact(ctx context.Context, arg GetContactParams) (Contact, error)
+	// GetCpqProduct authorizes a product-scoped operation against the caller's org.
+	GetCpqProduct(ctx context.Context, arg GetCpqProductParams) (int64, error)
+	// ===== Quote integration ===================================================
+	GetCpqQuote(ctx context.Context, arg GetCpqQuoteParams) (GetCpqQuoteRow, error)
 	GetCustomer(ctx context.Context, arg GetCustomerParams) (Customer, error)
 	// ===== Customer billing terms =============================================
 	GetCustomerBilling(ctx context.Context, id int64) (GetCustomerBillingRow, error)
@@ -215,6 +225,7 @@ type Querier interface {
 	GetMediaByPublicID(ctx context.Context, publicID uuid.UUID) (MediaAsset, error)
 	GetMenuByCode(ctx context.Context, arg GetMenuByCodeParams) (Menu, error)
 	GetOpportunity(ctx context.Context, arg GetOpportunityParams) (Opportunity, error)
+	GetOptionGroup(ctx context.Context, id int64) (ProductOptionGroup, error)
 	GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Order, error)
 	GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (Order, error)
 	GetOrderItem(ctx context.Context, arg GetOrderItemParams) (OrderItem, error)
@@ -230,7 +241,11 @@ type Querier interface {
 	// ===== Product lookup (EDI 850 / punchout mapping) =========================
 	GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error)
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
+	GetProductConfig(ctx context.Context, productID int64) (ProductConfig, error)
 	GetProductIDByPublicID(ctx context.Context, arg GetProductIDByPublicIDParams) (int64, error)
+	// GetProductIDByPublicIDGlobal resolves a product id from its (globally unique)
+	// public_id without org context, for the unauthenticated storefront configurator.
+	GetProductIDByPublicIDGlobal(ctx context.Context, publicID uuid.UUID) (int64, error)
 	// GetPublishedPage resolves a published page by website + locale + slug (the
 	// storefront read path).
 	GetPublishedPage(ctx context.Context, arg GetPublishedPageParams) (ContentPage, error)
@@ -290,6 +305,7 @@ type Querier interface {
 	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCombinedPricesForCustomer(ctx context.Context, arg ListCombinedPricesForCustomerParams) ([]CombinedPrice, error)
+	ListConfigRules(ctx context.Context, productID int64) ([]ConfigRule, error)
 	ListContactsForCustomer(ctx context.Context, arg ListContactsForCustomerParams) ([]Contact, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
@@ -317,6 +333,10 @@ type Querier interface {
 	ListMenuItems(ctx context.Context, menuID int64) ([]MenuItem, error)
 	ListMenusForWebsite(ctx context.Context, websiteID int64) ([]Menu, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
+	ListOptionGroups(ctx context.Context, productID int64) ([]ProductOptionGroup, error)
+	// ListOptionsForProduct returns every option of a product's groups, ordered for
+	// stable rendering.
+	ListOptionsForProduct(ctx context.Context, productID int64) ([]ProductOption, error)
 	ListOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error)
 	ListOrderStatusHistory(ctx context.Context, orderID int64) ([]ListOrderStatusHistoryRow, error)
 	ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams) ([]Order, error)
@@ -438,6 +458,7 @@ type Querier interface {
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to
 	// enforce the credit limit when paying on terms.
 	SumOpenInvoices(ctx context.Context, customerID int64) (string, error)
+	SumQuoteItems(ctx context.Context, quoteID int64) (string, error)
 	// TopProducts ranks products by revenue in a month, joined to product names.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)
 	TouchUserLogin(ctx context.Context, id int64) error
@@ -469,6 +490,10 @@ type Querier interface {
 	UpsertInvoiceDocument(ctx context.Context, arg UpsertInvoiceDocumentParams) error
 	// ===== Prices (tiers) ======================================================
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) (Price, error)
+	// Configure-Price-Quote (PRD §8). Loads the configuration model and stores
+	// priced, configured lines on quotes.
+	// ===== Product config (base price + configurable flag) =====================
+	UpsertProductConfig(ctx context.Context, arg UpsertProductConfigParams) (ProductConfig, error)
 	// ===== Renditions ==========================================================
 	UpsertRendition(ctx context.Context, arg UpsertRenditionParams) (MediaRendition, error)
 	UpsertShoppingListItem(ctx context.Context, arg UpsertShoppingListItemParams) (ShoppingListItem, error)

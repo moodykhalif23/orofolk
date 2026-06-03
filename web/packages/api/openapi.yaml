@@ -1555,6 +1555,103 @@ components:
               server_record: {}
               detail: { type: string }
 
+    # ----- Configure-Price-Quote (PRD §8) -----
+    CpqOption:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        group_id: { type: integer, format: int64 }
+        code: { type: string }
+        name: { type: string }
+        price_delta: { type: string }
+        is_default: { type: boolean }
+    CpqGroup:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        code: { type: string }
+        name: { type: string }
+        required: { type: boolean }
+        min_select: { type: integer }
+        max_select: { type: integer }
+        options: { type: array, items: { $ref: '#/components/schemas/CpqOption' } }
+    CpqRule:
+      type: object
+      properties:
+        kind: { type: string, enum: [requires, excludes] }
+        option_id: { type: integer, format: int64 }
+        related_option_id: { type: integer, format: int64 }
+    CpqDefinition:
+      type: object
+      properties:
+        product_id: { type: integer, format: int64 }
+        base_price: { type: string }
+        currency: { type: string }
+        groups: { type: array, items: { $ref: '#/components/schemas/CpqGroup' } }
+        rules: { type: array, items: { $ref: '#/components/schemas/CpqRule' } }
+    ProductConfigInput:
+      type: object
+      required: [base_price]
+      properties:
+        base_price: { type: string }
+        currency: { type: string }
+        is_active: { type: boolean }
+    OptionGroupInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        required: { type: boolean }
+        min_select: { type: integer }
+        max_select: { type: integer }
+        sort_order: { type: integer }
+    OptionInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { type: string }
+        price_delta: { type: string }
+        is_default: { type: boolean }
+        sort_order: { type: integer }
+    ConfigRuleInput:
+      type: object
+      required: [kind, option_id, related_option_id]
+      properties:
+        kind: { type: string, enum: [requires, excludes] }
+        option_id: { type: integer, format: int64 }
+        related_option_id: { type: integer, format: int64 }
+    ConfigureInput:
+      type: object
+      properties:
+        selections: { type: array, items: { type: integer, format: int64 } }
+    ConfigureResult:
+      type: object
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { type: string } }
+        base_price: { type: string }
+        unit_price: { type: string }
+        currency: { type: string }
+        selected:
+          type: array
+          items:
+            type: object
+            properties:
+              option_id: { type: integer, format: int64 }
+              group_code: { type: string }
+              option_code: { type: string }
+              name: { type: string }
+              price_delta: { type: string }
+    ConfiguredLineInput:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: { type: integer, format: int64 }
+        quantity: { type: string }
+        selections: { type: array, items: { type: integer, format: int64 } }
+
   responses:
     ErrorResponse:
       description: Error
@@ -3189,3 +3286,85 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperFieldDevice' } } } }
+  /admin/products/{id}/config:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CPQ]
+      operationId: adminGetProductConfig
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CpqDefinition' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [CPQ]
+      operationId: adminUpsertProductConfig
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ProductConfigInput' } } } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/products/{id}/option-groups:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [CPQ]
+      operationId: adminCreateOptionGroup
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OptionGroupInput' } } } }
+      responses:
+        '201': { description: Created }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/option-groups/{gid}/options:
+    parameters:
+      - { name: gid, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [CPQ]
+      operationId: adminCreateOption
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OptionInput' } } } }
+      responses:
+        '201': { description: Created }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/products/{id}/config-rules:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [CPQ]
+      operationId: adminCreateConfigRule
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigRuleInput' } } } }
+      responses:
+        '201': { description: Created }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/quotes/{id}/configured-lines:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [CPQ]
+      operationId: adminAddConfiguredLine
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConfiguredLineInput' } } } }
+      responses:
+        '201': { description: Created }
+        '422': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/products/{publicID}/config:
+    parameters:
+      - { name: publicID, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [CPQ]
+      operationId: storefrontProductConfig
+      security: []
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CpqDefinition' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/products/{publicID}/configure:
+    parameters:
+      - { name: publicID, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [CPQ]
+      operationId: storefrontConfigure
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigureInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigureResult' } } } }

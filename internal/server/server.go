@@ -18,6 +18,7 @@ import (
 	"b2bcommerce/internal/modules/cart"
 	"b2bcommerce/internal/modules/catalog"
 	"b2bcommerce/internal/modules/cms"
+	"b2bcommerce/internal/modules/cpq"
 	"b2bcommerce/internal/modules/crm"
 	"b2bcommerce/internal/modules/customers"
 	"b2bcommerce/internal/modules/dam"
@@ -163,6 +164,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	}
 	integration.New(st.Pool(), issuer, o.punchoutURL, o.ediSenderID, o.punchoutTTL).Routes(r, authMW)
 	field.New(st.Pool()).Routes(r, authMW)
+	cpq.New(st.Pool()).Routes(r, authMW)
 
 	// Wrap the router so HTTP server metrics (request count, duration) flow to
 	// the configured OpenTelemetry MeterProvider. No-op when telemetry is off.

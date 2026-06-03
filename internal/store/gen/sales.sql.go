@@ -16,7 +16,7 @@ import (
 const addOrderItem = `-- name: AddOrderItem :one
 INSERT INTO order_items (order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total
+RETURNING id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration
 `
 
 type AddOrderItemParams struct {
@@ -55,6 +55,7 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (Ord
 		&i.UnitPrice,
 		&i.TaxAmount,
 		&i.RowTotal,
+		&i.Configuration,
 	)
 	return i, err
 }
@@ -86,7 +87,7 @@ func (q *Queries) AddOrderStatusHistory(ctx context.Context, arg AddOrderStatusH
 const addQuoteItem = `-- name: AddQuoteItem :one
 INSERT INTO quote_items (quote_id, product_id, quantity, unit, unit_price, discount, row_total)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, quote_id, product_id, quantity, unit, unit_price, discount, row_total
+RETURNING id, quote_id, product_id, quantity, unit, unit_price, discount, row_total, configuration
 `
 
 type AddQuoteItemParams struct {
@@ -119,6 +120,7 @@ func (q *Queries) AddQuoteItem(ctx context.Context, arg AddQuoteItemParams) (Quo
 		&i.UnitPrice,
 		&i.Discount,
 		&i.RowTotal,
+		&i.Configuration,
 	)
 	return i, err
 }
@@ -577,7 +579,7 @@ func (q *Queries) GetRFQByPublicID(ctx context.Context, arg GetRFQByPublicIDPara
 }
 
 const listOrderItems = `-- name: ListOrderItems :many
-SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total FROM order_items WHERE order_id = $1 ORDER BY id
+SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration FROM order_items WHERE order_id = $1 ORDER BY id
 `
 
 func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error) {
@@ -600,6 +602,7 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderIte
 			&i.UnitPrice,
 			&i.TaxAmount,
 			&i.RowTotal,
+			&i.Configuration,
 		); err != nil {
 			return nil, err
 		}

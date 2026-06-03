@@ -23,6 +23,7 @@ const allItems: NavItem[] = [
   { label: 'Products', icon: 'pi pi-box', routeName: 'products', permission: 'product.view' },
   { label: 'Categories', icon: 'pi pi-sitemap', routeName: 'categories', permission: 'category.view' },
   { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view' },
+  { label: 'Configurator', icon: 'pi pi-sliders-h', routeName: 'configurator', permission: 'product.view' },
   { label: 'Pricing', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
   { label: 'RFQs', icon: 'pi pi-inbox', routeName: 'rfqs', permission: 'rfq.view' },
   { label: 'Quotes', icon: 'pi pi-file-edit', routeName: 'quotes', permission: 'quote.view' },
