@@ -13,6 +13,7 @@ import (
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
+	"b2bcommerce/internal/logging"
 	"b2bcommerce/internal/payments/gateway"
 	"b2bcommerce/internal/queue"
 	"b2bcommerce/internal/server"
@@ -24,11 +25,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+	logger := logging.Setup(cfg.Env, cfg.LogLevel)
 
 	ctx := context.Background()
-	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := db.NewPoolWithConfig(ctx, cfg.DatabaseURL, db.PoolConfig{
+		MaxConns: cfg.DBMaxConns, MaxConnIdleTime: cfg.DBMaxConnIdleTime,
+	})
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		logger.Error("db connect failed", "err", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -39,13 +44,14 @@ func main() {
 	// (e.g. combined_prices recompute). The worker process runs the jobs.
 	enq, err := queue.NewEnqueuer(pool)
 	if err != nil {
-		log.Fatalf("queue: %v", err)
+		logger.Error("queue init failed", "err", err)
+		os.Exit(1)
 	}
 	// Card processor. Only the deterministic mock is built in; selecting another
 	// provider falls back to mock with a warning until its adapter lands.
 	var gw gateway.Gateway = gateway.Mock{}
 	if cfg.PaymentsGateway != "" && cfg.PaymentsGateway != "mock" {
-		log.Printf("payments: gateway %q not implemented, using mock", cfg.PaymentsGateway)
+		logger.Warn("payment gateway not implemented, using mock", "requested", cfg.PaymentsGateway)
 	}
 
 	handler := server.New(st, issuer,
@@ -53,6 +59,7 @@ func main() {
 		server.WithInvoicePDF(enq),
 		server.WithNotifier(enq),
 		server.WithPaymentGateway(gw),
+		server.WithLogger(logger),
 	)
 
 	srv := &http.Server{
@@ -62,9 +69,10 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("api listening on :%s (env=%s)", cfg.HTTPPort, cfg.Env)
+		logger.Info("api listening", "port", cfg.HTTPPort, "env", cfg.Env)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("listen: %v", err)
+			logger.Error("listen failed", "err", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -75,7 +83,7 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("shutdown: %v", err)
+		logger.Error("shutdown error", "err", err)
 	}
-	log.Println("api stopped")
+	logger.Info("api stopped")
 }

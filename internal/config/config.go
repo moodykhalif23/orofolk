@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -29,6 +30,11 @@ type Config struct {
 	// PaymentsGateway selects the card processor ("mock" — default — or a real
 	// provider like "stripe"/"mpesa" once configured).
 	PaymentsGateway string
+
+	// Connection-pool tuning. DBMaxConns caps concurrent DB connections per
+	// process; DBMaxConnIdleTime recycles idle connections.
+	DBMaxConns        int32
+	DBMaxConnIdleTime time.Duration
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -49,6 +55,8 @@ func Load() (Config, error) {
 		EmailFrom:    getenv("EMAIL_FROM", "Teggo <no-reply@teggo.local>"),
 
 		PaymentsGateway: getenv("PAYMENTS_GATEWAY", "mock"),
+
+		DBMaxConns: int32(getenvInt("DB_MAX_CONNS", 20)),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))
@@ -56,6 +64,12 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("invalid JWT_TTL: %w", err)
 	}
 	c.JWTTTL = ttl
+
+	idle, err := time.ParseDuration(getenv("DB_MAX_CONN_IDLE_TIME", "5m"))
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid DB_MAX_CONN_IDLE_TIME: %w", err)
+	}
+	c.DBMaxConnIdleTime = idle
 
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
@@ -69,6 +83,17 @@ func Load() (Config, error) {
 func getenv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return def
+}
+
+// getenvInt reads an integer env var, falling back to def when unset or
+// unparseable.
+func getenvInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return def
 }

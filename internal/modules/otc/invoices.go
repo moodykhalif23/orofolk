@@ -2,6 +2,7 @@ package otc
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -79,7 +80,9 @@ func (h *Handler) issueInvoice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.pdf != nil {
-		_ = h.pdf.EnqueueInvoicePDF(r.Context(), invoice.ID)
+		if err := h.pdf.EnqueueInvoicePDF(r.Context(), invoice.ID); err != nil {
+			slog.WarnContext(r.Context(), "enqueue invoice PDF failed", "invoice_id", invoice.ID, "err", err)
+		}
 	}
 	if h.notify != nil {
 		if to, name := h.primaryContact(r.Context(), invoice.CustomerID); to != "" {
@@ -87,13 +90,15 @@ func (h *Handler) issueInvoice(w http.ResponseWriter, r *http.Request) {
 			if invoice.DueAt.Valid {
 				due = invoice.DueAt.Time.Format("2006-01-02")
 			}
-			_ = h.notify.EnqueueEmail(r.Context(), to, "invoice_issued", map[string]any{
+			if err := h.notify.EnqueueEmail(r.Context(), to, "invoice_issued", map[string]any{
 				"name":           name,
 				"invoice_number": "INV-" + shortID(invoice.PublicID.String()),
 				"total":          invoice.GrandTotal,
 				"currency":       invoice.Currency,
 				"due_at":         due,
-			})
+			}); err != nil {
+				slog.WarnContext(r.Context(), "enqueue email failed", "template", "invoice_issued", "invoice_id", invoice.ID, "err", err)
+			}
 		}
 	}
 	h.renderInvoice(w, r, invoice)

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -37,6 +38,7 @@ func New(q *gen.Queries, enq Enqueuer) *Handler { return &Handler{q: q, enq: enq
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 	r.Group(func(ar chi.Router) {
 		ar.Use(authMW)
+		ar.Use(mw.RequireAudience("admin"))
 
 		ar.With(mw.RequirePermission("price_list.view")).Get("/admin/price-lists", h.listLists)
 		ar.With(mw.RequirePermission("price_list.manage")).Post("/admin/price-lists", h.createList)
@@ -447,7 +449,9 @@ func (h *Handler) enqueueForList(ctx context.Context, pl gen.PriceList) {
 		websiteID = &ws.ID
 	}
 	for _, cid := range customers {
-		_ = h.enq.EnqueueRecompute(ctx, cid, websiteID, pl.Currency)
+		if err := h.enq.EnqueueRecompute(ctx, cid, websiteID, pl.Currency); err != nil {
+			slog.WarnContext(ctx, "enqueue recompute failed", "customer_id", cid, "price_list_id", pl.ID, "err", err)
+		}
 	}
 }
 

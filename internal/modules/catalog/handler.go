@@ -34,6 +34,7 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 	// Admin (bearer + permission gated).
 	r.Group(func(ar chi.Router) {
 		ar.Use(authMW)
+		ar.Use(mw.RequireAudience("admin"))
 
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products", h.adminList)
 		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products", h.adminCreate)

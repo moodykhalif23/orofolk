@@ -29,6 +29,7 @@ func New(q *gen.Queries) *Handler { return &Handler{q: q} }
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 	r.Group(func(ar chi.Router) {
 		ar.Use(authMW)
+		ar.Use(mw.RequireAudience("admin"))
 
 		ar.With(mw.RequirePermission("customer.view")).Get("/admin/customers", h.list)
 		ar.With(mw.RequirePermission("customer.manage")).Post("/admin/customers", h.create)

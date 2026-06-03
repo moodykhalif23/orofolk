@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"b2bcommerce/internal/money"
@@ -66,8 +67,15 @@ func (h *Handler) payInvoiceByCard(w http.ResponseWriter, r *http.Request) {
 		Amount: inv.GrandTotal, Currency: inv.Currency, Status: "captured",
 		CapturedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}); err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not record payment")
-		return
+		// A unique-violation on (gateway, gateway_reference) means this exact
+		// charge was already recorded — a retried/double-submitted payment.
+		// Treat it as idempotent: fall through to (re-)settle and return state
+		// rather than recording a second payment or 500-ing the client.
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not record payment")
+			return
+		}
 	}
 	if err := h.settleInvoiceIfCovered(r, inv.ID); err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not settle invoice")

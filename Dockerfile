@@ -11,8 +11,10 @@ RUN CGO_ENABLED=0 go build -o /out/worker  ./cmd/worker
 RUN CGO_ENABLED=0 go build -o /out/migrate ./cmd/migrate
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates wget && adduser -D -u 10001 app
 WORKDIR /app
 COPY --from=build /out/ /app/
+# Drop privileges: the services need no root capabilities at runtime.
+USER app
 # Default command is overridden per service in docker-compose.
 CMD ["/app/api"]

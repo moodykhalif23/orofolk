@@ -447,3 +447,34 @@ func TestPayInvoiceByCard(t *testing.T) {
 		t.Errorf("cross-customer pay: want 404, got %d", rr.Code)
 	}
 }
+
+// TestPaymentGatewayReferenceUnique verifies migration 0024's idempotency
+// guard: the same processor charge id can be recorded only once.
+func TestPaymentGatewayReferenceUnique(t *testing.T) {
+	_, _, pool := newServer(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+
+	custID, orderID, _ := seedOrder(t, pool, 5, "10000")
+	gw, ref := "mock", "mock_ch_dup"
+	params := gen.CreatePaymentParams{
+		OrderID: &orderID, CustomerID: custID, Method: "card",
+		Gateway: &gw, GatewayReference: &ref,
+		Amount: "10.0000", Currency: "USD", Status: "captured",
+	}
+	if _, err := q.CreatePayment(ctx, params); err != nil {
+		t.Fatalf("first payment insert: %v", err)
+	}
+	if _, err := q.CreatePayment(ctx, params); err == nil {
+		t.Fatal("duplicate (gateway, gateway_reference) was accepted; unique index missing")
+	}
+
+	// A NULL gateway_reference (manual payment) is exempt from the constraint.
+	manual := gen.CreatePaymentParams{OrderID: &orderID, CustomerID: custID, Method: "ach", Amount: "1.0000", Currency: "USD", Status: "captured"}
+	if _, err := q.CreatePayment(ctx, manual); err != nil {
+		t.Fatalf("manual payment 1: %v", err)
+	}
+	if _, err := q.CreatePayment(ctx, manual); err != nil {
+		t.Fatalf("manual payment 2 (NULL ref should be exempt): %v", err)
+	}
+}

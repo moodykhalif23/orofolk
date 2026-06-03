@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -403,7 +404,7 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 	// Emit a domain event so automation rules on order.status_changed can fire
 	// (e.g. notify the customer). Fire-and-forget; never blocks the response.
 	if h.notify != nil {
-		_ = h.notify.EmitEvent(r.Context(), "order.status_changed", map[string]any{
+		if err := h.notify.EmitEvent(r.Context(), "order.status_changed", map[string]any{
 			"order_id":     updated.ID,
 			"customer_id":  updated.CustomerID,
 			"from":         order.Status,
@@ -411,7 +412,9 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 			"status":       updated.Status,
 			"order_number": "ORD-" + updated.PublicID.String()[:8],
 			"grand_total":  updated.GrandTotal,
-		})
+		}); err != nil {
+			slog.WarnContext(r.Context(), "emit domain event failed", "event", "order.status_changed", "order_id", updated.ID, "err", err)
+		}
 	}
 	h.renderOrder(w, r, updated)
 }
@@ -549,12 +552,14 @@ func (h *Handler) emailOrderConfirmation(ctx context.Context, order gen.Order) {
 	if to == "" {
 		return
 	}
-	_ = h.notify.EnqueueEmail(ctx, to, "order_confirmation", map[string]any{
+	if err := h.notify.EnqueueEmail(ctx, to, "order_confirmation", map[string]any{
 		"name":         name,
 		"order_number": "ORD-" + order.PublicID.String()[:8],
 		"total":        order.GrandTotal,
 		"currency":     order.Currency,
-	})
+	}); err != nil {
+		slog.WarnContext(ctx, "enqueue email failed", "template", "order_confirmation", "order_id", order.ID, "err", err)
+	}
 }
 
 func strPtr(s string) *string { return &s }

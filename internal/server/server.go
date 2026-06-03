@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -38,14 +39,27 @@ type notifier interface {
 
 // options holds optional dependencies wired in by the caller.
 type options struct {
-	recompute pricing.Enqueuer
-	pdf       otc.PDFEnqueuer
-	notifier  notifier
-	gateway   gateway.Gateway
+	recompute    pricing.Enqueuer
+	pdf          otc.PDFEnqueuer
+	notifier     notifier
+	gateway      gateway.Gateway
+	logger       *slog.Logger
+	maxBodyBytes int64
 }
 
 // Option configures optional server dependencies.
 type Option func(*options)
+
+// WithLogger sets the structured logger used by the request-logging middleware.
+// Defaults to slog.Default() when unset.
+func WithLogger(l *slog.Logger) Option {
+	return func(o *options) { o.logger = l }
+}
+
+// WithMaxBodyBytes caps accepted request-body size (bytes). Defaults to 1 MiB.
+func WithMaxBodyBytes(n int64) Option {
+	return func(o *options) { o.maxBodyBytes = n }
+}
 
 func WithRecompute(e pricing.Enqueuer) Option {
 	return func(o *options) { o.recompute = e }
@@ -77,20 +91,30 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	if o.gateway == nil {
 		o.gateway = gateway.Mock{} // deterministic card path by default
 	}
+	if o.logger == nil {
+		o.logger = slog.Default()
+	}
+	if o.maxBodyBytes == 0 {
+		o.maxBodyBytes = 1 << 20 // 1 MiB
+	}
 
 	r := chi.NewRouter()
 
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
-	r.Use(chimw.Logger)
+	r.Use(mw.SecureHeaders)
+	r.Use(mw.RequestLogger(o.logger))
 	r.Use(chimw.Recoverer)
+	r.Use(mw.MaxBytes(o.maxBodyBytes))
 	r.Use(chimw.Timeout(30 * time.Second))
 
 	authMW := mw.Authenticator(issuer)
+	// Throttle credential endpoints to blunt brute-force / credential stuffing.
+	loginLimit := mw.RateLimit(10, time.Minute)
 
 	// Modules mount their own routes. Add new modules here as they land.
 	health.New(st).Routes(r)
-	authmod.New(st, issuer).Routes(r)
+	authmod.New(st, issuer).Routes(r, loginLimit)
 	catalog.New(st.Queries()).Routes(r, authMW)
 	customers.New(st.Queries()).Routes(r, authMW)
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)

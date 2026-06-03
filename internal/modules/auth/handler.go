@@ -22,9 +22,11 @@ func New(s *store.Store, issuer *auth.Issuer) *Handler {
 	return &Handler{store: s, issuer: issuer}
 }
 
-func (h *Handler) Routes(r chi.Router) {
-	r.Post("/admin/auth/login", h.login)
-	r.Post("/storefront/auth/login", h.storefrontLogin)
+// Routes mounts the login endpoints. The limiter middleware throttles
+// credential submission per client IP to blunt brute-force attempts.
+func (h *Handler) Routes(r chi.Router, limiter func(http.Handler) http.Handler) {
+	r.With(limiter).Post("/admin/auth/login", h.login)
+	r.With(limiter).Post("/storefront/auth/login", h.storefrontLogin)
 }
 
 type loginRequest struct {

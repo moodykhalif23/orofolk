@@ -28,26 +28,39 @@ services:
   api:
     build: .
     command: ["/app/api"]
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       HTTP_PORT: "8080"
       JWT_SECRET: ${JWT_SECRET}
       JWT_TTL: ${JWT_TTL:-24h}
       ENV: ${ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       PAYMENTS_GATEWAY: ${PAYMENTS_GATEWAY:-mock}
+      DB_MAX_CONNS: ${DB_MAX_CONNS:-20}
     ports:
       - "8080:8080"
     depends_on:
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   worker:
     build: .
     command: ["/app/worker"]
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
+      ENV: ${ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       GOTENBERG_URL: http://gotenberg:3000
+      DB_MAX_CONNS: ${DB_MAX_CONNS:-20}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -57,13 +70,20 @@ services:
       migrate:
         condition: service_completed_successfully
       gotenberg:
-        condition: service_started
+        condition: service_healthy
 
   # Headless-Chromium PDF rendering for invoices (PRD §16).
   gotenberg:
     image: gotenberg/gotenberg:8
+    restart: unless-stopped
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
 volumes:
   pgdata:

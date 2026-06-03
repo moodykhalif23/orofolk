@@ -72,7 +72,12 @@ func (i *Issuer) Parse(tokenStr string) (*Claims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return i.secret, nil
-	})
+	},
+		// Pin the algorithm (defence against alg-confusion) and reject tokens
+		// without an expiry so a leaked unbounded token can't live forever.
+		jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithExpirationRequired(),
+	)
 	if err != nil {
 		return nil, err
 	}

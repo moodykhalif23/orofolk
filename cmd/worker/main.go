@@ -10,6 +10,7 @@ import (
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
 	"b2bcommerce/internal/email"
+	"b2bcommerce/internal/logging"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue"
 )
@@ -19,21 +20,25 @@ func main() {
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
+	logger := logging.Setup(cfg.Env, cfg.LogLevel)
 
 	ctx := context.Background()
-	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := db.NewPoolWithConfig(ctx, cfg.DatabaseURL, db.PoolConfig{
+		MaxConns: cfg.DBMaxConns, MaxConnIdleTime: cfg.DBMaxConnIdleTime,
+	})
 	if err != nil {
-		log.Fatalf("db: %v", err)
+		logger.Error("db connect failed", "err", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	var renderer pdf.Renderer
 	if cfg.GotenbergURL != "" {
 		renderer = pdf.NewGotenberg(cfg.GotenbergURL)
-		log.Printf("invoice PDFs: Gotenberg at %s", cfg.GotenbergURL)
+		logger.Info("invoice PDFs: Gotenberg", "url", cfg.GotenbergURL)
 	} else {
 		renderer = pdf.Stub{}
-		log.Println("invoice PDFs: GOTENBERG_URL unset, using stub renderer")
+		logger.Warn("invoice PDFs: GOTENBERG_URL unset, using stub renderer")
 	}
 
 	var sender email.Sender
@@ -42,28 +47,30 @@ func main() {
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername,
 			Password: cfg.SMTPPassword, From: cfg.EmailFrom,
 		})
-		log.Printf("email: SMTP at %s:%s", cfg.SMTPHost, cfg.SMTPPort)
+		logger.Info("email: SMTP transport", "host", cfg.SMTPHost, "port", cfg.SMTPPort)
 	} else {
 		sender = email.LogSender{From: cfg.EmailFrom}
-		log.Println("email: SMTP_HOST unset, using log transport")
+		logger.Warn("email: SMTP_HOST unset, using log transport")
 	}
 
 	client, err := queue.NewWorkerClient(pool, renderer, sender)
 	if err != nil {
-		log.Fatalf("queue: %v", err)
+		logger.Error("queue init failed", "err", err)
+		os.Exit(1)
 	}
 
 	if err := client.Start(ctx); err != nil {
-		log.Fatalf("worker start: %v", err)
+		logger.Error("worker start failed", "err", err)
+		os.Exit(1)
 	}
-	log.Println("worker started")
+	logger.Info("worker started")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
 	if err := client.Stop(ctx); err != nil {
-		log.Printf("worker stop: %v", err)
+		logger.Error("worker stop error", "err", err)
 	}
-	log.Println("worker stopped")
+	logger.Info("worker stopped")
 }

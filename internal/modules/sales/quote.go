@@ -2,6 +2,7 @@ package sales
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -224,12 +225,14 @@ func (h *Handler) sendQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.notify != nil {
 		if to, name := h.primaryContact(r.Context(), sent.CustomerID); to != "" {
-			_ = h.notify.EnqueueEmail(r.Context(), to, "quote_sent", map[string]any{
+			if err := h.notify.EnqueueEmail(r.Context(), to, "quote_sent", map[string]any{
 				"name":         name,
 				"quote_number": "Q-" + sent.PublicID.String()[:8],
 				"total":        sent.Subtotal,
 				"currency":     sent.Currency,
-			})
+			}); err != nil {
+				slog.WarnContext(r.Context(), "enqueue email failed", "template", "quote_sent", "quote_id", sent.ID, "err", err)
+			}
 		}
 	}
 	h.renderQuote(w, r, sent)
