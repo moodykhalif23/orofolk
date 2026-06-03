@@ -2206,6 +2206,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/erp/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListErpConnections"];
+        put?: never;
+        post: operations["adminCreateErpConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/erp/connections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetErpConnection"];
+        put: operations["adminUpdateErpConnection"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/erp/connections/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRunErpSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/erp/sync-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListSyncLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3835,6 +3903,58 @@ export interface components {
             tracking_number?: string;
             status?: string;
             carrier?: string;
+        };
+        IntegrationConnection: {
+            /** Format: int64 */
+            id: number;
+            provider: string;
+            /** @enum {string} */
+            kind: "erp" | "accounting";
+            endpoint?: string | null;
+            has_secret?: boolean;
+            config?: {
+                [key: string]: unknown;
+            };
+            is_active: boolean;
+            created_at?: string;
+        };
+        IntegrationConnectionInput: {
+            provider: string;
+            /** @enum {string} */
+            kind?: "erp" | "accounting";
+            endpoint?: string | null;
+            secret?: string | null;
+            config?: {
+                [key: string]: unknown;
+            };
+            is_active?: boolean;
+        };
+        ListWrapperIntegrationConnection: {
+            items?: components["schemas"]["IntegrationConnection"][];
+        };
+        SyncLog: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            connection_id?: number;
+            /** @enum {string} */
+            direction?: "outbound" | "inbound";
+            entity_type?: string;
+            /** Format: int64 */
+            entity_id?: number | null;
+            operation?: string;
+            /** @enum {string} */
+            status?: "sent" | "error" | "processed" | "skipped";
+            external_id?: string | null;
+            error?: string | null;
+            created_at?: string;
+        };
+        ListWrapperSyncLog: {
+            items?: components["schemas"]["SyncLog"][];
+        };
+        SyncResult: {
+            synced?: number;
+            errors?: number;
         };
     };
     responses: {
@@ -7952,6 +8072,144 @@ export interface operations {
                 };
             };
             404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListErpConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperIntegrationConnection"];
+                };
+            };
+        };
+    };
+    adminCreateErpConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationConnectionInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationConnection"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetErpConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationConnection"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateErpConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationConnectionInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationConnection"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminRunErpSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListSyncLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperSyncLog"];
+                };
+            };
         };
     };
 }

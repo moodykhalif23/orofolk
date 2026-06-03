@@ -240,6 +240,15 @@ type EdiDocument struct {
 	ProcessedAt       pgtype.Timestamptz `json:"processed_at"`
 }
 
+type ExternalRef struct {
+	ID           int64              `json:"id"`
+	ConnectionID int64              `json:"connection_id"`
+	EntityType   string             `json:"entity_type"`
+	EntityID     int64              `json:"entity_id"`
+	ExternalID   string             `json:"external_id"`
+	SyncedAt     pgtype.Timestamptz `json:"synced_at"`
+}
+
 type FieldDevice struct {
 	ID             int64              `json:"id"`
 	UserID         int64              `json:"user_id"`
@@ -248,6 +257,18 @@ type FieldDevice struct {
 	LastSyncCursor int64              `json:"last_sync_cursor"`
 	LastSeenAt     pgtype.Timestamptz `json:"last_seen_at"`
 	CreatedAt      time.Time          `json:"created_at"`
+}
+
+type IntegrationConnection struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Provider       string    `json:"provider"`
+	Kind           string    `json:"kind"`
+	Endpoint       *string   `json:"endpoint"`
+	Secret         *string   `json:"secret"`
+	Config         []byte    `json:"config"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type InventoryLevel struct {
@@ -793,6 +814,22 @@ type ShoppingListItem struct {
 	ProductID      int64  `json:"product_id"`
 	Quantity       string `json:"quantity"`
 	Unit           string `json:"unit"`
+}
+
+type SyncLog struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	ConnectionID   int64     `json:"connection_id"`
+	Direction      string    `json:"direction"`
+	EntityType     string    `json:"entity_type"`
+	EntityID       *int64    `json:"entity_id"`
+	Operation      string    `json:"operation"`
+	Status         string    `json:"status"`
+	IdempotencyKey *string   `json:"idempotency_key"`
+	ExternalID     *string   `json:"external_id"`
+	Error          *string   `json:"error"`
+	Detail         []byte    `json:"detail"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type SyncPushLog struct {

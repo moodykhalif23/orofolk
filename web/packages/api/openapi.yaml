@@ -1758,6 +1758,56 @@ components:
         status: { type: string }
         carrier: { type: string }
 
+    # ----- ERP / accounting sync (Pack 2 §4.6) -----
+    IntegrationConnection:
+      type: object
+      required: [id, provider, kind, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        provider: { type: string }
+        kind: { type: string, enum: [erp, accounting] }
+        endpoint: { type: string, nullable: true }
+        has_secret: { type: boolean }
+        config: { type: object, additionalProperties: true }
+        is_active: { type: boolean }
+        created_at: { type: string }
+    IntegrationConnectionInput:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string }
+        kind: { type: string, enum: [erp, accounting] }
+        endpoint: { type: string, nullable: true }
+        secret: { type: string, nullable: true }
+        config: { type: object, additionalProperties: true }
+        is_active: { type: boolean }
+    ListWrapperIntegrationConnection:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/IntegrationConnection' } }
+    SyncLog:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        connection_id: { type: integer, format: int64 }
+        direction: { type: string, enum: [outbound, inbound] }
+        entity_type: { type: string }
+        entity_id: { type: integer, format: int64, nullable: true }
+        operation: { type: string }
+        status: { type: string, enum: [sent, error, processed, skipped] }
+        external_id: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+        created_at: { type: string }
+    ListWrapperSyncLog:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/SyncLog' } }
+    SyncResult:
+      type: object
+      properties:
+        synced: { type: integer }
+        errors: { type: integer }
+
   responses:
     ErrorResponse:
       description: Error
@@ -3554,3 +3604,51 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TrackingStatus' } } } }
         '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/erp/connections:
+    get:
+      tags: [ERP]
+      operationId: adminListErpConnections
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperIntegrationConnection' } } } }
+    post:
+      tags: [ERP]
+      operationId: adminCreateErpConnection
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/IntegrationConnectionInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/IntegrationConnection' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/erp/connections/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [ERP]
+      operationId: adminGetErpConnection
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/IntegrationConnection' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [ERP]
+      operationId: adminUpdateErpConnection
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/IntegrationConnectionInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/IntegrationConnection' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/erp/connections/{id}/sync:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [ERP]
+      operationId: adminRunErpSync
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SyncResult' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/erp/sync-logs:
+    get:
+      tags: [ERP]
+      operationId: adminListSyncLogs
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperSyncLog' } } } }

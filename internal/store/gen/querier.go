@@ -67,6 +67,11 @@ type Querier interface {
 	CreateCustomerUser(ctx context.Context, arg CreateCustomerUserParams) (CreateCustomerUserRow, error)
 	// ===== EDI documents =======================================================
 	CreateEDIDocument(ctx context.Context, arg CreateEDIDocumentParams) (EdiDocument, error)
+	// ===== External refs + sync logs ===========================================
+	CreateExternalRef(ctx context.Context, arg CreateExternalRefParams) (ExternalRef, error)
+	// ERP / accounting sync (Pack 2 §4.6).
+	// ===== Connections =========================================================
+	CreateIntegrationConnection(ctx context.Context, arg CreateIntegrationConnectionParams) (IntegrationConnection, error)
 	// ===== Invoices ============================================================
 	CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error)
 	// CRM queries — Pack 2 §1. Admin/sales-rep facing; everything org-scoped.
@@ -127,6 +132,7 @@ type Querier interface {
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (Shipment, error)
 	// ===== Shopping lists ======================================================
 	CreateShoppingList(ctx context.Context, arg CreateShoppingListParams) (ShoppingList, error)
+	CreateSyncLog(ctx context.Context, arg CreateSyncLogParams) (int64, error)
 	// ===== Trading partners ====================================================
 	CreateTradingPartner(ctx context.Context, arg CreateTradingPartnerParams) (TradingPartner, error)
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
@@ -210,6 +216,10 @@ type Querier interface {
 	GetDefaultWebsite(ctx context.Context, organizationID int64) (GetDefaultWebsiteRow, error)
 	GetEDIDocument(ctx context.Context, arg GetEDIDocumentParams) (EdiDocument, error)
 	GetInstanceForEntity(ctx context.Context, arg GetInstanceForEntityParams) (WorkflowInstance, error)
+	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
+	// GetIntegrationConnectionByID resolves a connection without org (inbound
+	// webhook is connection-scoped; org comes from the row).
+	GetIntegrationConnectionByID(ctx context.Context, id int64) (IntegrationConnection, error)
 	GetInventoryLevel(ctx context.Context, arg GetInventoryLevelParams) (InventoryLevel, error)
 	GetInvoice(ctx context.Context, arg GetInvoiceParams) (Invoice, error)
 	GetInvoiceByIDInternal(ctx context.Context, id int64) (Invoice, error)
@@ -297,6 +307,8 @@ type Querier interface {
 	GetWorkflowInstance(ctx context.Context, id int64) (WorkflowInstance, error)
 	GetWorkflowState(ctx context.Context, id int64) (WorkflowState, error)
 	GetWorkflowStateByCode(ctx context.Context, arg GetWorkflowStateByCodeParams) (WorkflowState, error)
+	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
+	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
 	// ListActiveProductsInCategory returns active products in a category's whole
 	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
@@ -328,12 +340,14 @@ type Querier interface {
 	ListExpirableQuotes(ctx context.Context, validUntil pgtype.Timestamptz) ([]Quote, error)
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
 	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
+	ListIntegrationConnections(ctx context.Context, organizationID int64) ([]IntegrationConnection, error)
 	ListInventoryLevelsForProduct(ctx context.Context, productID int64) ([]ListInventoryLevelsForProductRow, error)
 	ListInventoryMovements(ctx context.Context, arg ListInventoryMovementsParams) ([]InventoryMovement, error)
 	ListInvoiceItems(ctx context.Context, invoiceID int64) ([]InvoiceItem, error)
 	ListInvoicesAdmin(ctx context.Context, arg ListInvoicesAdminParams) ([]Invoice, error)
 	ListInvoicesForCustomer(ctx context.Context, customerID int64) ([]Invoice, error)
 	ListInvoicesForOrder(ctx context.Context, orderID int64) ([]Invoice, error)
+	ListInvoicesToSync(ctx context.Context, arg ListInvoicesToSyncParams) ([]Invoice, error)
 	ListLeads(ctx context.Context, arg ListLeadsParams) ([]Lead, error)
 	ListMedia(ctx context.Context, arg ListMediaParams) ([]MediaAsset, error)
 	ListMediaTags(ctx context.Context, mediaAssetID int64) ([]string, error)
@@ -348,6 +362,8 @@ type Querier interface {
 	ListOrderStatusHistory(ctx context.Context, orderID int64) ([]ListOrderStatusHistoryRow, error)
 	ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams) ([]Order, error)
 	ListOrdersForCustomer(ctx context.Context, customerID int64) ([]Order, error)
+	// ===== Outbound work lists (idempotent: skip already-synced) ================
+	ListOrdersToSync(ctx context.Context, arg ListOrdersToSyncParams) ([]Order, error)
 	// ListPagesAdmin lists all pages for the org's websites.
 	ListPagesAdmin(ctx context.Context, organizationID int64) ([]ContentPage, error)
 	ListPaymentsForInvoice(ctx context.Context, invoiceID *int64) ([]Payment, error)
@@ -380,6 +396,7 @@ type Querier interface {
 	ListShippingRatesByCountry(ctx context.Context, arg ListShippingRatesByCountryParams) ([]ShippingRate, error)
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
+	ListSyncLogs(ctx context.Context, organizationID int64) ([]ListSyncLogsRow, error)
 	ListTaxRates(ctx context.Context, organizationID int64) ([]TaxRate, error)
 	// ListTaxRatesByCountry feeds the local VAT provider for a destination.
 	ListTaxRatesByCountry(ctx context.Context, arg ListTaxRatesByCountryParams) ([]ListTaxRatesByCountryRow, error)
@@ -445,6 +462,9 @@ type Querier interface {
 	SetDeviceCursor(ctx context.Context, arg SetDeviceCursorParams) error
 	SetEDIResult(ctx context.Context, arg SetEDIResultParams) (EdiDocument, error)
 	SetInventoryLevelConfig(ctx context.Context, arg SetInventoryLevelConfigParams) (InventoryLevel, error)
+	// ===== Inbound master-data apply ===========================================
+	// SetInventoryOnHand upserts a stock level (ERP → commerce inventory sync).
+	SetInventoryOnHand(ctx context.Context, arg SetInventoryOnHandParams) error
 	SetInvoicePDFURL(ctx context.Context, arg SetInvoicePDFURLParams) error
 	SetInvoiceStatus(ctx context.Context, arg SetInvoiceStatusParams) (Invoice, error)
 	SetLeadStatus(ctx context.Context, arg SetLeadStatusParams) (Lead, error)
@@ -481,6 +501,7 @@ type Querier interface {
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
