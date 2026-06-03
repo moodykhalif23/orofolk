@@ -559,6 +559,7 @@ type Product struct {
 	ParentID          *int64             `json:"parent_id"`
 	AttributeFamilyID *int64             `json:"attribute_family_id"`
 	SearchVector      string             `json:"search_vector"`
+	TaxClass          string             `json:"tax_class"`
 }
 
 type ProductCategory struct {
@@ -764,6 +765,18 @@ type ShipmentItem struct {
 	Quantity    string `json:"quantity"`
 }
 
+type ShippingRate struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Country        string    `json:"country"`
+	Service        string    `json:"service"`
+	Carrier        string    `json:"carrier"`
+	Amount         string    `json:"amount"`
+	FreeOver       *string   `json:"free_over"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
 type ShoppingList struct {
 	ID             int64     `json:"id"`
 	CustomerID     int64     `json:"customer_id"`
@@ -791,6 +804,16 @@ type SyncPushLog struct {
 	Status         string    `json:"status"`
 	ServerEntityID *int64    `json:"server_entity_id"`
 	Detail         []byte    `json:"detail"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type TaxRate struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Country        string    `json:"country"`
+	TaxClass       string    `json:"tax_class"`
+	Rate           string    `json:"rate"`
+	Name           string    `json:"name"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 

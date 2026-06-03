@@ -17,6 +17,7 @@ import (
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/tax"
 	"b2bcommerce/internal/workflow"
 )
 
@@ -32,6 +33,7 @@ type Handler struct {
 	q      *gen.Queries
 	notify Notifier
 	wf     *workflow.Engine
+	tax    *tax.Service
 }
 
 func New(pool *pgxpool.Pool, notify Notifier) *Handler {
@@ -41,7 +43,7 @@ func New(pool *pgxpool.Pool, notify Notifier) *Handler {
 	reg := workflow.NewRegistry()
 	reg.RegisterGuard(workflow.AmountLteLimit{})
 	reg.RegisterGuard(workflow.HasPermission{})
-	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, reg)}
+	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, reg), tax: tax.NewService(gen.New(pool))}
 }
 
 // primaryContact returns the email + name of a customer's first user (the

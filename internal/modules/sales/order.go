@@ -17,8 +17,22 @@ import (
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/tax"
 	"b2bcommerce/internal/workflow"
 )
+
+// countryOf extracts the "country" field from an address JSON snapshot, for tax
+// region resolution. Empty when absent (→ untaxed).
+func countryOf(addr []byte) string {
+	if len(addr) == 0 {
+		return ""
+	}
+	var a struct {
+		Country string `json:"country"`
+	}
+	_ = json.Unmarshal(addr, &a)
+	return a.Country
+}
 
 // ---- storefront: accept quote -> order -----------------------------------
 
@@ -59,17 +73,28 @@ func (h *Handler) acceptQuote(w http.ResponseWriter, r *http.Request) {
 		billing := h.snapshotAddress(r.Context(), q, quote.CustomerID, "billing")
 		shipping := h.snapshotAddress(r.Context(), q, quote.CustomerID, "shipping")
 
+		// Tax the accepted quote's lines onto the order (0 when no rates).
+		taxLines := make([]tax.OrderLine, len(items))
+		for i, it := range items {
+			taxLines[i] = tax.OrderLine{ProductID: it.ProductID, Amount: it.RowTotal}
+		}
+		perLineTax, taxTotal, taxErr := h.tax.ComputeOrderTax(r.Context(), quote.OrganizationID, countryOf(shipping), taxLines)
+		if taxErr != nil {
+			return taxErr
+		}
+		grand, _ := money.Sum(subtotal, taxTotal)
+
 		order, e = q.CreateOrder(r.Context(), gen.CreateOrderParams{
 			OrganizationID: quote.OrganizationID, WebsiteID: quote.WebsiteID, CustomerID: quote.CustomerID,
 			CustomerUserID: cc.customerUserID, QuoteID: &quote.ID, Currency: quote.Currency,
 			BillingAddress: billing, ShippingAddress: shipping,
-			Subtotal: subtotal, TaxTotal: "0", ShippingTotal: "0", GrandTotal: subtotal,
+			Subtotal: subtotal, TaxTotal: taxTotal, ShippingTotal: "0", GrandTotal: grand,
 		})
 		if e != nil {
 			return e
 		}
-		for _, it := range items {
-			if e := h.addOrderItemSnapshot(r.Context(), q, quote.OrganizationID, order.ID, it.ProductID, it.Quantity, it.Unit, it.UnitPrice, it.RowTotal); e != nil {
+		for i, it := range items {
+			if e := h.addOrderItemSnapshot(r.Context(), q, quote.OrganizationID, order.ID, it.ProductID, it.Quantity, it.Unit, it.UnitPrice, it.RowTotal, perLineTax[i]); e != nil {
 				return e
 			}
 		}
@@ -123,6 +148,7 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		RequestedDeliveryDate *time.Time    `json:"requested_delivery_date"`
 		BillingAddress        *addressInput `json:"billing_address"`
 		ShippingAddress       *addressInput `json:"shipping_address"`
+		ShippingAmount        *string       `json:"shipping_amount"` // chosen shipping rate
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
@@ -167,21 +193,39 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		billing := addrSnapshot(r.Context(), q, cc.customerID, "billing", req.BillingAddress)
 		shipping := addrSnapshot(r.Context(), q, cc.customerID, "shipping", req.ShippingAddress)
 
+		// Tax (per-line VAT by destination + product class) + shipping snapshot
+		// onto the order. Both default to 0 when nothing is configured/chosen.
+		taxLines := make([]tax.OrderLine, len(lines))
+		for i, ln := range lines {
+			taxLines[i] = tax.OrderLine{ProductID: ln.pid, Amount: ln.total}
+		}
+		perLineTax, taxTotal, taxErr := h.tax.ComputeOrderTax(r.Context(), cc.orgID, countryOf(shipping), taxLines)
+		if taxErr != nil {
+			return taxErr
+		}
+		shippingTotal := "0"
+		if req.ShippingAmount != nil {
+			if _, perr := money.Parse(*req.ShippingAmount); perr == nil {
+				shippingTotal = *req.ShippingAmount
+			}
+		}
+		grand, _ := money.Sum(subtotal, taxTotal, shippingTotal)
+
 		var e error
 		order, e = q.CreateOrder(r.Context(), gen.CreateOrderParams{
 			OrganizationID: cc.orgID, WebsiteID: ws.ID, CustomerID: cc.customerID,
 			CustomerUserID: cc.customerUserID, Currency: cart.Currency,
 			PoNumber: req.PoNumber, RequestedDeliveryDate: datePtr(req.RequestedDeliveryDate),
 			BillingAddress: billing, ShippingAddress: shipping,
-			Subtotal: subtotal, TaxTotal: "0", ShippingTotal: "0", GrandTotal: subtotal,
+			Subtotal: subtotal, TaxTotal: taxTotal, ShippingTotal: shippingTotal, GrandTotal: grand,
 		})
 		if e != nil {
 			return e
 		}
-		for _, ln := range lines {
+		for i, ln := range lines {
 			if _, e := q.AddOrderItem(r.Context(), gen.AddOrderItemParams{
 				OrderID: order.ID, ProductID: ln.pid, Sku: ln.sku, Name: ln.name,
-				Quantity: ln.qty, Unit: ln.unit, UnitPrice: ln.price, TaxAmount: "0", RowTotal: ln.total,
+				Quantity: ln.qty, Unit: ln.unit, UnitPrice: ln.price, TaxAmount: perLineTax[i], RowTotal: ln.total,
 			}); e != nil {
 				return e
 			}
@@ -279,20 +323,31 @@ func (h *Handler) createOrderOnBehalf(w http.ResponseWriter, r *http.Request) {
 		}
 		subtotal, _ := money.Sum(totals...)
 
+		shipping := h.snapshotAddress(r.Context(), q, req.CustomerID, "shipping")
+		taxLines := make([]tax.OrderLine, len(lines))
+		for i, ln := range lines {
+			taxLines[i] = tax.OrderLine{ProductID: ln.pid, Amount: ln.rt}
+		}
+		perLineTax, taxTotal, taxErr := h.tax.ComputeOrderTax(r.Context(), a.orgID, countryOf(shipping), taxLines)
+		if taxErr != nil {
+			return taxErr
+		}
+		grand, _ := money.Sum(subtotal, taxTotal)
+
 		var e error
 		order, e = q.CreateOrder(r.Context(), gen.CreateOrderParams{
 			OrganizationID: a.orgID, WebsiteID: ws.ID, CustomerID: req.CustomerID,
 			PlacedBySalesRepID: a.userID, Currency: req.Currency, PoNumber: req.PoNumber,
 			RequestedDeliveryDate: datePtr(req.RequestedDeliveryDate),
 			BillingAddress:        h.snapshotAddress(r.Context(), q, req.CustomerID, "billing"),
-			ShippingAddress:       h.snapshotAddress(r.Context(), q, req.CustomerID, "shipping"),
-			Subtotal:              subtotal, TaxTotal: "0", ShippingTotal: "0", GrandTotal: subtotal,
+			ShippingAddress:       shipping,
+			Subtotal:              subtotal, TaxTotal: taxTotal, ShippingTotal: "0", GrandTotal: grand,
 		})
 		if e != nil {
 			return e
 		}
-		for _, ln := range lines {
-			if e := h.addOrderItemSnapshot(r.Context(), q, a.orgID, order.ID, ln.pid, ln.qty, ln.unit, ln.price, ln.rt); e != nil {
+		for i, ln := range lines {
+			if e := h.addOrderItemSnapshot(r.Context(), q, a.orgID, order.ID, ln.pid, ln.qty, ln.unit, ln.price, ln.rt, perLineTax[i]); e != nil {
 				return e
 			}
 		}
@@ -508,15 +563,18 @@ func (h *Handler) snapshotAddress(ctx context.Context, q *gen.Queries, customerI
 
 // addOrderItemSnapshot copies the product's current sku/name onto the order line
 // (orders are immutable records, not live joins).
-func (h *Handler) addOrderItemSnapshot(ctx context.Context, q *gen.Queries, orgID, orderID, productID int64, qty, unit, unitPrice, rowTotal string) error {
+func (h *Handler) addOrderItemSnapshot(ctx context.Context, q *gen.Queries, orgID, orderID, productID int64, qty, unit, unitPrice, rowTotal, taxAmount string) error {
 	p, err := q.GetProductByID(ctx, gen.GetProductByIDParams{OrganizationID: orgID, ID: productID})
 	sku, name := "", ""
 	if err == nil {
 		sku, name = p.Sku, p.Name
 	}
+	if taxAmount == "" {
+		taxAmount = "0"
+	}
 	_, err = q.AddOrderItem(ctx, gen.AddOrderItemParams{
 		OrderID: orderID, ProductID: productID, Sku: sku, Name: name,
-		Quantity: qty, Unit: unit, UnitPrice: unitPrice, TaxAmount: "0", RowTotal: rowTotal,
+		Quantity: qty, Unit: unit, UnitPrice: unitPrice, TaxAmount: taxAmount, RowTotal: rowTotal,
 	})
 	return err
 }

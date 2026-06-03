@@ -157,6 +157,8 @@ type Querier interface {
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
 	DeleteReportDefinition(ctx context.Context, arg DeleteReportDefinitionParams) error
 	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
+	DeleteShippingRate(ctx context.Context, arg DeleteShippingRateParams) error
+	DeleteTaxRate(ctx context.Context, arg DeleteTaxRateParams) error
 	// ===== Levels ==============================================================
 	EnsureInventoryLevel(ctx context.Context, arg EnsureInventoryLevelParams) error
 	// FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
@@ -246,6 +248,8 @@ type Querier interface {
 	// GetProductIDByPublicIDGlobal resolves a product id from its (globally unique)
 	// public_id without org context, for the unauthenticated storefront configurator.
 	GetProductIDByPublicIDGlobal(ctx context.Context, publicID uuid.UUID) (int64, error)
+	// GetProductTaxClasses returns the tax class for a set of products (order tax).
+	GetProductTaxClasses(ctx context.Context, arg GetProductTaxClassesParams) ([]GetProductTaxClassesRow, error)
 	// GetPublishedPage resolves a published page by website + locale + slug (the
 	// storefront read path).
 	GetPublishedPage(ctx context.Context, arg GetPublishedPageParams) (ContentPage, error)
@@ -263,6 +267,9 @@ type Querier interface {
 	GetReportDefinition(ctx context.Context, arg GetReportDefinitionParams) (ReportDefinition, error)
 	GetReportRunArtifact(ctx context.Context, arg GetReportRunArtifactParams) (GetReportRunArtifactRow, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
+	// GetShipmentWithOrg authorizes a shipment by org (via its order) and returns
+	// the destination address for label region resolution.
+	GetShipmentWithOrg(ctx context.Context, arg GetShipmentWithOrgParams) (GetShipmentWithOrgRow, error)
 	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetStage(ctx context.Context, id int64) (PipelineStage, error)
 	GetTradingPartner(ctx context.Context, arg GetTradingPartnerParams) (TradingPartner, error)
@@ -368,8 +375,14 @@ type Querier interface {
 	ListShipmentItemProducts(ctx context.Context, shipmentID int64) ([]ListShipmentItemProductsRow, error)
 	ListShipmentItems(ctx context.Context, shipmentID int64) ([]ShipmentItem, error)
 	ListShipmentsForOrder(ctx context.Context, orderID int64) ([]Shipment, error)
+	ListShippingRates(ctx context.Context, organizationID int64) ([]ShippingRate, error)
+	// ListShippingRatesByCountry feeds rate quotes for a destination.
+	ListShippingRatesByCountry(ctx context.Context, arg ListShippingRatesByCountryParams) ([]ShippingRate, error)
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
+	ListTaxRates(ctx context.Context, organizationID int64) ([]TaxRate, error)
+	// ListTaxRatesByCountry feeds the local VAT provider for a destination.
+	ListTaxRatesByCountry(ctx context.Context, arg ListTaxRatesByCountryParams) ([]ListTaxRatesByCountryRow, error)
 	ListTradingPartners(ctx context.Context, organizationID int64) ([]TradingPartner, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
 	ListWebsites(ctx context.Context, organizationID int64) ([]Website, error)
@@ -447,6 +460,7 @@ type Querier interface {
 	SetRFQStatus(ctx context.Context, arg SetRFQStatusParams) (Rfq, error)
 	SetReportScheduleLastRun(ctx context.Context, arg SetReportScheduleLastRunParams) error
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
+	SetShipmentTracking(ctx context.Context, arg SetShipmentTrackingParams) (Shipment, error)
 	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
 	// ShippedQtyForOrderItem returns the total already shipped for an order line,
 	// used to cap new shipment quantities (§7 AC).
@@ -496,7 +510,11 @@ type Querier interface {
 	UpsertProductConfig(ctx context.Context, arg UpsertProductConfigParams) (ProductConfig, error)
 	// ===== Renditions ==========================================================
 	UpsertRendition(ctx context.Context, arg UpsertRenditionParams) (MediaRendition, error)
+	// Shipping adapter (Pack 2 §4.3): table-rate config + shipment label/track.
+	UpsertShippingRate(ctx context.Context, arg UpsertShippingRateParams) (ShippingRate, error)
 	UpsertShoppingListItem(ctx context.Context, arg UpsertShoppingListItemParams) (ShoppingListItem, error)
+	// Tax/VAT adapter (Pack 2 §4.4): rate config + product tax-class lookup.
+	UpsertTaxRate(ctx context.Context, arg UpsertTaxRateParams) (TaxRate, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -248,7 +248,7 @@ INSERT INTO products (
   organization_id, sku, type, name, slug, description, status,
   attributes, unit, parent_id, attribute_family_id
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector
+RETURNING id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class
 `
 
 type CreateProductParams struct {
@@ -302,12 +302,13 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.ParentID,
 		&i.AttributeFamilyID,
 		&i.SearchVector,
+		&i.TaxClass,
 	)
 	return i, err
 }
 
 const filterActiveProductsByAttributes = `-- name: FilterActiveProductsByAttributes :many
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector FROM products
+SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class FROM products
 WHERE organization_id = $1
   AND status = 'active' AND deleted_at IS NULL
   AND attributes @> $2
@@ -357,6 +358,7 @@ func (q *Queries) FilterActiveProductsByAttributes(ctx context.Context, arg Filt
 			&i.ParentID,
 			&i.AttributeFamilyID,
 			&i.SearchVector,
+			&i.TaxClass,
 		); err != nil {
 			return nil, err
 		}
@@ -415,7 +417,7 @@ func (q *Queries) GetCategoryBySlug(ctx context.Context, arg GetCategoryBySlugPa
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector FROM products
+SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class FROM products
 WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL
 `
 
@@ -445,6 +447,7 @@ func (q *Queries) GetProductByID(ctx context.Context, arg GetProductByIDParams) 
 		&i.ParentID,
 		&i.AttributeFamilyID,
 		&i.SearchVector,
+		&i.TaxClass,
 	)
 	return i, err
 }
@@ -705,7 +708,7 @@ func (q *Queries) ListProductCategoryIDs(ctx context.Context, productID int64) (
 }
 
 const listProductsAdmin = `-- name: ListProductsAdmin :many
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector FROM products
+SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class FROM products
 WHERE organization_id = $1 AND deleted_at IS NULL
 ORDER BY name
 LIMIT $2 OFFSET $3
@@ -744,6 +747,7 @@ func (q *Queries) ListProductsAdmin(ctx context.Context, arg ListProductsAdminPa
 			&i.ParentID,
 			&i.AttributeFamilyID,
 			&i.SearchVector,
+			&i.TaxClass,
 		); err != nil {
 			return nil, err
 		}
@@ -889,7 +893,7 @@ func (q *Queries) SearchActiveProducts(ctx context.Context, arg SearchActiveProd
 }
 
 const searchProductsAdmin = `-- name: SearchProductsAdmin :many
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector FROM products
+SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class FROM products
 WHERE organization_id = $1 AND deleted_at IS NULL
   AND search_vector @@ websearch_to_tsquery('english', $2)
 ORDER BY ts_rank(search_vector, websearch_to_tsquery('english', $2)) DESC, name
@@ -937,6 +941,7 @@ func (q *Queries) SearchProductsAdmin(ctx context.Context, arg SearchProductsAdm
 			&i.ParentID,
 			&i.AttributeFamilyID,
 			&i.SearchVector,
+			&i.TaxClass,
 		); err != nil {
 			return nil, err
 		}
@@ -1060,7 +1065,7 @@ SET sku                 = $3,
     parent_id           = $11,
     attribute_family_id = $12
 WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL
-RETURNING id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector
+RETURNING id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class
 `
 
 type UpdateProductParams struct {
@@ -1112,6 +1117,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.ParentID,
 		&i.AttributeFamilyID,
 		&i.SearchVector,
+		&i.TaxClass,
 	)
 	return i, err
 }

@@ -25,6 +25,7 @@ const allItems: NavItem[] = [
   { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view' },
   { label: 'Configurator', icon: 'pi pi-sliders-h', routeName: 'configurator', permission: 'product.view' },
   { label: 'Pricing', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
+  { label: 'Tax & Shipping', icon: 'pi pi-percentage', routeName: 'tax-shipping', permission: 'tax.view' },
   { label: 'RFQs', icon: 'pi pi-inbox', routeName: 'rfqs', permission: 'rfq.view' },
   { label: 'Quotes', icon: 'pi pi-file-edit', routeName: 'quotes', permission: 'quote.view' },
   { label: 'Orders', icon: 'pi pi-shopping-cart', routeName: 'orders', permission: 'order.view' },

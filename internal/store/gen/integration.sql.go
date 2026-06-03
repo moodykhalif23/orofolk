@@ -214,7 +214,7 @@ func (q *Queries) GetEDIDocument(ctx context.Context, arg GetEDIDocumentParams) 
 const getProductBySKU = `-- name: GetProductBySKU :one
 
 
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector FROM products
+SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class FROM products
 WHERE organization_id = $1 AND sku = $2 AND deleted_at IS NULL
 `
 
@@ -246,6 +246,7 @@ func (q *Queries) GetProductBySKU(ctx context.Context, arg GetProductBySKUParams
 		&i.ParentID,
 		&i.AttributeFamilyID,
 		&i.SearchVector,
+		&i.TaxClass,
 	)
 	return i, err
 }

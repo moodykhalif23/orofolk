@@ -29,6 +29,8 @@ import (
 	"b2bcommerce/internal/modules/pricing"
 	"b2bcommerce/internal/modules/reporting"
 	"b2bcommerce/internal/modules/sales"
+	shippingmod "b2bcommerce/internal/modules/shipping"
+	taxmod "b2bcommerce/internal/modules/tax"
 	"b2bcommerce/internal/modules/tenancy"
 	"b2bcommerce/internal/modules/wfadmin"
 	"b2bcommerce/internal/payments/gateway"
@@ -165,6 +167,8 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	integration.New(st.Pool(), issuer, o.punchoutURL, o.ediSenderID, o.punchoutTTL).Routes(r, authMW)
 	field.New(st.Pool()).Routes(r, authMW)
 	cpq.New(st.Pool()).Routes(r, authMW)
+	taxmod.New(st.Pool()).Routes(r, authMW)
+	shippingmod.New(st.Pool()).Routes(r, authMW)
 
 	// Wrap the router so HTTP server metrics (request count, duration) flow to
 	// the configured OpenTelemetry MeterProvider. No-op when telemetry is off.

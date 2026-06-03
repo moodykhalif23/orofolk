@@ -200,6 +200,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/cpq/ConfiguratorView.vue'),
         meta: { permission: 'product.view' },
       },
+      {
+        path: 'tax-shipping',
+        name: 'tax-shipping',
+        component: () => import('@/views/settings/TaxShippingView.vue'),
+        meta: { permission: 'tax.view' },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

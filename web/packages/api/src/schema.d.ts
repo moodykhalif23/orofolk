@@ -2070,6 +2070,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/tax-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListTaxRates"];
+        put?: never;
+        post: operations["adminUpsertTaxRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tax-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteTaxRate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/tax/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCalculateTax"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipping-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListShippingRates"];
+        put?: never;
+        post: operations["adminUpsertShippingRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipping-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteShippingRate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/shipping/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontShippingRates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipments/{id}/label": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateShipmentLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/shipments/{id}/track": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminTrackShipment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3619,6 +3755,86 @@ export interface components {
             product_id: number;
             quantity?: string;
             selections?: number[];
+        };
+        TaxRate: {
+            /** Format: int64 */
+            id: number;
+            country: string;
+            tax_class: string;
+            rate: string;
+            name: string;
+        };
+        TaxRateInput: {
+            country: string;
+            tax_class?: string;
+            rate?: string;
+            name: string;
+        };
+        ListWrapperTaxRate: {
+            items?: components["schemas"]["TaxRate"][];
+        };
+        TaxCalcInput: {
+            country: string;
+            lines: {
+                /** Format: int64 */
+                product_id?: number;
+                amount?: string;
+            }[];
+        };
+        TaxCalcResult: {
+            country?: string;
+            tax_total?: string;
+            lines?: {
+                /** Format: int64 */
+                product_id?: number;
+                amount?: string;
+                tax_amount?: string;
+            }[];
+        };
+        ShippingRate: {
+            /** Format: int64 */
+            id: number;
+            country: string;
+            service: string;
+            carrier?: string;
+            amount: string;
+            free_over?: string | null;
+            is_active: boolean;
+        };
+        ShippingRateInput: {
+            country: string;
+            service: string;
+            carrier?: string;
+            amount?: string;
+            free_over?: string | null;
+            is_active?: boolean;
+        };
+        ListWrapperShippingRate: {
+            items?: components["schemas"]["ShippingRate"][];
+        };
+        ShippingQuoteInput: {
+            country: string;
+            subtotal?: string;
+        };
+        ShippingQuoteResult: {
+            country?: string;
+            quotes?: {
+                service?: string;
+                carrier?: string;
+                amount?: string;
+                free?: boolean;
+            }[];
+        };
+        ShipmentLabel: {
+            carrier?: string;
+            service?: string;
+            tracking_number?: string;
+            label_url?: string;
+        };
+        TrackingStatus: {
+            tracking_number?: string;
+            status?: string;
+            carrier?: string;
         };
     };
     responses: {
@@ -7512,6 +7728,230 @@ export interface operations {
                     "application/json": components["schemas"]["ConfigureResult"];
                 };
             };
+        };
+    };
+    adminListTaxRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperTaxRate"];
+                };
+            };
+        };
+    };
+    adminUpsertTaxRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxRateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRate"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteTaxRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminCalculateTax: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxCalcInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxCalcResult"];
+                };
+            };
+        };
+    };
+    adminListShippingRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperShippingRate"];
+                };
+            };
+        };
+    };
+    adminUpsertShippingRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingRateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingRate"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteShippingRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    storefrontShippingRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShippingQuoteInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShippingQuoteResult"];
+                };
+            };
+        };
+    };
+    adminCreateShipmentLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentLabel"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminTrackShipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackingStatus"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
 }

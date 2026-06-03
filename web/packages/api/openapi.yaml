@@ -1652,6 +1652,112 @@ components:
         quantity: { type: string }
         selections: { type: array, items: { type: integer, format: int64 } }
 
+    # ----- Tax / VAT (Pack 2 §4.4) -----
+    TaxRate:
+      type: object
+      required: [id, country, tax_class, rate, name]
+      properties:
+        id: { type: integer, format: int64 }
+        country: { type: string }
+        tax_class: { type: string }
+        rate: { type: string }
+        name: { type: string }
+    TaxRateInput:
+      type: object
+      required: [country, name]
+      properties:
+        country: { type: string }
+        tax_class: { type: string }
+        rate: { type: string }
+        name: { type: string }
+    ListWrapperTaxRate:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TaxRate' } }
+    TaxCalcInput:
+      type: object
+      required: [country, lines]
+      properties:
+        country: { type: string }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: integer, format: int64 }
+              amount: { type: string }
+    TaxCalcResult:
+      type: object
+      properties:
+        country: { type: string }
+        tax_total: { type: string }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: integer, format: int64 }
+              amount: { type: string }
+              tax_amount: { type: string }
+    # ----- Shipping (Pack 2 §4.3) -----
+    ShippingRate:
+      type: object
+      required: [id, country, service, amount, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        country: { type: string }
+        service: { type: string }
+        carrier: { type: string }
+        amount: { type: string }
+        free_over: { type: string, nullable: true }
+        is_active: { type: boolean }
+    ShippingRateInput:
+      type: object
+      required: [country, service]
+      properties:
+        country: { type: string }
+        service: { type: string }
+        carrier: { type: string }
+        amount: { type: string }
+        free_over: { type: string, nullable: true }
+        is_active: { type: boolean }
+    ListWrapperShippingRate:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ShippingRate' } }
+    ShippingQuoteInput:
+      type: object
+      required: [country]
+      properties:
+        country: { type: string }
+        subtotal: { type: string }
+    ShippingQuoteResult:
+      type: object
+      properties:
+        country: { type: string }
+        quotes:
+          type: array
+          items:
+            type: object
+            properties:
+              service: { type: string }
+              carrier: { type: string }
+              amount: { type: string }
+              free: { type: boolean }
+    ShipmentLabel:
+      type: object
+      properties:
+        carrier: { type: string }
+        service: { type: string }
+        tracking_number: { type: string }
+        label_url: { type: string }
+    TrackingStatus:
+      type: object
+      properties:
+        tracking_number: { type: string }
+        status: { type: string }
+        carrier: { type: string }
+
   responses:
     ErrorResponse:
       description: Error
@@ -3368,3 +3474,83 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigureInput' } } } }
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ConfigureResult' } } } }
+  /admin/tax-rates:
+    get:
+      tags: [Tax]
+      operationId: adminListTaxRates
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperTaxRate' } } } }
+    post:
+      tags: [Tax]
+      operationId: adminUpsertTaxRate
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TaxRateInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/TaxRate' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/tax-rates/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    delete:
+      tags: [Tax]
+      operationId: adminDeleteTaxRate
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /admin/tax/calculate:
+    post:
+      tags: [Tax]
+      operationId: adminCalculateTax
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TaxCalcInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TaxCalcResult' } } } }
+  /admin/shipping-rates:
+    get:
+      tags: [Shipping]
+      operationId: adminListShippingRates
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperShippingRate' } } } }
+    post:
+      tags: [Shipping]
+      operationId: adminUpsertShippingRate
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ShippingRateInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ShippingRate' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/shipping-rates/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    delete:
+      tags: [Shipping]
+      operationId: adminDeleteShippingRate
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+  /storefront/shipping/rates:
+    post:
+      tags: [Shipping]
+      operationId: storefrontShippingRates
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ShippingQuoteInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShippingQuoteResult' } } } }
+  /admin/shipments/{id}/label:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Shipping]
+      operationId: adminCreateShipmentLabel
+      security: [{ adminAuth: [] }]
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ShipmentLabel' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/shipments/{id}/track:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Shipping]
+      operationId: adminTrackShipment
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TrackingStatus' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
