@@ -1808,6 +1808,35 @@ components:
         synced: { type: integer }
         errors: { type: integer }
 
+    # ----- SSO / identity providers (PRD §15) -----
+    IdentityProvider:
+      type: object
+      required: [id, type, name, audience, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        type: { type: string, enum: [oidc, saml] }
+        name: { type: string }
+        audience: { type: string, enum: [admin, storefront] }
+        customer_id: { type: integer, format: int64, nullable: true }
+        is_active: { type: boolean }
+        has_secret: { type: boolean }
+        config: { type: object, additionalProperties: true }
+        created_at: { type: string }
+    IdentityProviderInput:
+      type: object
+      required: [name, audience]
+      properties:
+        type: { type: string, enum: [oidc, saml] }
+        name: { type: string }
+        audience: { type: string, enum: [admin, storefront] }
+        customer_id: { type: integer, format: int64, nullable: true }
+        config: { type: object, additionalProperties: true }
+        is_active: { type: boolean }
+    ListWrapperIdentityProvider:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/IdentityProvider' } }
+
   responses:
     ErrorResponse:
       description: Error
@@ -3652,3 +3681,53 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperSyncLog' } } } }
+  /admin/identity-providers:
+    get:
+      tags: [SSO]
+      operationId: adminListIdentityProviders
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperIdentityProvider' } } } }
+    post:
+      tags: [SSO]
+      operationId: adminCreateIdentityProvider
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/IdentityProviderInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/IdentityProvider' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '501': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/identity-providers/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [SSO]
+      operationId: adminGetIdentityProvider
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/IdentityProvider' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [SSO]
+      operationId: adminUpdateIdentityProvider
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/IdentityProviderInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/IdentityProvider' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /auth/sso/{id}/login:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } }, { name: redirect, in: query, required: false, schema: { type: string } } ]
+    get:
+      tags: [SSO]
+      operationId: ssoLogin
+      security: []
+      responses:
+        '302': { description: Redirect to the identity provider }
+  /auth/sso/{id}/callback:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [SSO]
+      operationId: ssoCallback
+      security: []
+      responses:
+        '200': { description: Token issued (format=json) }
+        '302': { description: Redirect to the app with a token }
