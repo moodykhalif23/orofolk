@@ -2077,3 +2077,133 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdjustmentInput' } } } }
       responses:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/InventoryLevel' } } } }
+
+  # ----- CRM (Pack 2 §1) -----
+  /admin/leads:
+    get:
+      tags: [CRM]
+      operationId: adminListLeads
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperLead' } } } }
+    post:
+      tags: [CRM]
+      operationId: adminCreateLead
+      security: [{ adminAuth: [] }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/LeadInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Lead' } } } }
+  /admin/leads/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CRM]
+      operationId: adminGetLead
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Lead' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/leads/{id}/convert:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [CRM]
+      operationId: adminConvertLead
+      summary: Convert a lead to customer + contact + opportunity (idempotent)
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Converted, content: { application/json: { schema: { $ref: '#/components/schemas/LeadConvertResult' } } } }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/pipelines:
+    get:
+      tags: [CRM]
+      operationId: adminListPipelines
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperPipeline' } } } }
+  /admin/pipelines/{id}/board:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CRM]
+      operationId: adminPipelineBoard
+      summary: Per-stage open count + total + probability-weighted forecast
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperPipelineBoard' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/opportunities:
+    get:
+      tags: [CRM]
+      operationId: adminListOpportunities
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperOpportunity' } } } }
+    post:
+      tags: [CRM]
+      operationId: adminCreateOpportunity
+      security: [{ adminAuth: [] }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/OpportunityInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/opportunities/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CRM]
+      operationId: adminGetOpportunity
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/opportunities/{id}/stage:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [CRM]
+      operationId: adminMoveOpportunityStage
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/OpportunityStagePatch' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Opportunity' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/activities:
+    post:
+      tags: [CRM]
+      operationId: adminCreateActivity
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ActivityInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Activity' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/customers/{id}/contacts:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CRM]
+      operationId: adminListCustomerContacts
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperContact' } } } }
+    post:
+      tags: [CRM]
+      operationId: adminCreateCustomerContact
+      security: [{ adminAuth: [] }]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/ContactInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Contact' } } } }
+  /admin/customers/{id}/timeline:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [CRM]
+      operationId: adminCustomerTimeline
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperActivity' } } } }

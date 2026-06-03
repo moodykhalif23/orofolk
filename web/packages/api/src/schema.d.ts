@@ -1101,6 +1101,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListLeads"];
+        put?: never;
+        post: operations["adminCreateLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetLead"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/leads/{id}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Convert a lead to customer + contact + opportunity (idempotent) */
+        post: operations["adminConvertLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pipelines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListPipelines"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/pipelines/{id}/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Per-stage open count + total + probability-weighted forecast */
+        get: operations["adminPipelineBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/opportunities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListOpportunities"];
+        put?: never;
+        post: operations["adminCreateOpportunity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/opportunities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetOpportunity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/opportunities/{id}/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["adminMoveOpportunityStage"];
+        trace?: never;
+    };
+    "/admin/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListCustomerContacts"];
+        put?: never;
+        post: operations["adminCreateCustomerContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminCustomerTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1885,6 +2077,204 @@ export interface components {
         };
         ListWrapperInventoryMovement: {
             items?: components["schemas"]["InventoryMovement"][];
+        };
+        Lead: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            organization_id: number;
+            /** @enum {string} */
+            source: "manual" | "storefront_form" | "rfq" | "import" | "referral";
+            company_name?: string | null;
+            contact_name?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            notes?: string | null;
+            /** @enum {string} */
+            status: "new" | "working" | "qualified" | "disqualified" | "converted";
+            /** Format: int64 */
+            owner_user_id?: number | null;
+            /** Format: int64 */
+            converted_customer_id?: number | null;
+        };
+        LeadInput: {
+            /** @enum {string} */
+            source?: "manual" | "storefront_form" | "rfq" | "import" | "referral";
+            company_name?: string | null;
+            contact_name?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            notes?: string | null;
+        };
+        LeadConvertResult: {
+            /** Format: int64 */
+            lead_id: number;
+            /** Format: int64 */
+            customer_id: number;
+            /** Format: int64 */
+            contact_id: number;
+            /** Format: int64 */
+            opportunity_id: number;
+        };
+        ListWrapperLead: {
+            items?: components["schemas"]["Lead"][];
+        };
+        Contact: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            organization_id: number;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_user_id?: number | null;
+            full_name: string;
+            email?: string | null;
+            phone?: string | null;
+            job_title?: string | null;
+        };
+        ContactInput: {
+            full_name: string;
+            email?: string | null;
+            phone?: string | null;
+            job_title?: string | null;
+        };
+        ListWrapperContact: {
+            items?: components["schemas"]["Contact"][];
+        };
+        PipelineStage: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            pipeline_id?: number;
+            code: string;
+            label: string;
+            probability: string;
+            is_won: boolean;
+            is_lost: boolean;
+            sort_order: number;
+        };
+        Pipeline: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            is_default: boolean;
+            stages: components["schemas"]["PipelineStage"][];
+        };
+        ListWrapperPipeline: {
+            items?: components["schemas"]["Pipeline"][];
+        };
+        PipelineBoardStage: {
+            /** Format: int64 */
+            id: number;
+            code: string;
+            label: string;
+            probability: string;
+            is_won?: boolean;
+            is_lost?: boolean;
+            sort_order?: number;
+            /** Format: int64 */
+            open_count: number;
+            total_amount: string;
+            weighted_amount: string;
+        };
+        ListWrapperPipelineBoard: {
+            items?: components["schemas"]["PipelineBoardStage"][];
+        };
+        Opportunity: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            organization_id: number;
+            /** Format: int64 */
+            customer_id: number;
+            /** Format: int64 */
+            contact_id?: number | null;
+            /** Format: int64 */
+            pipeline_id: number;
+            /** Format: int64 */
+            stage_id: number;
+            name: string;
+            amount: string;
+            currency: string;
+            expected_close?: string | null;
+            /** Format: int64 */
+            owner_user_id?: number | null;
+            /** Format: date-time */
+            closed_at?: string | null;
+        };
+        OpportunityInput: {
+            /** Format: int64 */
+            customer_id: number;
+            /** Format: int64 */
+            contact_id?: number | null;
+            /** Format: int64 */
+            stage_id?: number | null;
+            name: string;
+            amount?: string;
+            currency?: string;
+            /** @description YYYY-MM-DD */
+            expected_close?: string | null;
+        };
+        OpportunityStagePatch: {
+            /** Format: int64 */
+            stage_id: number;
+        };
+        ListWrapperOpportunity: {
+            items?: components["schemas"]["Opportunity"][];
+        };
+        Activity: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            organization_id: number;
+            /** @enum {string} */
+            type: "call" | "email" | "meeting" | "task" | "note";
+            subject: string;
+            body?: string | null;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            contact_id?: number | null;
+            /** Format: int64 */
+            opportunity_id?: number | null;
+            /** Format: int64 */
+            lead_id?: number | null;
+            /** Format: int64 */
+            owner_user_id?: number | null;
+            /** @enum {string} */
+            status: "open" | "done" | "cancelled";
+            /** Format: date-time */
+            due_at?: string | null;
+            /** Format: date-time */
+            occurred_at: string;
+        };
+        ActivityInput: {
+            /** @enum {string} */
+            type: "call" | "email" | "meeting" | "task" | "note";
+            subject: string;
+            body?: string | null;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            contact_id?: number | null;
+            /** Format: int64 */
+            opportunity_id?: number | null;
+            /** Format: int64 */
+            lead_id?: number | null;
+            /** @enum {string} */
+            status?: "open" | "done" | "cancelled";
+            /** Format: date-time */
+            due_at?: string | null;
+            /** Format: date-time */
+            occurred_at?: string | null;
+        };
+        ListWrapperActivity: {
+            items?: components["schemas"]["Activity"][];
         };
     };
     responses: {
@@ -4018,6 +4408,331 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InventoryLevel"];
+                };
+            };
+        };
+    };
+    adminListLeads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperLead"];
+                };
+            };
+        };
+    };
+    adminCreateLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["LeadInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lead"];
+                };
+            };
+        };
+    };
+    adminGetLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lead"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminConvertLead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Converted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadConvertResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListPipelines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPipeline"];
+                };
+            };
+        };
+    };
+    adminPipelineBoard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPipelineBoard"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListOpportunities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperOpportunity"];
+                };
+            };
+        };
+    };
+    adminCreateOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OpportunityInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Opportunity"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetOpportunity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Opportunity"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminMoveOpportunityStage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityStagePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Opportunity"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListCustomerContacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperContact"];
+                };
+            };
+        };
+    };
+    adminCreateCustomerContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ContactInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contact"];
+                };
+            };
+        };
+    };
+    adminCustomerTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperActivity"];
                 };
             };
         };
