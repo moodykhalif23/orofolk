@@ -59,15 +59,7 @@ RETURNING *;
 -- name: ListMenuItems :many
 SELECT * FROM menu_items WHERE menu_id = $1 ORDER BY sort_order, id;
 
--- ===== Media ===============================================================
-
--- name: CreateMediaAsset :one
-INSERT INTO media_assets (organization_id, url, mime_type, width, height, alt, folder)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING *;
-
--- name: ListMediaAssets :many
-SELECT * FROM media_assets WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
+-- Media queries moved to dam.sql (Pack 3 §2 — Digital Asset Management).
 
 -- ===== Redirects ===========================================================
 

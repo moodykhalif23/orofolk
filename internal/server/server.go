@@ -11,11 +11,14 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"b2bcommerce/internal/auth"
+	"b2bcommerce/internal/blob"
+	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/inventory"
 	authmod "b2bcommerce/internal/modules/auth"
 	"b2bcommerce/internal/modules/cart"
 	"b2bcommerce/internal/modules/catalog"
 	"b2bcommerce/internal/modules/cms"
+	"b2bcommerce/internal/modules/dam"
 	"b2bcommerce/internal/modules/crm"
 	"b2bcommerce/internal/modules/customers"
 	"b2bcommerce/internal/modules/health"
@@ -46,6 +49,9 @@ type options struct {
 	gateway      gateway.Gateway
 	logger       *slog.Logger
 	maxBodyBytes int64
+	blobStore    blob.Store
+	imageProc    imageproc.Processor
+	rendition    dam.RenditionEnqueuer
 }
 
 // Option configures optional server dependencies.
@@ -60,6 +66,17 @@ func WithLogger(l *slog.Logger) Option {
 // WithMaxBodyBytes caps accepted request-body size (bytes). Defaults to 1 MiB.
 func WithMaxBodyBytes(n int64) Option {
 	return func(o *options) { o.maxBodyBytes = n }
+}
+
+// WithMedia wires the DAM module's blob store and image processor. Without a
+// blob store the DAM routes are not mounted.
+func WithMedia(store blob.Store, proc imageproc.Processor) Option {
+	return func(o *options) { o.blobStore = store; o.imageProc = proc }
+}
+
+// WithRendition wires the async rendition enqueuer used after media upload.
+func WithRendition(e dam.RenditionEnqueuer) Option {
+	return func(o *options) { o.rendition = e }
 }
 
 func WithRecompute(e pricing.Enqueuer) Option {
@@ -128,6 +145,13 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	cms.New(st.Pool(), issuer).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)
 	tenancy.New(st.Pool()).Routes(r, authMW)
+	if o.blobStore != nil {
+		proc := o.imageProc
+		if proc == nil {
+			proc = imageproc.GoProcessor{}
+		}
+		dam.New(st.Pool(), o.blobStore, proc, issuer, o.rendition).Routes(r, authMW)
+	}
 
 	// Wrap the router so HTTP server metrics (request count, duration) flow to
 	// the configured OpenTelemetry MeterProvider. No-op when telemetry is off.

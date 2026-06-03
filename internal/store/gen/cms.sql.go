@@ -49,49 +49,6 @@ func (q *Queries) AddMenuItem(ctx context.Context, arg AddMenuItemParams) (MenuI
 	return i, err
 }
 
-const createMediaAsset = `-- name: CreateMediaAsset :one
-
-INSERT INTO media_assets (organization_id, url, mime_type, width, height, alt, folder)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, organization_id, url, mime_type, width, height, alt, folder, created_at
-`
-
-type CreateMediaAssetParams struct {
-	OrganizationID int64   `json:"organization_id"`
-	Url            string  `json:"url"`
-	MimeType       *string `json:"mime_type"`
-	Width          *int32  `json:"width"`
-	Height         *int32  `json:"height"`
-	Alt            *string `json:"alt"`
-	Folder         *string `json:"folder"`
-}
-
-// ===== Media ===============================================================
-func (q *Queries) CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error) {
-	row := q.db.QueryRow(ctx, createMediaAsset,
-		arg.OrganizationID,
-		arg.Url,
-		arg.MimeType,
-		arg.Width,
-		arg.Height,
-		arg.Alt,
-		arg.Folder,
-	)
-	var i MediaAsset
-	err := row.Scan(
-		&i.ID,
-		&i.OrganizationID,
-		&i.Url,
-		&i.MimeType,
-		&i.Width,
-		&i.Height,
-		&i.Alt,
-		&i.Folder,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const createMenu = `-- name: CreateMenu :one
 
 INSERT INTO menus (website_id, code, name) VALUES ($1, $2, $3)
@@ -289,6 +246,7 @@ func (q *Queries) GetPublishedPage(ctx context.Context, arg GetPublishedPagePara
 
 const getRedirect = `-- name: GetRedirect :one
 
+
 SELECT id, website_id, from_path, to_path, status_code FROM redirects WHERE website_id = $1 AND from_path = $2
 `
 
@@ -297,6 +255,7 @@ type GetRedirectParams struct {
 	FromPath  string `json:"from_path"`
 }
 
+// Media queries moved to dam.sql (Pack 3 §2 — Digital Asset Management).
 // ===== Redirects ===========================================================
 func (q *Queries) GetRedirect(ctx context.Context, arg GetRedirectParams) (Redirect, error) {
 	row := q.db.QueryRow(ctx, getRedirect, arg.WebsiteID, arg.FromPath)
@@ -309,46 +268,6 @@ func (q *Queries) GetRedirect(ctx context.Context, arg GetRedirectParams) (Redir
 		&i.StatusCode,
 	)
 	return i, err
-}
-
-const listMediaAssets = `-- name: ListMediaAssets :many
-SELECT id, organization_id, url, mime_type, width, height, alt, folder, created_at FROM media_assets WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
-`
-
-type ListMediaAssetsParams struct {
-	OrganizationID int64 `json:"organization_id"`
-	Limit          int32 `json:"limit"`
-	Offset         int32 `json:"offset"`
-}
-
-func (q *Queries) ListMediaAssets(ctx context.Context, arg ListMediaAssetsParams) ([]MediaAsset, error) {
-	rows, err := q.db.Query(ctx, listMediaAssets, arg.OrganizationID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []MediaAsset
-	for rows.Next() {
-		var i MediaAsset
-		if err := rows.Scan(
-			&i.ID,
-			&i.OrganizationID,
-			&i.Url,
-			&i.MimeType,
-			&i.Width,
-			&i.Height,
-			&i.Alt,
-			&i.Folder,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listMenuItems = `-- name: ListMenuItems :many

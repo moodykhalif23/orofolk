@@ -46,8 +46,6 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("cms.manage")).Post("/admin/pages/{id}/publish", h.publishPage)
 		ar.With(mw.RequirePermission("cms.manage")).Post("/admin/pages/{id}/archive", h.archivePage)
 
-		ar.With(mw.RequirePermission("cms.view")).Get("/admin/media", h.listMedia)
-		ar.With(mw.RequirePermission("cms.manage")).Post("/admin/media", h.createMedia)
 		ar.With(mw.RequirePermission("cms.manage")).Post("/admin/menus", h.createMenu)
 		ar.With(mw.RequirePermission("cms.manage")).Post("/admin/menus/{id}/items", h.addMenuItem)
 	})
@@ -249,53 +247,8 @@ func (h *Handler) setStatus(w http.ResponseWriter, r *http.Request, status strin
 	response.JSON(w, http.StatusOK, pageJSON(p))
 }
 
-// ---- admin: media + menus -------------------------------------------------
-
-func (h *Handler) listMedia(w http.ResponseWriter, r *http.Request) {
-	org, ok := orgID(r)
-	if !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
-		return
-	}
-	rows, err := h.q.ListMediaAssets(r.Context(), gen.ListMediaAssetsParams{OrganizationID: org, Limit: 200, Offset: 0})
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not list media")
-		return
-	}
-	if rows == nil {
-		rows = []gen.MediaAsset{}
-	}
-	response.JSON(w, http.StatusOK, map[string]any{"items": rows})
-}
-
-func (h *Handler) createMedia(w http.ResponseWriter, r *http.Request) {
-	org, ok := orgID(r)
-	if !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
-		return
-	}
-	var req struct {
-		URL      string  `json:"url"`
-		MimeType *string `json:"mime_type"`
-		Width    *int32  `json:"width"`
-		Height   *int32  `json:"height"`
-		Alt      *string `json:"alt"`
-		Folder   *string `json:"folder"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.URL == "" {
-		response.Fail(w, http.StatusBadRequest, "bad_request", "url is required")
-		return
-	}
-	a, err := h.q.CreateMediaAsset(r.Context(), gen.CreateMediaAssetParams{
-		OrganizationID: org, Url: req.URL, MimeType: req.MimeType,
-		Width: req.Width, Height: req.Height, Alt: req.Alt, Folder: req.Folder,
-	})
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not save media")
-		return
-	}
-	response.JSON(w, http.StatusCreated, a)
-}
+// ---- admin: menus ---------------------------------------------------------
+// (Media management moved to the DAM module — internal/modules/dam.)
 
 func (h *Handler) createMenu(w http.ResponseWriter, r *http.Request) {
 	org, ok := orgID(r)

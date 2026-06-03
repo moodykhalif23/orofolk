@@ -287,6 +287,27 @@ type MediaAsset struct {
 	Alt            *string   `json:"alt"`
 	Folder         *string   `json:"folder"`
 	CreatedAt      time.Time `json:"created_at"`
+	PublicID       uuid.UUID `json:"public_id"`
+	Checksum       *string   `json:"checksum"`
+	SizeBytes      *int64    `json:"size_bytes"`
+	Status         string    `json:"status"`
+}
+
+type MediaRendition struct {
+	ID           int64     `json:"id"`
+	MediaAssetID int64     `json:"media_asset_id"`
+	Preset       string    `json:"preset"`
+	Url          string    `json:"url"`
+	Width        *int32    `json:"width"`
+	Height       *int32    `json:"height"`
+	Format       *string   `json:"format"`
+	SizeBytes    *int64    `json:"size_bytes"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type MediaTag struct {
+	MediaAssetID int64  `json:"media_asset_id"`
+	Tag          string `json:"tag"`
 }
 
 type Menu struct {
@@ -628,6 +649,18 @@ type ShoppingListItem struct {
 	ProductID      int64  `json:"product_id"`
 	Quantity       string `json:"quantity"`
 	Unit           string `json:"unit"`
+}
+
+type TransformationPreset struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Name           string    `json:"name"`
+	Width          *int32    `json:"width"`
+	Height         *int32    `json:"height"`
+	Fit            string    `json:"fit"`
+	Format         string    `json:"format"`
+	Quality        int32     `json:"quality"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type User struct {

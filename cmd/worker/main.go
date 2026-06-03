@@ -7,9 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
 	"b2bcommerce/internal/email"
+	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/logging"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue"
@@ -64,7 +66,13 @@ func main() {
 		logger.Warn("email: SMTP_HOST unset, using log transport")
 	}
 
-	client, err := queue.NewWorkerClient(pool, renderer, sender)
+	mediaStore, err := blob.NewFSStore(cfg.MediaRoot)
+	if err != nil {
+		logger.Error("media store init failed", "err", err)
+		os.Exit(1)
+	}
+
+	client, err := queue.NewWorkerClient(pool, renderer, sender, mediaStore, imageproc.GoProcessor{})
 	if err != nil {
 		logger.Error("queue init failed", "err", err)
 		os.Exit(1)

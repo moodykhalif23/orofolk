@@ -11,7 +11,9 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"b2bcommerce/internal/automation"
+	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/email"
+	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
 )
@@ -22,7 +24,7 @@ import (
 // It also wires the automation engine: registered actions (e.g. expire_quotes)
 // run via run_automation_action, and an hourly periodic job emits
 // schedule.hourly into the dispatcher (driving quote-expiry, overdue sweeps).
-func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender, store blob.Store, proc imageproc.Processor) (*river.Client[pgx.Tx], error) {
 	// Automation: a dedicated insert-only enqueuer lets the dispatcher schedule
 	// actions, and email-capable actions reuse the same enqueuer.
 	enq, err := NewEnqueuer(pool)
@@ -42,6 +44,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.ScheduledEmitWorker{Dispatcher: dispatcher})
 	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher})
 	river.AddWorker(workers, &jobs.RefreshReportingWorker{Pool: pool})
+	river.AddWorker(workers, &jobs.GenerateRenditionWorker{Pool: pool, Store: store, Proc: proc})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -104,6 +107,12 @@ func (e *Enqueuer) EnqueueRecompute(ctx context.Context, customerID int64, websi
 // EnqueueInvoicePDF schedules PDF generation for an issued invoice.
 func (e *Enqueuer) EnqueueInvoicePDF(ctx context.Context, invoiceID int64) error {
 	_, err := e.ic.Insert(ctx, jobs.GenerateInvoicePDFArgs{InvoiceID: invoiceID}, nil)
+	return err
+}
+
+// EnqueueRendition schedules derivation of one preset rendition for an asset.
+func (e *Enqueuer) EnqueueRendition(ctx context.Context, mediaAssetID int64, preset string) error {
+	_, err := e.ic.Insert(ctx, jobs.GenerateRenditionArgs{MediaAssetID: mediaAssetID, Preset: preset}, nil)
 	return err
 }
 

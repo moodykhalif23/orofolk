@@ -35,6 +35,10 @@ type Config struct {
 	// process; DBMaxConnIdleTime recycles idle connections.
 	DBMaxConns        int32
 	DBMaxConnIdleTime time.Duration
+
+	// MediaRoot is the filesystem directory for the DAM blob store. In a
+	// multi-node deploy this must be a shared volume (or swap in object storage).
+	MediaRoot string
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -57,6 +61,7 @@ func Load() (Config, error) {
 		PaymentsGateway: getenv("PAYMENTS_GATEWAY", "mock"),
 
 		DBMaxConns: int32(getenvInt("DB_MAX_CONNS", 20)),
+		MediaRoot:  getenv("MEDIA_ROOT", "/data/media"),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))

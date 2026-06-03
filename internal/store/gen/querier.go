@@ -15,6 +15,8 @@ type Querier interface {
 	// ===== Movements ===========================================================
 	AddInventoryMovement(ctx context.Context, arg AddInventoryMovementParams) (InventoryMovement, error)
 	AddInvoiceItem(ctx context.Context, arg AddInvoiceItemParams) (InvoiceItem, error)
+	// ===== Tags ================================================================
+	AddMediaTag(ctx context.Context, arg AddMediaTagParams) error
 	AddMenuItem(ctx context.Context, arg AddMenuItemParams) (MenuItem, error)
 	AddOpportunityStageHistory(ctx context.Context, arg AddOpportunityStageHistoryParams) error
 	AddOrderItem(ctx context.Context, arg AddOrderItemParams) (OrderItem, error)
@@ -35,8 +37,10 @@ type Querier interface {
 	CountActiveProducts(ctx context.Context, organizationID int64) (int64, error)
 	CountAutomationExecutions(ctx context.Context, ruleID int64) (int64, error)
 	CountCustomers(ctx context.Context, organizationID int64) (int64, error)
+	CountPresets(ctx context.Context, organizationID int64) (int64, error)
 	CountProductsAdmin(ctx context.Context, organizationID int64) (int64, error)
 	CountProductsFaceted(ctx context.Context, arg CountProductsFacetedParams) (int64, error)
+	CountRenditions(ctx context.Context, mediaAssetID int64) (int64, error)
 	CountSearchProductsAdmin(ctx context.Context, arg CountSearchProductsAdminParams) (int64, error)
 	CountTransitionLog(ctx context.Context, instanceID int64) (int64, error)
 	// ===== Activities ==========================================================
@@ -61,7 +65,8 @@ type Querier interface {
 	// CRM queries — Pack 2 §1. Admin/sales-rep facing; everything org-scoped.
 	// ===== Leads ===============================================================
 	CreateLead(ctx context.Context, arg CreateLeadParams) (Lead, error)
-	// ===== Media ===============================================================
+	// Digital Asset Management (Pack 3 §2): media assets, tags, presets, renditions.
+	// ===== Assets ==============================================================
 	CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error)
 	// ===== Menus ===============================================================
 	CreateMenu(ctx context.Context, arg CreateMenuParams) (Menu, error)
@@ -74,6 +79,7 @@ type Querier interface {
 	CreatePage(ctx context.Context, arg CreatePageParams) (ContentPage, error)
 	// ===== Payments ============================================================
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
+	CreatePreset(ctx context.Context, arg CreatePresetParams) (TransformationPreset, error)
 	// Pricing engine queries — Implementation Pack 1 §4 + §12.1.
 	// NUMERIC params arrive as strings (sqlc money override), so quantity
 	// comparisons cast explicitly with ::numeric.
@@ -124,6 +130,7 @@ type Querier interface {
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
+	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
 	// ===== Levels ==============================================================
 	EnsureInventoryLevel(ctx context.Context, arg EnsureInventoryLevelParams) error
@@ -176,6 +183,10 @@ type Querier interface {
 	// the invoice, its order context, and the customer/organization names.
 	GetInvoiceForRender(ctx context.Context, id int64) (GetInvoiceForRenderRow, error)
 	GetLead(ctx context.Context, arg GetLeadParams) (Lead, error)
+	GetMediaByChecksum(ctx context.Context, arg GetMediaByChecksumParams) (MediaAsset, error)
+	GetMediaByID(ctx context.Context, arg GetMediaByIDParams) (MediaAsset, error)
+	GetMediaByIDInternal(ctx context.Context, id int64) (MediaAsset, error)
+	GetMediaByPublicID(ctx context.Context, publicID uuid.UUID) (MediaAsset, error)
 	GetMenuByCode(ctx context.Context, arg GetMenuByCodeParams) (Menu, error)
 	GetOpportunity(ctx context.Context, arg GetOpportunityParams) (Opportunity, error)
 	GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Order, error)
@@ -186,6 +197,7 @@ type Querier interface {
 	GetPageAdmin(ctx context.Context, arg GetPageAdminParams) (ContentPage, error)
 	GetPayment(ctx context.Context, id int64) (Payment, error)
 	GetPipeline(ctx context.Context, arg GetPipelineParams) (Pipeline, error)
+	GetPreset(ctx context.Context, arg GetPresetParams) (TransformationPreset, error)
 	GetPriceList(ctx context.Context, arg GetPriceListParams) (PriceList, error)
 	GetProductByID(ctx context.Context, arg GetProductByIDParams) (Product, error)
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
@@ -197,8 +209,10 @@ type Querier interface {
 	GetQuoteByPublicID(ctx context.Context, publicID uuid.UUID) (Quote, error)
 	GetRFQByID(ctx context.Context, arg GetRFQByIDParams) (Rfq, error)
 	GetRFQByPublicID(ctx context.Context, arg GetRFQByPublicIDParams) (Rfq, error)
+	// Media queries moved to dam.sql (Pack 3 §2 — Digital Asset Management).
 	// ===== Redirects ===========================================================
 	GetRedirect(ctx context.Context, arg GetRedirectParams) (Redirect, error)
+	GetRendition(ctx context.Context, arg GetRenditionParams) (MediaRendition, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
 	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetStage(ctx context.Context, id int64) (PipelineStage, error)
@@ -254,7 +268,8 @@ type Querier interface {
 	ListInvoicesForCustomer(ctx context.Context, customerID int64) ([]Invoice, error)
 	ListInvoicesForOrder(ctx context.Context, orderID int64) ([]Invoice, error)
 	ListLeads(ctx context.Context, arg ListLeadsParams) ([]Lead, error)
-	ListMediaAssets(ctx context.Context, arg ListMediaAssetsParams) ([]MediaAsset, error)
+	ListMedia(ctx context.Context, arg ListMediaParams) ([]MediaAsset, error)
+	ListMediaTags(ctx context.Context, mediaAssetID int64) ([]string, error)
 	ListMenuItems(ctx context.Context, menuID int64) ([]MenuItem, error)
 	ListMenusForWebsite(ctx context.Context, websiteID int64) ([]Menu, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
@@ -266,6 +281,8 @@ type Querier interface {
 	ListPagesAdmin(ctx context.Context, organizationID int64) ([]ContentPage, error)
 	ListPaymentsForInvoice(ctx context.Context, invoiceID *int64) ([]Payment, error)
 	ListPipelineStages(ctx context.Context, pipelineID int64) ([]PipelineStage, error)
+	// ===== Presets =============================================================
+	ListPresets(ctx context.Context, organizationID int64) ([]TransformationPreset, error)
 	ListPriceLists(ctx context.Context, organizationID int64) ([]PriceList, error)
 	ListPricesForList(ctx context.Context, priceListID int64) ([]Price, error)
 	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)
@@ -278,6 +295,7 @@ type Querier interface {
 	ListRFQsAdmin(ctx context.Context, arg ListRFQsAdminParams) ([]Rfq, error)
 	ListRFQsForCustomer(ctx context.Context, customerID int64) ([]Rfq, error)
 	ListRedirects(ctx context.Context, websiteID int64) ([]Redirect, error)
+	ListRenditions(ctx context.Context, mediaAssetID int64) ([]MediaRendition, error)
 	// ListShipmentItemProducts resolves a shipment's lines to product + quantity
 	// (for converting reservations to fulfilment on ship).
 	ListShipmentItemProducts(ctx context.Context, shipmentID int64) ([]ListShipmentItemProductsRow, error)
@@ -341,6 +359,7 @@ type Querier interface {
 	SetInvoicePDFURL(ctx context.Context, arg SetInvoicePDFURLParams) error
 	SetInvoiceStatus(ctx context.Context, arg SetInvoiceStatusParams) (Invoice, error)
 	SetLeadStatus(ctx context.Context, arg SetLeadStatusParams) (Lead, error)
+	SetMediaStatus(ctx context.Context, arg SetMediaStatusParams) error
 	SetOpportunityStage(ctx context.Context, arg SetOpportunityStageParams) (Opportunity, error)
 	SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) (Order, error)
 	SetPageStatus(ctx context.Context, arg SetPageStatusParams) (ContentPage, error)
@@ -367,6 +386,7 @@ type Querier interface {
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
@@ -382,6 +402,8 @@ type Querier interface {
 	UpsertInvoiceDocument(ctx context.Context, arg UpsertInvoiceDocumentParams) error
 	// ===== Prices (tiers) ======================================================
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) (Price, error)
+	// ===== Renditions ==========================================================
+	UpsertRendition(ctx context.Context, arg UpsertRenditionParams) (MediaRendition, error)
 	UpsertShoppingListItem(ctx context.Context, arg UpsertShoppingListItemParams) (ShoppingListItem, error)
 }
 

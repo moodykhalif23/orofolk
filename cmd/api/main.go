@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"b2bcommerce/internal/auth"
+	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
+	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/logging"
 	"b2bcommerce/internal/payments/gateway"
 	"b2bcommerce/internal/queue"
@@ -72,12 +74,21 @@ func main() {
 		logger.Warn("payment gateway not implemented, using mock", "requested", cfg.PaymentsGateway)
 	}
 
+	// DAM blob store (local FS; swap for object storage in multi-node deploys).
+	mediaStore, err := blob.NewFSStore(cfg.MediaRoot)
+	if err != nil {
+		logger.Error("media store init failed", "err", err)
+		os.Exit(1)
+	}
+
 	handler := server.New(st, issuer,
 		server.WithRecompute(enq),
 		server.WithInvoicePDF(enq),
 		server.WithNotifier(enq),
 		server.WithPaymentGateway(gw),
 		server.WithLogger(logger),
+		server.WithMedia(mediaStore, imageproc.GoProcessor{}),
+		server.WithRendition(enq),
 	)
 
 	srv := &http.Server{
