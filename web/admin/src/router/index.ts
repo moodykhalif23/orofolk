@@ -195,6 +195,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'field.sync' },
       },
       {
+        path: 'erp',
+        name: 'erp',
+        component: () => import('@/views/erp/ErpView.vue'),
+        meta: { permission: 'erp.view' },
+      },
+      {
         path: 'configurator',
         name: 'configurator',
         component: () => import('@/views/cpq/ConfiguratorView.vue'),
