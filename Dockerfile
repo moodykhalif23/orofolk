@@ -14,6 +14,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates wget && adduser -D -u 10001 app
 WORKDIR /app
 COPY --from=build /out/ /app/
+RUN mkdir -p /data/media && chown -R app /data/media
 # Drop privileges: the services need no root capabilities at runtime.
 USER app
 # Default command is overridden per service in docker-compose.
