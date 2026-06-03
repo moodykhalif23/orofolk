@@ -1,9 +1,3 @@
-// Package reporting serves operational dashboards (Pack 3 §1, V1): sales over
-// time, top products, and headline KPIs — all read from precomputed materialized
-// views (mv_daily_sales, mv_top_products) so dashboard loads issue bounded, fast
-// queries. The views are refreshed on a schedule (river periodic job) and can be
-// refreshed on demand. Admin-only, gated by report.view. The custom report
-// builder / schedules are V2 and not built yet.
 package reporting
 
 import (
@@ -39,7 +33,36 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/sales", h.sales)
 		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/top-products", h.topProducts)
 		ar.With(mw.RequirePermission("report.view")).Post("/admin/reports/refresh", h.refresh)
+
+		// ---- custom report builder ----
+		// Static segments (entities/runs) are registered alongside the {id}
+		// param routes; chi matches literals first, so they don't collide.
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/entities", h.entities)
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/runs/{runID}/download", h.downloadRun)
+
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports", h.listDefinitions)
+		ar.With(mw.RequirePermission("report.manage")).Post("/admin/reports", h.createDefinition)
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/{id}", h.getDefinition)
+		ar.With(mw.RequirePermission("report.manage")).Put("/admin/reports/{id}", h.updateDefinition)
+		ar.With(mw.RequirePermission("report.manage")).Delete("/admin/reports/{id}", h.deleteDefinition)
+		ar.With(mw.RequirePermission("report.view")).Post("/admin/reports/{id}/run", h.runDefinition)
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/{id}/runs", h.listRuns)
+		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/{id}/schedules", h.listSchedules)
+		ar.With(mw.RequirePermission("report.manage")).Post("/admin/reports/{id}/schedules", h.createSchedule)
+		ar.With(mw.RequirePermission("report.manage")).Delete("/admin/reports/{id}/schedules/{schedID}", h.deleteSchedule)
 	})
+}
+
+// claimsUserID returns the admin user id from the subject claim, or nil.
+func claimsUserID(r *http.Request) *int64 {
+	c, ok := mw.ClaimsFrom(r.Context())
+	if !ok {
+		return nil
+	}
+	if id, err := strconv.ParseInt(c.Subject, 10, 64); err == nil && id != 0 {
+		return &id
+	}
+	return nil
 }
 
 func orgID(r *http.Request) (int64, bool) {
@@ -61,9 +84,6 @@ func dateParam(s string, def time.Time) pgtype.Date {
 	return pgtype.Date{Time: def, Valid: true}
 }
 
-// RefreshViews refreshes the reporting materialized views concurrently (needs
-// their unique indexes). Exported so the periodic river job reuses it. Must run
-// outside a transaction (CONCURRENTLY restriction) — pool.Exec satisfies that.
 func RefreshViews(ctx context.Context, pool *pgxpool.Pool) error {
 	for _, v := range []string{"mv_daily_sales", "mv_top_products"} {
 		if _, err := pool.Exec(ctx, "REFRESH MATERIALIZED VIEW CONCURRENTLY "+v); err != nil {

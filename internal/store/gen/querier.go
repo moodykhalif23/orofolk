@@ -101,6 +101,14 @@ type Querier interface {
 	// ===== RFQ =================================================================
 	CreateRFQ(ctx context.Context, arg CreateRFQParams) (Rfq, error)
 	CreateRedirect(ctx context.Context, arg CreateRedirectParams) (Redirect, error)
+	// Custom report builder (Pack 3 §1). Definitions are org-scoped; runs/schedules
+	// are authorized via their parent definition (handler fetches the def first).
+	// ===== Definitions =========================================================
+	CreateReportDefinition(ctx context.Context, arg CreateReportDefinitionParams) (ReportDefinition, error)
+	// ===== Runs ================================================================
+	CreateReportRun(ctx context.Context, arg CreateReportRunParams) (int64, error)
+	// ===== Schedules ===========================================================
+	CreateReportSchedule(ctx context.Context, arg CreateReportScheduleParams) (ReportSchedule, error)
 	// Order-to-cash queries — Implementation Pack 1 §7.
 	// ===== Shipments ===========================================================
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (Shipment, error)
@@ -132,12 +140,15 @@ type Querier interface {
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
+	DeleteReportDefinition(ctx context.Context, arg DeleteReportDefinitionParams) error
+	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
 	// ===== Levels ==============================================================
 	EnsureInventoryLevel(ctx context.Context, arg EnsureInventoryLevelParams) error
 	// FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
 	// backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
 	// {"color":"red","voltage":"24"}.
 	FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]Product, error)
+	FinishReportRun(ctx context.Context, arg FinishReportRunParams) (FinishReportRunRow, error)
 	// FirstStage returns the lowest-sort_order stage of a pipeline (the entry stage).
 	FirstStage(ctx context.Context, pipelineID int64) (PipelineStage, error)
 	// Cart & shopping list queries — Implementation Pack 1 §5.
@@ -213,6 +224,8 @@ type Querier interface {
 	// ===== Redirects ===========================================================
 	GetRedirect(ctx context.Context, arg GetRedirectParams) (Redirect, error)
 	GetRendition(ctx context.Context, arg GetRenditionParams) (MediaRendition, error)
+	GetReportDefinition(ctx context.Context, arg GetReportDefinitionParams) (ReportDefinition, error)
+	GetReportRunArtifact(ctx context.Context, arg GetReportRunArtifactParams) (GetReportRunArtifactRow, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
 	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetStage(ctx context.Context, id int64) (PipelineStage, error)
@@ -257,6 +270,10 @@ type Querier interface {
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
 	ListCustomerUsers(ctx context.Context, customerID int64) ([]ListCustomerUsersRow, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
+	// ListDueReportSchedules returns active schedules whose cadence interval has
+	// elapsed since last_run_at (or that have never run), joined to their definition
+	// so the job can compile + run without a second query.
+	ListDueReportSchedules(ctx context.Context) ([]ListDueReportSchedulesRow, error)
 	// ListExpirableQuotes returns open quotes (sent/revised) whose validity has
 	// passed — the quote-expiry sweep's working set.
 	ListExpirableQuotes(ctx context.Context, validUntil pgtype.Timestamptz) ([]Quote, error)
@@ -296,6 +313,9 @@ type Querier interface {
 	ListRFQsForCustomer(ctx context.Context, customerID int64) ([]Rfq, error)
 	ListRedirects(ctx context.Context, websiteID int64) ([]Redirect, error)
 	ListRenditions(ctx context.Context, mediaAssetID int64) ([]MediaRendition, error)
+	ListReportDefinitions(ctx context.Context, organizationID int64) ([]ReportDefinition, error)
+	ListReportRuns(ctx context.Context, reportDefinitionID int64) ([]ListReportRunsRow, error)
+	ListReportSchedules(ctx context.Context, reportDefinitionID int64) ([]ReportSchedule, error)
 	// ListShipmentItemProducts resolves a shipment's lines to product + quantity
 	// (for converting reservations to fulfilment on ship).
 	ListShipmentItemProducts(ctx context.Context, shipmentID int64) ([]ListShipmentItemProductsRow, error)
@@ -367,6 +387,7 @@ type Querier interface {
 	SetQuoteStatus(ctx context.Context, arg SetQuoteStatusParams) (Quote, error)
 	SetQuoteSubtotal(ctx context.Context, arg SetQuoteSubtotalParams) error
 	SetRFQStatus(ctx context.Context, arg SetRFQStatusParams) (Rfq, error)
+	SetReportScheduleLastRun(ctx context.Context, arg SetReportScheduleLastRunParams) error
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
 	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
 	// ShippedQtyForOrderItem returns the total already shipped for an order line,
@@ -390,6 +411,7 @@ type Querier interface {
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
+	UpdateReportDefinition(ctx context.Context, arg UpdateReportDefinitionParams) (ReportDefinition, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).

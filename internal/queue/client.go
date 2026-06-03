@@ -45,6 +45,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher})
 	river.AddWorker(workers, &jobs.RefreshReportingWorker{Pool: pool})
 	river.AddWorker(workers, &jobs.GenerateRenditionWorker{Pool: pool, Store: store, Proc: proc})
+	river.AddWorker(workers, &jobs.RunReportSchedulesWorker{Pool: pool, Mailer: enq})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -62,6 +63,14 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 				return jobs.RefreshReportingArgs{}, nil
 			},
 			&river.PeriodicJobOpts{RunOnStart: true},
+		),
+		// Sweep due report schedules (custom report builder exports).
+		river.NewPeriodicJob(
+			river.PeriodicInterval(time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.RunReportSchedulesArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false},
 		),
 	}
 

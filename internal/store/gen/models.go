@@ -579,6 +579,45 @@ type Redirect struct {
 	StatusCode int32  `json:"status_code"`
 }
 
+type ReportDefinition struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Name           string    `json:"name"`
+	Entity         string    `json:"entity"`
+	Dimensions     []byte    `json:"dimensions"`
+	Measures       []byte    `json:"measures"`
+	Filters        []byte    `json:"filters"`
+	CreatedBy      *int64    `json:"created_by"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type ReportRun struct {
+	ID                 int64              `json:"id"`
+	ReportDefinitionID int64              `json:"report_definition_id"`
+	Status             string             `json:"status"`
+	Trigger            string             `json:"trigger"`
+	RowCount           *int32             `json:"row_count"`
+	FileName           *string            `json:"file_name"`
+	ContentType        *string            `json:"content_type"`
+	FileBytes          []byte             `json:"file_bytes"`
+	FileUrl            *string            `json:"file_url"`
+	Error              *string            `json:"error"`
+	StartedAt          time.Time          `json:"started_at"`
+	FinishedAt         pgtype.Timestamptz `json:"finished_at"`
+}
+
+type ReportSchedule struct {
+	ID                 int64              `json:"id"`
+	ReportDefinitionID int64              `json:"report_definition_id"`
+	Cadence            string             `json:"cadence"`
+	Format             string             `json:"format"`
+	Recipients         []byte             `json:"recipients"`
+	IsActive           bool               `json:"is_active"`
+	LastRunAt          pgtype.Timestamptz `json:"last_run_at"`
+	CreatedAt          time.Time          `json:"created_at"`
+}
+
 type Rfq struct {
 	ID             int64     `json:"id"`
 	PublicID       uuid.UUID `json:"public_id"`

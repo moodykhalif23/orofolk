@@ -47,6 +47,13 @@ var templates = map[string]tmpl{
 <p>Need it again? Reply or request a new quote and we'll be glad to help.</p>
 <p>— Teggo</p>`,
 	},
+	"report_ready": {
+		subject: "Your scheduled report \"{{.name}}\" is ready",
+		body: `<p>Hello,</p>
+<p>Your scheduled report <strong>{{.name}}</strong> has run ({{.row_count}} rows).</p>
+<p>Download it here: <a href="{{.file_url}}">{{.file_url}}</a></p>
+<p>— Teggo</p>`,
+	},
 }
 
 func Render(to, key string, data map[string]any) (Message, error) {
