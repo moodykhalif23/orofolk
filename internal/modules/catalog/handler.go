@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"b2bcommerce/internal/changelog"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -449,6 +450,8 @@ func (h *Handler) adminCreate(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not create product")
 		return
 	}
+	// Shared catalog: global change_log entry for field-sync devices.
+	changelog.Record(r.Context(), h.q, org, nil, "product", p.ID, "upsert", toAdminProduct(p))
 	response.JSON(w, http.StatusCreated, toAdminProduct(p))
 }
 
