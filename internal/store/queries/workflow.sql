@@ -6,6 +6,21 @@
 SELECT * FROM workflow_definitions
 WHERE organization_id = $1 AND code = $2 AND is_active;
 
+-- name: ListWorkflowDefinitions :many
+SELECT * FROM workflow_definitions WHERE organization_id = $1 ORDER BY code;
+
+-- name: GetWorkflowDefinition :one
+SELECT * FROM workflow_definitions WHERE organization_id = $1 AND id = $2;
+
+-- UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
+-- org-scoped via its definition (admin low-code editing).
+-- name: UpdateWorkflowTransitionConfig :one
+UPDATE workflow_transitions t
+SET guards = $3, actions = $4
+FROM workflow_definitions d
+WHERE t.id = $2 AND t.definition_id = d.id AND d.organization_id = $1
+RETURNING t.*;
+
 -- name: GetWorkflowState :one
 SELECT * FROM workflow_states WHERE id = $1;
 

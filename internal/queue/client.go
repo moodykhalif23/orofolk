@@ -32,6 +32,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	dispatcher := automation.NewDispatcher(pool, enq)
 	reg := automation.NewRegistry()
 	reg.Register(automation.NewExpireQuotes(pool, enq))
+	reg.Register(automation.NewEmailCustomer(pool, enq))
 
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &jobs.SendEmailWorker{Sender: sender})
@@ -39,6 +40,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool, Renderer: renderer})
 	river.AddWorker(workers, &jobs.AutomationActionWorker{Registry: reg})
 	river.AddWorker(workers, &jobs.ScheduledEmitWorker{Dispatcher: dispatcher})
+	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -107,6 +109,18 @@ func (e *Enqueuer) EnqueueEmail(ctx context.Context, to, template string, data m
 		return err
 	}
 	_, err = e.ic.Insert(ctx, jobs.SendEmailArgs{To: to, Template: template, Data: raw}, nil)
+	return err
+}
+
+// EmitEvent enqueues a domain event for the automation dispatcher to process
+// (the per-entity half: order.status_changed, quote.created, …). Emitted by the
+// API after a state change commits, so a failed rule never affects the request.
+func (e *Enqueuer) EmitEvent(ctx context.Context, event string, payload map[string]any) error {
+	pl, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, err = e.ic.Insert(ctx, jobs.DispatchEventArgs{Event: event, Payload: pl}, nil)
 	return err
 }
 

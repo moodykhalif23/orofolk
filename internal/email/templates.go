@@ -33,6 +33,13 @@ var templates = map[string]tmpl{
 <p>You can view and pay it from your account.</p>
 <p>— Teggo</p>`,
 	},
+	"order_status_update": {
+		subject: "Order {{.order_number}} is now {{.status}}",
+		body: `<p>Hi {{.name}},</p>
+<p>Your order <strong>{{.order_number}}</strong> has moved to <strong>{{.status}}</strong>.</p>
+<p>Sign in to your account for the full details.</p>
+<p>— Teggo</p>`,
+	},
 	"quote_expired": {
 		subject: "Quote {{.quote_number}} has expired",
 		body: `<p>Hi {{.name}},</p>

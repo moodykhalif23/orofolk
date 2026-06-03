@@ -13,6 +13,7 @@ import (
 
 	"b2bcommerce/internal/inventory"
 	"b2bcommerce/internal/money"
+	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
 	"b2bcommerce/internal/workflow"
@@ -365,6 +366,11 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	actor := workflow.Actor{Type: "rep", ID: a.userID}
 	data := map[string]any{"grand_total": order.GrandTotal}
+	// The actor's permissions feed the has_permission guard (e.g. `order.approve`
+	// gates resuming an order out of on_hold — the approval step).
+	if c, ok := mw.ClaimsFrom(r.Context()); ok {
+		data["actor_permissions"] = c.Permissions
+	}
 	// Supply the buyer's spending limit so the amount_lte_limit guard on the
 	// `confirm` transition can gate over-limit orders for approval. Absent/zero
 	// limit → the guard is inert (most orders confirm freely).
@@ -393,6 +399,19 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not load order")
 		return
+	}
+	// Emit a domain event so automation rules on order.status_changed can fire
+	// (e.g. notify the customer). Fire-and-forget; never blocks the response.
+	if h.notify != nil {
+		_ = h.notify.EmitEvent(r.Context(), "order.status_changed", map[string]any{
+			"order_id":     updated.ID,
+			"customer_id":  updated.CustomerID,
+			"from":         order.Status,
+			"to":           updated.Status,
+			"status":       updated.Status,
+			"order_number": "ORD-" + updated.PublicID.String()[:8],
+			"grand_total":  updated.GrandTotal,
+		})
 	}
 	h.renderOrder(w, r, updated)
 }

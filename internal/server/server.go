@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -23,11 +24,19 @@ import (
 	"b2bcommerce/internal/store"
 )
 
+// notifier is the production enqueuer's surface used by the sales + OTC modules:
+// transactional email plus domain-event emission for the automation engine.
+// *queue.Enqueuer satisfies it; sales.Notifier/otc.Notifier are narrower views.
+type notifier interface {
+	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EmitEvent(ctx context.Context, event string, payload map[string]any) error
+}
+
 // options holds optional dependencies wired in by the caller.
 type options struct {
 	recompute pricing.Enqueuer
 	pdf       otc.PDFEnqueuer
-	notifier  otc.Notifier
+	notifier  notifier
 	gateway   gateway.Gateway
 }
 
@@ -45,7 +54,7 @@ func WithInvoicePDF(e otc.PDFEnqueuer) Option {
 
 // WithNotifier wires the transactional-email enqueuer into the sales + OTC
 // modules (order confirmation, quote sent, invoice issued).
-func WithNotifier(n otc.Notifier) Option {
+func WithNotifier(n notifier) Option {
 	return func(o *options) { o.notifier = n }
 }
 

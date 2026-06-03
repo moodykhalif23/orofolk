@@ -37,6 +37,47 @@ func (AmountLteLimit) Allow(_ context.Context, in GuardInput) (bool, string, err
 	return false, fmt.Sprintf("amount %.2f exceeds the approval limit of %.2f", amount, limit), nil
 }
 
+// HasPermission is the built-in `has_permission` guard: it allows a transition
+// only when the actor holds a required permission (params.permission). The
+// caller supplies the actor's permissions in the transition Data under
+// "actor_permissions" ([]string). Used to gate order approval (resume out of
+// on_hold requires `order.approve`).
+type HasPermission struct{}
+
+func (HasPermission) Key() string { return "has_permission" }
+
+func (HasPermission) Allow(_ context.Context, in GuardInput) (bool, string, error) {
+	required := paramString(in.Params, "permission", "")
+	if required == "" {
+		return true, "", nil
+	}
+	for _, p := range actorPermissions(in.Data["actor_permissions"]) {
+		if p == required {
+			return true, "", nil
+		}
+	}
+	return false, "requires the " + required + " permission", nil
+}
+
+// actorPermissions normalizes the permission list, which may arrive as []string
+// (built in Go) or []any (round-tripped through JSON).
+func actorPermissions(v any) []string {
+	switch list := v.(type) {
+	case []string:
+		return list
+	case []any:
+		out := make([]string, 0, len(list))
+		for _, p := range list {
+			if s, ok := p.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
 func paramString(m map[string]any, key, def string) string {
 	if m != nil {
 		if s, ok := m[key].(string); ok && s != "" {

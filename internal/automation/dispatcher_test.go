@@ -114,3 +114,34 @@ func TestExpireQuotesSweep(t *testing.T) {
 		t.Errorf("quote_expired emails: want 1, got %d", mail.expired)
 	}
 }
+
+// recEmail records (to, template) of every enqueued email.
+type recEmail struct{ sent []string }
+
+func (r *recEmail) EnqueueEmail(_ context.Context, to, template string, _ map[string]any) error {
+	r.sent = append(r.sent, to+"|"+template)
+	return nil
+}
+
+func TestEmailCustomerAction(t *testing.T) {
+	pool := testsupport.NewDB(t)
+	ctx := context.Background()
+	q := gen.New(pool)
+	cust, _ := q.CreateCustomer(ctx, gen.CreateCustomerParams{OrganizationID: 1, Name: "Acme", CreditLimit: "0"})
+	_, _ = q.CreateCustomerUser(ctx, gen.CreateCustomerUserParams{
+		CustomerID: cust.ID, Email: "buyer@acme.test", PasswordHash: "x", FullName: "Buyer", Role: "buyer",
+	})
+
+	mail := &recEmail{}
+	act := automation.NewEmailCustomer(pool, mail)
+	// Payload mirrors what the order.status_changed event carries (customer_id
+	// arrives as a JSON number → float64).
+	err := act.Run(ctx, map[string]any{"template": "order_status_update"},
+		map[string]any{"customer_id": float64(cust.ID), "order_number": "ORD-abc12345", "status": "confirmed"})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(mail.sent) != 1 || mail.sent[0] != "buyer@acme.test|order_status_update" {
+		t.Fatalf("want one order_status_update email to the buyer, got %v", mail.sent)
+	}
+}

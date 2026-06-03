@@ -585,3 +585,109 @@ func TestOrderApprovalGate(t *testing.T) {
 		t.Errorf("within-limit confirm: want 200, got %d (%s)", ok.Code, ok.Body.String())
 	}
 }
+
+// ---- domain event emission (order.status_changed) ------------------------
+
+// captureNotifier records emitted events (and swallows emails).
+type captureNotifier struct{ events []string }
+
+func (c *captureNotifier) EnqueueEmail(_ context.Context, _, _ string, _ map[string]any) error {
+	return nil
+}
+func (c *captureNotifier) EmitEvent(_ context.Context, event string, _ map[string]any) error {
+	c.events = append(c.events, event)
+	return nil
+}
+
+func TestOrderStatusEmitsEvent(t *testing.T) {
+	pool := testsupport.NewDB(t)
+	st := store.New(pool)
+	issuer := auth.NewIssuer(testSecret, time.Hour)
+	notif := &captureNotifier{}
+	h := server.New(st, issuer, server.WithNotifier(notif))
+	q := gen.New(pool)
+	ctx := context.Background()
+
+	adminTok, _ := issuer.Issue("1", 1, "admin", []string{"order.view", "order.manage"})
+	cust, _ := q.CreateCustomer(ctx, gen.CreateCustomerParams{OrganizationID: 1, Name: "Acme", CreditLimit: "0"})
+	p, _ := q.CreateProduct(ctx, gen.CreateProductParams{OrganizationID: 1, Sku: "EV1", Type: "simple", Name: "Ev", Slug: "ev", Status: "active", Attributes: []byte("{}"), Unit: "each"})
+
+	req := func(method, path string, body any) *httptest.ResponseRecorder {
+		var buf bytes.Buffer
+		if body != nil {
+			_ = json.NewEncoder(&buf).Encode(body)
+		}
+		r := httptest.NewRequest(method, path, &buf)
+		r.Header.Set("Authorization", "Bearer "+adminTok)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec
+	}
+
+	cr := req(http.MethodPost, "/admin/orders", map[string]any{
+		"customer_id": cust.ID, "items": []map[string]any{{"product_id": p.ID, "quantity": "1", "unit_price": "10.0000"}},
+	})
+	var order struct {
+		ID int64 `json:"id"`
+	}
+	decode(t, cr, &order)
+
+	rr := req(http.MethodPatch, "/admin/orders/"+strconv.FormatInt(order.ID, 10)+"/status", map[string]any{"status": "confirmed"})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("confirm: %d (%s)", rr.Code, rr.Body.String())
+	}
+	found := false
+	for _, e := range notif.events {
+		if e == "order.status_changed" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected order.status_changed to be emitted, got %v", notif.events)
+	}
+}
+
+// ---- full approval routing (request_approval → approve bypasses) ---------
+
+func TestOrderApprovalRouting(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+
+	// Buyer limited to 50; place an order of 100 from the cart (customer_user set).
+	if _, err := f.pool.Exec(ctx, `UPDATE customer_users SET spending_limit='50' WHERE customer_id=$1`, f.customerID); err != nil {
+		t.Fatalf("set limit: %v", err)
+	}
+	f.seedCart(t, [3]any{f.p1ID, "10", "10.0000"})
+	rr := f.do(t, http.MethodPost, "/storefront/orders", f.custTok, map[string]any{})
+	var order struct {
+		ID int64 `json:"id"`
+	}
+	decode(t, rr, &order)
+	oid := strconv.FormatInt(order.ID, 10)
+	patch := func(tok, status string) int {
+		return f.do(t, http.MethodPatch, "/admin/orders/"+oid+"/status", tok, map[string]any{"status": status}).Code
+	}
+
+	// 1) Direct confirm is gated (100 > 50).
+	if c := patch(f.adminTok, "confirmed"); c != http.StatusConflict {
+		t.Fatalf("confirm over limit: want 409, got %d", c)
+	}
+	// 2) Route to on_hold = request approval (no guard).
+	if c := patch(f.adminTok, "on_hold"); c != http.StatusOK {
+		t.Fatalf("request approval (on_hold): want 200, got %d", c)
+	}
+	// 3) A non-approver cannot resume out of on_hold (lacks order.approve).
+	if c := patch(f.adminTok, "confirmed"); c != http.StatusConflict {
+		t.Fatalf("resume without approve: want 409, got %d", c)
+	}
+	// 4) An approver resumes → confirmed, bypassing the amount gate.
+	approver, _ := f.issuer.Issue("1", 1, "admin", []string{"order.view", "order.manage", "order.approve"})
+	if c := patch(approver, "confirmed"); c != http.StatusOK {
+		t.Fatalf("approver resume: want 200, got %d", c)
+	}
+	var status string
+	_ = f.pool.QueryRow(ctx, `SELECT status FROM orders WHERE id=$1`, order.ID).Scan(&status)
+	if status != "confirmed" {
+		t.Errorf("final order status: want confirmed, got %s", status)
+	}
+}

@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -37,6 +38,61 @@ func (r *Registry) Run(ctx context.Context, key string, params, payload map[stri
 // EmailEnqueuer schedules transactional email (satisfied by *queue.Enqueuer).
 type EmailEnqueuer interface {
 	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+}
+
+// EmailCustomer is the `email_customer` action: it sends a template (param
+// "template") to the primary contact of the customer named in the event
+// payload ("customer_id"), passing the whole payload as template data. Used by
+// the order.status_changed automation rule to notify buyers of status changes.
+type EmailCustomer struct {
+	pool  *pgxpool.Pool
+	email EmailEnqueuer
+}
+
+func NewEmailCustomer(pool *pgxpool.Pool, email EmailEnqueuer) EmailCustomer {
+	return EmailCustomer{pool: pool, email: email}
+}
+
+func (EmailCustomer) Key() string { return "email_customer" }
+
+func (a EmailCustomer) Run(ctx context.Context, params, payload map[string]any) error {
+	if a.email == nil {
+		return nil
+	}
+	template, _ := params["template"].(string)
+	if template == "" {
+		return nil
+	}
+	cid, ok := payloadInt(payload, "customer_id")
+	if !ok {
+		return nil
+	}
+	users, err := gen.New(a.pool).ListCustomerUsers(ctx, cid)
+	if err != nil || len(users) == 0 {
+		return nil
+	}
+	data := map[string]any{"name": users[0].FullName}
+	for k, v := range payload {
+		data[k] = v
+	}
+	return a.email.EnqueueEmail(ctx, users[0].Email, template, data)
+}
+
+// payloadInt coerces a JSON payload value (float64/int/string) to int64.
+func payloadInt(payload map[string]any, key string) (int64, bool) {
+	switch n := payload[key].(type) {
+	case float64:
+		return int64(n), true
+	case int64:
+		return n, true
+	case int:
+		return int64(n), true
+	case string:
+		v, err := strconv.ParseInt(n, 10, 64)
+		return v, err == nil
+	default:
+		return 0, false
+	}
 }
 
 // ExpireQuotes is the `expire_quotes` action: it flips open quotes whose

@@ -20,10 +20,11 @@ import (
 	"b2bcommerce/internal/workflow"
 )
 
-// Notifier schedules a transactional email (template key + data). Satisfied by
-// *queue.Enqueuer; may be nil (emails are then skipped).
+// Notifier schedules transactional email and emits domain events for the
+// automation engine. Satisfied by *queue.Enqueuer; may be nil (then skipped).
 type Notifier interface {
 	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EmitEvent(ctx context.Context, event string, payload map[string]any) error
 }
 
 type Handler struct {
@@ -39,6 +40,7 @@ func New(pool *pgxpool.Pool, notify Notifier) *Handler {
 	// amount_lte_limit approval gate on `confirm`, migration 0017).
 	reg := workflow.NewRegistry()
 	reg.RegisterGuard(workflow.AmountLteLimit{})
+	reg.RegisterGuard(workflow.HasPermission{})
 	return &Handler{pool: pool, q: gen.New(pool), notify: notify, wf: workflow.New(pool, reg)}
 }
 
