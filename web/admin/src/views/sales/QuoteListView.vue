@@ -8,8 +8,9 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
+import Select from 'primevue/select'
 import Message from 'primevue/message'
+import { computed } from 'vue'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
 
@@ -24,6 +25,25 @@ const error = ref('')
 const dialogOpen = ref(false)
 const saving = ref(false)
 const form = reactive({ customer_id: null as number | null, currency: 'USD', product_id: null as number | null, quantity: '1', unit_price: '' })
+
+// Searchable pickers: load customers + products by name so the user never types raw IDs.
+const customers = ref<{ id: number; name: string }[]>([])
+const products = ref<{ id: number; sku: string; name: string }[]>([])
+const optsLoaded = ref(false)
+const productOptions = computed(() =>
+  products.value.map((p) => ({ id: p.id, label: `${p.sku} — ${p.name}` })),
+)
+
+async function loadOptions() {
+  if (optsLoaded.value) return
+  const [c, p] = await Promise.all([
+    api.GET('/admin/customers', { params: { query: { page: 1, page_size: 200 } } }),
+    api.GET('/admin/products', { params: { query: { page: 1, page_size: 200 } } }),
+  ])
+  customers.value = (c.data?.items ?? []).map((x) => ({ id: x.id, name: x.name }))
+  products.value = (p.data?.items ?? []).map((x) => ({ id: x.id, sku: x.sku, name: x.name }))
+  optsLoaded.value = true
+}
 
 async function load() {
   loading.value = true
@@ -40,6 +60,7 @@ async function load() {
 function openCreate() {
   Object.assign(form, { customer_id: null, currency: 'USD', product_id: null, quantity: '1', unit_price: '' })
   dialogOpen.value = true
+  loadOptions()
 }
 
 async function create() {
@@ -99,15 +120,43 @@ onMounted(load)
     <Dialog v-model:visible="dialogOpen" header="New quote" modal :style="{ width: '460px' }">
       <form class="form" @submit.prevent="create">
         <div class="grid2">
-          <div class="field"><label>Customer ID</label><InputNumber v-model="form.customer_id" :useGrouping="false" fluid /></div>
+          <div class="field">
+            <label>Customer</label>
+            <Select
+              v-model="form.customer_id"
+              :options="customers"
+              optionLabel="name"
+              optionValue="id"
+              filter
+              filterPlaceholder="Search customers…"
+              placeholder="Select a customer"
+              :emptyMessage="optsLoaded ? 'No customers' : 'Loading…'"
+              showClear
+              fluid
+            />
+          </div>
           <div class="field"><label>Currency</label><InputText v-model="form.currency" maxlength="3" fluid /></div>
         </div>
         <p class="hint">First line (add more in the editor):</p>
         <div class="grid3">
-          <div class="field"><label>Product ID</label><InputNumber v-model="form.product_id" :useGrouping="false" fluid /></div>
+          <div class="field span2">
+            <label>Product</label>
+            <Select
+              v-model="form.product_id"
+              :options="productOptions"
+              optionLabel="label"
+              optionValue="id"
+              filter
+              filterPlaceholder="Search products…"
+              placeholder="Select a product"
+              :emptyMessage="optsLoaded ? 'No products' : 'Loading…'"
+              showClear
+              fluid
+            />
+          </div>
           <div class="field"><label>Qty</label><InputText v-model="form.quantity" fluid /></div>
-          <div class="field"><label>Unit price</label><InputText v-model="form.unit_price" fluid /></div>
         </div>
+        <div class="field"><label>Unit price</label><InputText v-model="form.unit_price" fluid /></div>
       </form>
       <template #footer>
         <Button label="Cancel" severity="secondary" text @click="dialogOpen = false" />
@@ -125,6 +174,7 @@ onMounted(load)
 .form { display: flex; flex-direction: column; gap: 0.9rem; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.9rem; }
+.span2 { grid-column: span 2; }
 .field { display: flex; flex-direction: column; gap: 0.3rem; }
 .field label { font-size: 0.8rem; font-weight: 600; }
 .hint { margin: 0; font-size: 0.85rem; color: var(--p-text-muted-color, #64748b); }
