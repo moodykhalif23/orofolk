@@ -41,5 +41,11 @@ The `@docusaurus/*` stack and `webpack` are pinned in
   (newer core breaks SSG with `useTabsContext() must be used within a Tabs component`).
 - webpack `5.97.1` — newer releases reject webpackbar's `ProgressPlugin` options.
 
+The `webpackTweaks` plugin in `docusaurus.config.ts` also (a) stubs the Node core
+modules `postman-code-generators` pulls in, and (b) `ignoreWarnings`-filters one benign
+`export 'default' ... SchemaTabs ... was not found` notice — the theme ships SchemaTabs
+as CJS, so the client compile's static analysis flags a default that resolves fine at
+runtime. If you ever hit a *real* SchemaTabs error, narrow or drop that filter first.
+
 After editing an endpoint in the OpenAPI spec, just rebuild — the API reference
 regenerates from it.

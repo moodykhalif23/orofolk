@@ -37,14 +37,23 @@ const config: Config = {
     // The OpenAPI theme bundles postman-code-generators for its language-tab
     // snippets, which reference Node core modules webpack 5 no longer polyfills.
     // We don't run those generators in the browser, so stub the modules out.
-    function nodePolyfillFallback() {
+    // Also silence one benign warning: the generated API info page imports the
+    // theme's SchemaTabs, which ships as a CJS module (`exports.default`); on the
+    // client compile webpack's static analysis surfaces only `__esModule` and warns
+    // "export 'default' ... was not found in '@theme/SchemaTabs'". The component
+    // renders correctly — it's a CJS/ESM interop notice, not a real missing export.
+    function webpackTweaks() {
       return {
-        name: 'node-polyfill-fallback',
+        name: 'webpack-tweaks',
         configureWebpack() {
           return {
             resolve: {
               fallback: { path: false, fs: false, os: false, crypto: false, http: false, https: false, stream: false, zlib: false, util: false },
             },
+            ignoreWarnings: [
+              (warning: { message?: string }) =>
+                /export 'default'.*SchemaTabs.*was not found/.test(warning?.message ?? ''),
+            ],
           }
         },
       }
