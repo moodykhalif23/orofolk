@@ -544,6 +544,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/account/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The buying company's profile and the caller's own user. */
+        get: operations["storefrontGetCompany"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the company's users (company-admin only). */
+        get: operations["storefrontListUsers"];
+        put?: never;
+        /** Invite a new company user (company-admin only). */
+        post: operations["storefrontCreateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a company user's role, spending limit or status (company-admin only). */
+        patch: operations["storefrontUpdateUser"];
+        trace?: never;
+    };
     "/storefront/shopping-lists": {
         parameters: {
             query?: never;
@@ -2699,6 +2753,32 @@ export interface components {
             /** @enum {string} */
             role?: "buyer" | "approver" | "admin";
             spending_limit?: string | null;
+        };
+        CustomerUserUpdate: {
+            full_name?: string;
+            /** @enum {string} */
+            role?: "buyer" | "approver" | "admin";
+            spending_limit?: string | null;
+            is_active?: boolean;
+        };
+        CompanyProfile: {
+            company: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                tax_id?: string | null;
+                payment_terms_days?: number;
+                credit_limit?: string;
+            };
+            me: {
+                /** Format: int64 */
+                id: number;
+                email: string;
+                full_name: string;
+                /** @enum {string} */
+                role: "buyer" | "approver" | "admin";
+                spending_limit?: string | null;
+            };
         };
         CustomerAddress: {
             /** Format: int64 */
@@ -5474,6 +5554,102 @@ export interface operations {
                 };
             };
             400: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontGetCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyProfile"];
+                };
+            };
+        };
+    };
+    storefrontListUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerUser"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontCreateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerUser"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontUpdateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUserUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerUser"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            403: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
         };
     };
     storefrontListShoppingLists: {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -60,6 +61,20 @@ func seedCustomer(t *testing.T, pool *pgxpool.Pool, name, email string) int64 {
 		t.Fatalf("customer user: %v", err)
 	}
 	return cust.ID
+}
+
+// addUser adds another customer-user to an existing company with a given role.
+func addUser(t *testing.T, pool *pgxpool.Pool, customerID int64, email, fullName, role string) int64 {
+	t.Helper()
+	q := gen.New(pool)
+	hash, _ := auth.HashPassword(custPassword)
+	u, err := q.CreateCustomerUser(context.Background(), gen.CreateCustomerUserParams{
+		CustomerID: customerID, Email: email, PasswordHash: hash, FullName: fullName, Role: role,
+	})
+	if err != nil {
+		t.Fatalf("add user %s: %v", email, err)
+	}
+	return u.ID
 }
 
 func login(t *testing.T, h http.Handler, email string) string {
@@ -126,6 +141,99 @@ func TestAccountAddressValidation(t *testing.T) {
 		"type": "warehouse", "line1": "x", "city": "y", "country": "US",
 	}); rr.Code != http.StatusBadRequest {
 		t.Errorf("bad type: want 400, got %d", rr.Code)
+	}
+}
+
+func TestCompanyProfileAndUserManagement(t *testing.T) {
+	h, pool := newServer(t)
+	custID := seedCustomer(t, pool, "acme", "buyer@acme.test") // role buyer
+	addUser(t, pool, custID, "admin@acme.test", "Acme Admin", "admin")
+	adminTok := login(t, h, "admin@acme.test")
+
+	// Company profile shows the company and the caller's own user.
+	comp := do(t, h, http.MethodGet, "/storefront/account/company", adminTok, nil)
+	if comp.Code != http.StatusOK {
+		t.Fatalf("company: want 200, got %d (%s)", comp.Code, comp.Body.String())
+	}
+	var cp struct {
+		Company struct {
+			Name string `json:"name"`
+		} `json:"company"`
+		Me struct {
+			ID   int64  `json:"id"`
+			Role string `json:"role"`
+		} `json:"me"`
+	}
+	_ = json.Unmarshal(comp.Body.Bytes(), &cp)
+	if cp.Company.Name != "acme" || cp.Me.Role != "admin" {
+		t.Fatalf("company profile: got %+v", cp)
+	}
+
+	// Admin lists users (buyer + admin = 2).
+	lu := do(t, h, http.MethodGet, "/storefront/account/users", adminTok, nil)
+	var users struct {
+		Items []gen.ListCustomerUsersRow `json:"items"`
+	}
+	_ = json.Unmarshal(lu.Body.Bytes(), &users)
+	if len(users.Items) != 2 {
+		t.Fatalf("list users: want 2, got %d", len(users.Items))
+	}
+
+	// Admin invites a new user.
+	cr := do(t, h, http.MethodPost, "/storefront/account/users", adminTok, map[string]any{
+		"email": "buyer2@acme.test", "password": "pw-123456", "full_name": "Buyer Two", "role": "approver",
+	})
+	if cr.Code != http.StatusCreated {
+		t.Fatalf("create user: want 201, got %d (%s)", cr.Code, cr.Body.String())
+	}
+	// Duplicate email is rejected.
+	if dup := do(t, h, http.MethodPost, "/storefront/account/users", adminTok, map[string]any{
+		"email": "buyer2@acme.test", "password": "pw-123456", "full_name": "Dup",
+	}); dup.Code != http.StatusConflict {
+		t.Errorf("duplicate email: want 409, got %d", dup.Code)
+	}
+
+	// Find the buyer user and update role + spending limit.
+	var buyerID int64
+	for _, u := range users.Items {
+		if u.Email == "buyer@acme.test" {
+			buyerID = u.ID
+		}
+	}
+	limit := "500.00"
+	up := do(t, h, http.MethodPatch, "/storefront/account/users/"+strconv.FormatInt(buyerID, 10), adminTok, map[string]any{
+		"role": "approver", "spending_limit": limit,
+	})
+	if up.Code != http.StatusOK {
+		t.Fatalf("update user: want 200, got %d (%s)", up.Code, up.Body.String())
+	}
+	var updated struct {
+		Role string `json:"role"`
+	}
+	_ = json.Unmarshal(up.Body.Bytes(), &updated)
+	if updated.Role != "approver" {
+		t.Errorf("update role: want approver, got %s", updated.Role)
+	}
+
+	// Lockout guard: admin cannot strip their own admin role.
+	self := do(t, h, http.MethodPatch, "/storefront/account/users/"+strconv.FormatInt(cp.Me.ID, 10), adminTok, map[string]any{"role": "buyer"})
+	if self.Code != http.StatusBadRequest {
+		t.Errorf("self-demote: want 400, got %d (%s)", self.Code, self.Body.String())
+	}
+}
+
+func TestNonAdminCannotManageUsers(t *testing.T) {
+	h, pool := newServer(t)
+	seedCustomer(t, pool, "acme", "buyer@acme.test") // role buyer
+	tok := login(t, h, "buyer@acme.test")
+
+	if rr := do(t, h, http.MethodGet, "/storefront/account/users", tok, nil); rr.Code != http.StatusForbidden {
+		t.Errorf("buyer list users: want 403, got %d", rr.Code)
+	}
+	if rr := do(t, h, http.MethodPost, "/storefront/account/users", tok, map[string]any{
+		"email": "x@acme.test", "password": "pw-123456", "full_name": "X",
+	}); rr.Code != http.StatusForbidden {
+		t.Errorf("buyer create user: want 403, got %d", rr.Code)
 	}
 }
 

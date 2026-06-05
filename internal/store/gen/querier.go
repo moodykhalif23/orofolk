@@ -212,6 +212,10 @@ type Querier interface {
 	// GetCustomerDefaultAddress returns the default (or first) address of a type
 	// for snapshotting onto an order.
 	GetCustomerDefaultAddress(ctx context.Context, arg GetCustomerDefaultAddressParams) (GetCustomerDefaultAddressRow, error)
+	// GetCustomerUser fetches one customer-user scoped to their company (used by
+	// storefront self-service to read the caller's own role and to load a target
+	// user safely within the company boundary).
+	GetCustomerUser(ctx context.Context, arg GetCustomerUserParams) (GetCustomerUserRow, error)
 	// GetCustomerUserByEmail links a buyer SSO subject to an existing customer-user.
 	GetCustomerUserByEmail(ctx context.Context, arg GetCustomerUserByEmailParams) (GetCustomerUserByEmailRow, error)
 	// GetCustomerUserForLogin resolves a customer-user by email within an org for
@@ -522,6 +526,7 @@ type Querier interface {
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateCustomerUser(ctx context.Context, arg UpdateCustomerUserParams) (UpdateCustomerUserRow, error)
 	UpdateIdentityProvider(ctx context.Context, arg UpdateIdentityProviderParams) (IdentityProvider, error)
 	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)

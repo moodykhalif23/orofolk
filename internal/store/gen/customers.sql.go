@@ -310,6 +310,49 @@ func (q *Queries) GetCustomerByPublicID(ctx context.Context, arg GetCustomerByPu
 	return i, err
 }
 
+const getCustomerUser = `-- name: GetCustomerUser :one
+SELECT id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at
+FROM customer_users
+WHERE id = $1 AND customer_id = $2
+`
+
+type GetCustomerUserParams struct {
+	ID         int64 `json:"id"`
+	CustomerID int64 `json:"customer_id"`
+}
+
+type GetCustomerUserRow struct {
+	ID            int64     `json:"id"`
+	CustomerID    int64     `json:"customer_id"`
+	Email         string    `json:"email"`
+	FullName      string    `json:"full_name"`
+	Role          string    `json:"role"`
+	SpendingLimit *string   `json:"spending_limit"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// GetCustomerUser fetches one customer-user scoped to their company (used by
+// storefront self-service to read the caller's own role and to load a target
+// user safely within the company boundary).
+func (q *Queries) GetCustomerUser(ctx context.Context, arg GetCustomerUserParams) (GetCustomerUserRow, error) {
+	row := q.db.QueryRow(ctx, getCustomerUser, arg.ID, arg.CustomerID)
+	var i GetCustomerUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.SpendingLimit,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCustomerUserForLogin = `-- name: GetCustomerUserForLogin :one
 SELECT cu.id, cu.customer_id, c.organization_id, cu.password_hash, cu.is_active
 FROM customer_users cu
@@ -600,6 +643,58 @@ func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateCustomerUser = `-- name: UpdateCustomerUser :one
+UPDATE customer_users
+SET full_name = $3, role = $4, spending_limit = $5, is_active = $6, updated_at = now()
+WHERE id = $1 AND customer_id = $2
+RETURNING id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at
+`
+
+type UpdateCustomerUserParams struct {
+	ID            int64   `json:"id"`
+	CustomerID    int64   `json:"customer_id"`
+	FullName      string  `json:"full_name"`
+	Role          string  `json:"role"`
+	SpendingLimit *string `json:"spending_limit"`
+	IsActive      bool    `json:"is_active"`
+}
+
+type UpdateCustomerUserRow struct {
+	ID            int64     `json:"id"`
+	CustomerID    int64     `json:"customer_id"`
+	Email         string    `json:"email"`
+	FullName      string    `json:"full_name"`
+	Role          string    `json:"role"`
+	SpendingLimit *string   `json:"spending_limit"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) UpdateCustomerUser(ctx context.Context, arg UpdateCustomerUserParams) (UpdateCustomerUserRow, error) {
+	row := q.db.QueryRow(ctx, updateCustomerUser,
+		arg.ID,
+		arg.CustomerID,
+		arg.FullName,
+		arg.Role,
+		arg.SpendingLimit,
+		arg.IsActive,
+	)
+	var i UpdateCustomerUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerID,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.SpendingLimit,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

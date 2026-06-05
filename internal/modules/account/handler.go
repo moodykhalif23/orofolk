@@ -7,11 +7,14 @@ package account
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 
+	"b2bcommerce/internal/auth"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -30,6 +33,11 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 
 		sr.Get("/storefront/account/addresses", h.listAddresses)
 		sr.Post("/storefront/account/addresses", h.createAddress)
+
+		sr.Get("/storefront/account/company", h.getCompany)
+		sr.Get("/storefront/account/users", h.listUsers)
+		sr.Post("/storefront/account/users", h.createUser)
+		sr.Patch("/storefront/account/users/{id}", h.updateUser)
 	})
 }
 
@@ -50,6 +58,216 @@ func actor(r *http.Request) (principal, bool) {
 		p.customerUserID = &id
 	}
 	return p, true
+}
+
+// currentUser loads the authenticated customer-user, scoped to their company.
+func (h *Handler) currentUser(r *http.Request, p principal) (gen.GetCustomerUserRow, bool) {
+	if p.customerUserID == nil {
+		return gen.GetCustomerUserRow{}, false
+	}
+	u, err := h.q.GetCustomerUser(r.Context(), gen.GetCustomerUserParams{ID: *p.customerUserID, CustomerID: p.customerID})
+	if err != nil {
+		return gen.GetCustomerUserRow{}, false
+	}
+	return u, true
+}
+
+// requireAdmin gates company-management routes to the company's admin role.
+// The storefront token carries no role, so the caller's role is read from the
+// DB on each call.
+func (h *Handler) requireAdmin(w http.ResponseWriter, r *http.Request, p principal) (gen.GetCustomerUserRow, bool) {
+	u, ok := h.currentUser(r, p)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return gen.GetCustomerUserRow{}, false
+	}
+	if u.Role != "admin" {
+		response.Fail(w, http.StatusForbidden, "forbidden", "company-admin role required")
+		return gen.GetCustomerUserRow{}, false
+	}
+	return u, true
+}
+
+func validRole(role string) bool {
+	return role == "buyer" || role == "approver" || role == "admin"
+}
+
+// ---- Company profile -----------------------------------------------------
+
+func (h *Handler) getCompany(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	me, ok := h.currentUser(r, p)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	c, err := h.q.GetCustomer(r.Context(), gen.GetCustomerParams{OrganizationID: p.orgID, ID: p.customerID})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load company")
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]any{
+		"company": map[string]any{
+			"id":                 c.ID,
+			"name":               c.Name,
+			"tax_id":             c.TaxID,
+			"payment_terms_days": c.PaymentTermsDays,
+			"credit_limit":       c.CreditLimit,
+		},
+		"me": map[string]any{
+			"id":             me.ID,
+			"email":          me.Email,
+			"full_name":      me.FullName,
+			"role":           me.Role,
+			"spending_limit": me.SpendingLimit,
+		},
+	})
+}
+
+// ---- Company users -------------------------------------------------------
+
+func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	if _, ok := h.requireAdmin(w, r, p); !ok {
+		return
+	}
+	rows, err := h.q.ListCustomerUsers(r.Context(), p.customerID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not list users")
+		return
+	}
+	if rows == nil {
+		rows = []gen.ListCustomerUsersRow{}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": rows})
+}
+
+func (h *Handler) createUser(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	if _, ok := h.requireAdmin(w, r, p); !ok {
+		return
+	}
+	var req struct {
+		Email         string  `json:"email"`
+		Password      string  `json:"password"`
+		FullName      string  `json:"full_name"`
+		Role          string  `json:"role"`
+		SpendingLimit *string `json:"spending_limit"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	if req.Email == "" || req.Password == "" || req.FullName == "" {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "email, password, full_name required")
+		return
+	}
+	if req.Role == "" {
+		req.Role = "buyer"
+	}
+	if !validRole(req.Role) {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "role must be buyer, approver or admin")
+		return
+	}
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not hash password")
+		return
+	}
+	u, err := h.q.CreateCustomerUser(r.Context(), gen.CreateCustomerUserParams{
+		CustomerID: p.customerID, Email: req.Email, PasswordHash: hash,
+		FullName: req.FullName, Role: req.Role, SpendingLimit: req.SpendingLimit,
+	})
+	if err != nil {
+		// UNIQUE (customer_id, email) — a user with this email already exists.
+		response.Fail(w, http.StatusConflict, "conflict", "a user with this email already exists")
+		return
+	}
+	response.JSON(w, http.StatusCreated, u)
+}
+
+func (h *Handler) updateUser(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	admin, ok := h.requireAdmin(w, r, p)
+	if !ok {
+		return
+	}
+	targetID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid id")
+		return
+	}
+	target, err := h.q.GetCustomerUser(r.Context(), gen.GetCustomerUserParams{ID: targetID, CustomerID: p.customerID})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "user not found")
+		return
+	}
+	var req struct {
+		FullName      *string `json:"full_name"`
+		Role          *string `json:"role"`
+		SpendingLimit *string `json:"spending_limit"`
+		IsActive      *bool   `json:"is_active"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	// Merge onto the existing row (PATCH semantics).
+	fullName := target.FullName
+	if req.FullName != nil && *req.FullName != "" {
+		fullName = *req.FullName
+	}
+	role := target.Role
+	if req.Role != nil {
+		if !validRole(*req.Role) {
+			response.Fail(w, http.StatusBadRequest, "bad_request", "role must be buyer, approver or admin")
+			return
+		}
+		role = *req.Role
+	}
+	spendingLimit := target.SpendingLimit
+	if req.SpendingLimit != nil {
+		spendingLimit = req.SpendingLimit
+	}
+	isActive := target.IsActive
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+	// Lockout guard: an admin cannot strip their own admin role or deactivate
+	// themselves (would orphan the company's only management path).
+	if target.ID == admin.ID && (role != "admin" || !isActive) {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "you cannot remove your own admin access")
+		return
+	}
+	u, err := h.q.UpdateCustomerUser(r.Context(), gen.UpdateCustomerUserParams{
+		ID: targetID, CustomerID: p.customerID, FullName: fullName, Role: role,
+		SpendingLimit: spendingLimit, IsActive: isActive,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			response.Fail(w, http.StatusNotFound, "not_found", "user not found")
+			return
+		}
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not update user")
+		return
+	}
+	response.JSON(w, http.StatusOK, u)
 }
 
 // ---- Addresses -----------------------------------------------------------
