@@ -526,6 +526,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/account/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the buying company's saved addresses. */
+        get: operations["storefrontListAddresses"];
+        put?: never;
+        /** Save a new address for the buying company. */
+        post: operations["storefrontCreateAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storefront/shopping-lists": {
         parameters: {
             query?: never;
@@ -5411,6 +5429,51 @@ export interface operations {
                     "application/json": components["schemas"]["BulkAddResult"];
                 };
             };
+        };
+    };
+    storefrontListAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerAddress"];
+                };
+            };
+        };
+    };
+    storefrontCreateAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerAddressInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerAddress"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
         };
     };
     storefrontListShoppingLists: {

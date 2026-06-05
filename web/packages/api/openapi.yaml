@@ -2544,6 +2544,24 @@ paths:
           description: OK
           content: { application/json: { schema: { $ref: '#/components/schemas/BulkAddResult' } } }
 
+  /storefront/account/addresses:
+    get:
+      tags: [Customers]
+      operationId: storefrontListAddresses
+      summary: List the buying company's saved addresses.
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerAddress' } } } }
+    post:
+      tags: [Customers]
+      operationId: storefrontCreateAddress
+      summary: Save a new address for the buying company.
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddressInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddress' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+
   /storefront/shopping-lists:
     get:
       tags: [Cart]

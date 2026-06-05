@@ -3,6 +3,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
+import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Card from 'primevue/card'
 import type { components } from '@teggo/api/schema'
@@ -12,6 +13,7 @@ useSeoMeta({ title: 'Checkout — Teggo Store' })
 
 type Cart = components['schemas']['Cart']
 type AddressInput = components['schemas']['OrderAddressInput']
+type SavedAddress = components['schemas']['CustomerAddress']
 
 const client = useClient()
 const router = useRouter()
@@ -27,14 +29,77 @@ const shipping = reactive<AddressInput>({ line1: '', city: '', country: '' })
 const billing = reactive<AddressInput>({ line1: '', city: '', country: '' })
 const billingSameAsShipping = ref(true)
 
+// Saved addresses on file for the buying company. The buyer can pick one
+// instead of re-typing; "new" reveals the manual form below.
+const addresses = ref<SavedAddress[]>([])
+const NEW = 'new' as const
+const shipSel = ref<number | typeof NEW>(NEW)
+const billSel = ref<number | typeof NEW>(NEW)
+
+const savedShipping = computed(() => addresses.value.filter((a) => a.type === 'shipping'))
+const savedBilling = computed(() => addresses.value.filter((a) => a.type === 'billing'))
+
+function addrLabel(a: SavedAddress) {
+  return [a.line1, a.city, a.country].filter(Boolean).join(', ') + (a.is_default ? ' (default)' : '')
+}
+
+function options(saved: SavedAddress[]) {
+  return [...saved.map((a) => ({ label: addrLabel(a), value: a.id })), { label: 'Enter a new address…', value: NEW }]
+}
+
+function copyInto(target: AddressInput, a: SavedAddress) {
+  target.line1 = a.line1
+  target.line2 = a.line2 ?? null
+  target.city = a.city
+  target.region = a.region ?? null
+  target.postal_code = a.postal_code ?? null
+  target.country = a.country
+}
+
+function resetAddr(target: AddressInput) {
+  target.line1 = ''
+  target.line2 = null
+  target.city = ''
+  target.region = null
+  target.postal_code = null
+  target.country = ''
+}
+
+watch(shipSel, (v) => {
+  if (v === NEW) resetAddr(shipping)
+  else {
+    const a = savedShipping.value.find((x) => x.id === v)
+    if (a) copyInto(shipping, a)
+  }
+})
+watch(billSel, (v) => {
+  if (v === NEW) resetAddr(billing)
+  else {
+    const a = savedBilling.value.find((x) => x.id === v)
+    if (a) copyInto(billing, a)
+  }
+})
+
+// Default each picker to the saved default (or first) address when present.
+function pickDefault(saved: SavedAddress[]): number | typeof NEW {
+  if (!saved.length) return NEW
+  return (saved.find((a) => a.is_default) ?? saved[0]!).id
+}
+
 async function load() {
   error.value = ''
-  const { data, error: err } = await client.GET('/storefront/cart')
-  if (err || !data) {
+  const [cartRes, addrRes] = await Promise.all([
+    client.GET('/storefront/cart'),
+    client.GET('/storefront/account/addresses'),
+  ])
+  if (cartRes.error || !cartRes.data) {
     error.value = 'Could not load your cart.'
     return
   }
-  cart.value = data
+  cart.value = cartRes.data
+  addresses.value = addrRes.data?.items ?? []
+  shipSel.value = pickDefault(savedShipping.value)
+  billSel.value = pickDefault(savedBilling.value)
 }
 
 async function placeOrder() {
@@ -100,7 +165,12 @@ await load()
               </div>
 
               <template v-if="customAddress">
-                <div class="addr">
+                <div v-if="savedShipping.length" class="field">
+                  <label>Choose a saved address</label>
+                  <Select v-model="shipSel" :options="options(savedShipping)" optionLabel="label" optionValue="value" />
+                </div>
+
+                <div v-if="shipSel === 'new'" class="addr">
                   <div class="field"><label>Address line 1</label><InputText v-model="shipping.line1" /></div>
                   <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="shipping.line2 ?? ''" @update:modelValue="shipping.line2 = ($event as string) || null" /></div>
                   <div class="row">
@@ -118,7 +188,14 @@ await load()
                   <label for="samebill">Billing address is the same as shipping</label>
                 </div>
 
-                <div v-if="!billingSameAsShipping" class="addr">
+                <template v-if="!billingSameAsShipping">
+                  <div v-if="savedBilling.length" class="field">
+                    <label>Choose a saved billing address</label>
+                    <Select v-model="billSel" :options="options(savedBilling)" optionLabel="label" optionValue="value" />
+                  </div>
+                </template>
+
+                <div v-if="!billingSameAsShipping && billSel === 'new'" class="addr">
                   <h4>Billing address</h4>
                   <div class="field"><label>Address line 1</label><InputText v-model="billing.line1" /></div>
                   <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="billing.line2 ?? ''" @update:modelValue="billing.line2 = ($event as string) || null" /></div>
