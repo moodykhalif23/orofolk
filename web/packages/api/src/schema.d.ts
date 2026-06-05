@@ -310,6 +310,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListSettings"];
+        put: operations["adminUpsertSetting"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the cascade-resolved value for a key at given scope ids. */
+        get: operations["adminResolveSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        /** Resolve a config key for the current buyer (or org defaults if anonymous). */
+        get: operations["storefrontResolveSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/price-adjustment-rules": {
         parameters: {
             query?: never;
@@ -3213,6 +3283,33 @@ export interface components {
         ListWrapperPriceAdjustmentRule: {
             items?: components["schemas"]["PriceAdjustmentRule"][];
         };
+        ConfigSetting: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            scope: "org" | "website" | "group" | "customer";
+            /** Format: int64 */
+            scope_id?: number | null;
+            key: string;
+            value: unknown;
+        };
+        ConfigSettingInput: {
+            /** @enum {string} */
+            scope: "org" | "website" | "group" | "customer";
+            /** Format: int64 */
+            scope_id?: number | null;
+            key: string;
+            value: unknown;
+        };
+        ListWrapperConfigSetting: {
+            items?: components["schemas"]["ConfigSetting"][];
+        };
+        ConfigResolveResult: {
+            key: string;
+            found: boolean;
+            scope?: string;
+            value?: unknown;
+        };
         ListWrapperPrice: {
             items?: components["schemas"]["Price"][];
         };
@@ -5457,6 +5554,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerGroup"];
+                };
+            };
+        };
+    };
+    adminListSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperConfigSetting"];
+                };
+            };
+        };
+    };
+    adminUpsertSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigSettingInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigSetting"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminResolveSetting: {
+        parameters: {
+            query: {
+                key: string;
+                website_id?: number;
+                group_id?: number;
+                customer_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigResolveResult"];
+                };
+            };
+        };
+    };
+    storefrontResolveSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigResolveResult"];
                 };
             };
         };

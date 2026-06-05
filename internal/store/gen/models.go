@@ -152,6 +152,16 @@ type ConfigRule struct {
 	RelatedOptionID int64  `json:"related_option_id"`
 }
 
+type ConfigSetting struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Scope          string    `json:"scope"`
+	ScopeID        *int64    `json:"scope_id"`
+	Key            string    `json:"key"`
+	Value          []byte    `json:"value"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type Contact struct {
 	ID             int64     `json:"id"`
 	OrganizationID int64     `json:"organization_id"`

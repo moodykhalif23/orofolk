@@ -111,6 +111,7 @@ const groups: NavGroup[] = [
     icon: 'pi pi-cog',
     items: [
       { label: 'Websites', icon: 'pi pi-globe', routeName: 'websites', permission: 'tenant.view' },
+      { label: 'Configuration', icon: 'pi pi-cog', routeName: 'settings', permission: 'settings.view' },
       { label: 'Integrations', icon: 'pi pi-sync', routeName: 'integrations', permission: 'integration.view' },
       { label: 'ERP sync', icon: 'pi pi-server', routeName: 'erp', permission: 'erp.view' },
       { label: 'SSO providers', icon: 'pi pi-id-card', routeName: 'identity-providers', permission: 'sso.view' },

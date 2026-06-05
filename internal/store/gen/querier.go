@@ -172,6 +172,7 @@ type Querier interface {
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
+	DeleteConfigSetting(ctx context.Context, arg DeleteConfigSettingParams) (int64, error)
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeletePriceAdjustmentRule(ctx context.Context, arg DeletePriceAdjustmentRuleParams) (int64, error)
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
@@ -367,6 +368,8 @@ type Querier interface {
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCombinedPricesForCustomer(ctx context.Context, arg ListCombinedPricesForCustomerParams) ([]CombinedPrice, error)
 	ListConfigRules(ctx context.Context, productID int64) ([]ConfigRule, error)
+	// Hierarchical config settings (migration 0036).
+	ListConfigSettings(ctx context.Context, organizationID int64) ([]ConfigSetting, error)
 	ListContactsForCustomer(ctx context.Context, arg ListContactsForCustomerParams) ([]Contact, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
@@ -484,6 +487,9 @@ type Querier interface {
 	RecordAutomationExecution(ctx context.Context, arg RecordAutomationExecutionParams) error
 	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
 	RenameShoppingList(ctx context.Context, arg RenameShoppingListParams) (ShoppingList, error)
+	// ResolveConfig returns the most specific value for a key given the optional
+	// website/group/customer in scope (customer > group > website > org).
+	ResolveConfig(ctx context.Context, arg ResolveConfigParams) (ResolveConfigRow, error)
 	// ===== Resolution (§12.1, on-the-fly) ======================================
 	// ResolvePrice returns the single unit price plus the source price list for a
 	// (customer, product, quantity, currency, website, at). Priority: customer (3)
@@ -572,6 +578,8 @@ type Querier interface {
 	// UpsertCartItem snapshots unit_price at add-time; re-adding the same product
 	// sets the quantity and refreshes the price.
 	UpsertCartItem(ctx context.Context, arg UpsertCartItemParams) (CartItem, error)
+	// UpsertConfigSetting sets (or replaces) a value at a specific scope.
+	UpsertConfigSetting(ctx context.Context, arg UpsertConfigSettingParams) (ConfigSetting, error)
 	// Field-sales offline sync (Pack 3 §4).
 	// ===== Devices =============================================================
 	// UpsertFieldDevice registers a device on first contact and refreshes its
