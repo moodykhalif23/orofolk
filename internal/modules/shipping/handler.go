@@ -27,6 +27,15 @@ func New(pool *pgxpool.Pool) *Handler {
 	return &Handler{q: gen.New(pool), provider: shipeng.Local{}}
 }
 
+// NewWithProvider selects the shipping provider (config-driven): the local
+// table-rate provider by default, or an external carrier adapter.
+func NewWithProvider(pool *pgxpool.Pool, p shipeng.Adapter) *Handler {
+	if p == nil {
+		p = shipeng.Local{}
+	}
+	return &Handler{q: gen.New(pool), provider: p}
+}
+
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 	// Storefront rate quotes feed checkout (public, catalog-grade).
 	r.Post("/storefront/shipping/rates", h.rates)

@@ -18,15 +18,15 @@ type OrderLine struct {
 	Amount    string
 }
 
-// Service resolves rates + product tax classes from the DB and computes order
-// tax via the LocalVAT provider.
-type Service struct{ q Querier }
+type Service struct {
+	q        Querier
+	provider Adapter // nil = local VAT from the DB rate table
+}
 
 func NewService(q Querier) *Service { return &Service{q: q} }
 
-// ComputeOrderTax returns per-line tax (aligned to lines) and the total for a
-// destination country. With no country or no configured rates it returns all
-// zeros — so untaxed orgs/regions are unaffected.
+func NewServiceWithProvider(q Querier, p Adapter) *Service { return &Service{q: q, provider: p} }
+
 func (s *Service) ComputeOrderTax(ctx context.Context, org int64, country string, lines []OrderLine) (perLine []string, total string, err error) {
 	perLine = make([]string, len(lines))
 	for i := range perLine {
@@ -35,18 +35,8 @@ func (s *Service) ComputeOrderTax(ctx context.Context, org int64, country string
 	if country == "" || len(lines) == 0 {
 		return perLine, "0", nil
 	}
-	rateRows, err := s.q.ListTaxRatesByCountry(ctx, gen.ListTaxRatesByCountryParams{OrganizationID: org, Country: country})
-	if err != nil {
-		return perLine, "0", err
-	}
-	if len(rateRows) == 0 {
-		return perLine, "0", nil
-	}
-	rateMap := make(map[string]string, len(rateRows))
-	for _, rr := range rateRows {
-		rateMap[rr.TaxClass] = rr.Rate
-	}
 
+	// Product tax classes are needed by either provider path.
 	ids := make([]int64, 0, len(lines))
 	for _, ln := range lines {
 		ids = append(ids, ln.ProductID)
@@ -59,7 +49,6 @@ func (s *Service) ComputeOrderTax(ctx context.Context, org int64, country string
 	for _, cr := range classRows {
 		classByID[cr.ID] = cr.TaxClass
 	}
-
 	req := Request{Country: country, Lines: make([]Line, len(lines))}
 	for i, ln := range lines {
 		cls := classByID[ln.ProductID]
@@ -68,7 +57,23 @@ func (s *Service) ComputeOrderTax(ctx context.Context, org int64, country string
 		}
 		req.Lines[i] = Line{ProductID: ln.ProductID, TaxClass: cls, Amount: ln.Amount}
 	}
-	res, err := NewLocalVAT(rateMap).Calculate(ctx, req)
+
+	provider := s.provider
+	if provider == nil {
+		rateRows, rerr := s.q.ListTaxRatesByCountry(ctx, gen.ListTaxRatesByCountryParams{OrganizationID: org, Country: country})
+		if rerr != nil {
+			return perLine, "0", rerr
+		}
+		if len(rateRows) == 0 {
+			return perLine, "0", nil
+		}
+		rateMap := make(map[string]string, len(rateRows))
+		for _, rr := range rateRows {
+			rateMap[rr.TaxClass] = rr.Rate
+		}
+		provider = NewLocalVAT(rateMap)
+	}
+	res, err := provider.Calculate(ctx, req)
 	if err != nil {
 		return perLine, "0", err
 	}

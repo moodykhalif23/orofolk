@@ -38,6 +38,7 @@ import (
 	"b2bcommerce/internal/modules/wfadmin"
 	"b2bcommerce/internal/payments/gateway"
 	mw "b2bcommerce/internal/server/middleware"
+	shippingeng "b2bcommerce/internal/shipping"
 	"b2bcommerce/internal/store"
 )
 
@@ -60,6 +61,7 @@ type options struct {
 	punchoutURL  string
 	ediSenderID  string
 	punchoutTTL  time.Duration
+	shipProvider shippingeng.Adapter
 }
 
 // Option configures optional server dependencies.
@@ -92,6 +94,12 @@ func WithRendition(e dam.RenditionEnqueuer) Option {
 // session TTL.
 func WithIntegration(storefrontURL, ediSenderID string, ttl time.Duration) Option {
 	return func(o *options) { o.punchoutURL = storefrontURL; o.ediSenderID = ediSenderID; o.punchoutTTL = ttl }
+}
+
+// WithShippingProvider selects the shipping rate/label/track provider (e.g. a
+// MockCarrier, or a real FedEx/UPS adapter). Defaults to the local table-rate.
+func WithShippingProvider(p shippingeng.Adapter) Option {
+	return func(o *options) { o.shipProvider = p }
 }
 
 func WithRecompute(e pricing.Enqueuer) Option {
@@ -172,7 +180,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	field.New(st.Pool()).Routes(r, authMW)
 	cpq.New(st.Pool()).Routes(r, authMW)
 	taxmod.New(st.Pool()).Routes(r, authMW)
-	shippingmod.New(st.Pool()).Routes(r, authMW)
+	shippingmod.NewWithProvider(st.Pool(), o.shipProvider).Routes(r, authMW)
 	erpmod.New(st.Pool()).Routes(r, authMW)
 	ssomod.New(st.Pool(), issuer).Routes(r, authMW)
 
