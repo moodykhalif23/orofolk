@@ -256,6 +256,57 @@ components:
         role: { type: string, enum: [buyer, approver, admin] }
         spending_limit: { type: string, nullable: true }
 
+    CustomerUserUpdate:
+      type: object
+      properties:
+        full_name: { type: string }
+        role: { type: string, enum: [buyer, approver, admin] }
+        spending_limit: { type: string, nullable: true }
+        is_active: { type: boolean }
+
+    CompanyProfile:
+      type: object
+      required: [company, me]
+      properties:
+        company:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: integer, format: int64 }
+            name: { type: string }
+            tax_id: { type: string, nullable: true }
+            payment_terms_days: { type: integer }
+            credit_limit: { type: string }
+        me:
+          type: object
+          required: [id, email, full_name, role]
+          properties:
+            id: { type: integer, format: int64 }
+            email: { type: string }
+            full_name: { type: string }
+            role: { type: string, enum: [buyer, approver, admin] }
+            spending_limit: { type: string, nullable: true }
+
+    ApprovalSummary:
+      type: object
+      required: [public_id, grand_total, currency]
+      properties:
+        public_id: { type: string, format: uuid }
+        grand_total: { type: string }
+        currency: { type: string }
+        placed_by_user: { type: integer, format: int64, nullable: true }
+        requested_at: { type: string, format: date-time }
+    ListWrapperApproval:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ApprovalSummary' } }
+    ApprovalDecision:
+      type: object
+      required: [public_id, status]
+      properties:
+        public_id: { type: string, format: uuid }
+        status: { type: string }
+
     CustomerAddress:
       type: object
       required: [id, customer_id, type, line1, city, country]
@@ -474,6 +525,123 @@ components:
               item_id: { type: integer, format: int64 }
               old_price: { type: string }
               new_price: { type: string }
+
+    PriceTier:
+      type: object
+      required: [unit, min_quantity, value]
+      properties:
+        unit: { type: string }
+        min_quantity: { type: string }
+        value: { type: string }
+    ProductPricing:
+      type: object
+      required: [currency, price_on_request, tiers]
+      properties:
+        currency: { type: string }
+        price_on_request: { type: boolean }
+        tiers: { type: array, items: { $ref: '#/components/schemas/PriceTier' } }
+
+    ReorderRequest:
+      type: object
+      required: [order_public_id]
+      properties:
+        order_public_id: { type: string, format: uuid }
+
+    ReorderResult:
+      type: object
+      required: [cart_public_id, skipped_skus]
+      properties:
+        cart_public_id: { type: string, format: uuid }
+        skipped_skus:
+          type: array
+          items: { type: string }
+          description: SKUs not added because no price resolved for this buyer.
+
+    BulkAddRequest:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          items:
+            type: object
+            required: [sku]
+            properties:
+              sku: { type: string }
+              quantity: { type: string }
+              unit: { type: string }
+
+    BulkAddResult:
+      type: object
+      required: [cart_public_id, added, not_found_skus, price_on_request]
+      properties:
+        cart_public_id: { type: string, format: uuid }
+        added: { type: integer }
+        not_found_skus:
+          type: array
+          items: { type: string }
+        price_on_request:
+          type: array
+          items: { type: string }
+
+    ShoppingList:
+      type: object
+      required: [id, name, is_default]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        is_default: { type: boolean }
+    ListWrapperShoppingList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ShoppingList' } }
+
+    ShoppingListItem:
+      type: object
+      required: [id, product_id, sku, name, quantity, unit]
+      properties:
+        id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        quantity: { type: string }
+        unit: { type: string }
+    ListWrapperShoppingListItem:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ShoppingListItem' } }
+
+    CreateShoppingList:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        is_default: { type: boolean }
+    RenameShoppingList:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    AddShoppingListItem:
+      type: object
+      required: [product_public_id]
+      properties:
+        product_public_id: { type: string, format: uuid }
+        quantity: { type: string }
+        unit: { type: string }
+    UpdateShoppingListItemQty:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: string }
+    ConvertListResult:
+      type: object
+      required: [cart_public_id, skipped_product_ids]
+      properties:
+        cart_public_id: { type: string, format: uuid }
+        skipped_product_ids:
+          type: array
+          items: { type: integer, format: int64 }
 
     RfqItem:
       type: object
@@ -2412,6 +2580,231 @@ paths:
         '200':
           description: OK
           content: { application/json: { schema: { $ref: '#/components/schemas/RevalidateResult' } } }
+
+  /storefront/products/{slug}/pricing:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Pricing]
+      operationId: storefrontProductPricing
+      summary: The authenticated buyer's contract price tiers for a product.
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ProductPricing' } } } }
+
+  /storefront/cart/reorder:
+    post:
+      tags: [Cart]
+      operationId: storefrontReorder
+      summary: Copy a previously placed order's lines into the active cart (current prices).
+      security: [{ storefrontAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReorderRequest' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReorderResult' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/cart/bulk:
+    post:
+      tags: [Cart]
+      operationId: storefrontBulkAdd
+      summary: Quick order — add a batch of SKUs to the active cart in one call.
+      security: [{ storefrontAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BulkAddRequest' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/BulkAddResult' } } }
+
+  /storefront/account/addresses:
+    get:
+      tags: [Customers]
+      operationId: storefrontListAddresses
+      summary: List the buying company's saved addresses.
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerAddress' } } } }
+    post:
+      tags: [Customers]
+      operationId: storefrontCreateAddress
+      summary: Save a new address for the buying company.
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddressInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerAddress' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/account/company:
+    get:
+      tags: [Customers]
+      operationId: storefrontGetCompany
+      summary: The buying company's profile and the caller's own user.
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CompanyProfile' } } } }
+
+  /storefront/account/users:
+    get:
+      tags: [Customers]
+      operationId: storefrontListUsers
+      summary: List the company's users (company-admin only).
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCustomerUser' } } } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Customers]
+      operationId: storefrontCreateUser
+      summary: Invite a new company user (company-admin only).
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUserInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUser' } } } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/account/users/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [Customers]
+      operationId: storefrontUpdateUser
+      summary: Update a company user's role, spending limit or status (company-admin only).
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUserUpdate' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerUser' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/account/approvals:
+    get:
+      tags: [Customers]
+      operationId: storefrontListApprovals
+      summary: Orders awaiting approval for the company (approver/admin only).
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperApproval' } } } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/account/approvals/{publicID}/approve:
+    parameters:
+      - { name: publicID, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Customers]
+      operationId: storefrontApproveOrder
+      summary: Approve a held order — releases it to the normal flow (approver/admin only).
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApprovalDecision' } } } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/account/approvals/{publicID}/reject:
+    parameters:
+      - { name: publicID, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [Customers]
+      operationId: storefrontRejectOrder
+      summary: Reject a held order — cancels it (approver/admin only).
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ApprovalDecision' } } } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/shopping-lists:
+    get:
+      tags: [Cart]
+      operationId: storefrontListShoppingLists
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperShoppingList' } } } }
+    post:
+      tags: [Cart]
+      operationId: storefrontCreateShoppingList
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateShoppingList' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingList' } } } }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/shopping-lists/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [Cart]
+      operationId: storefrontRenameShoppingList
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RenameShoppingList' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingList' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Cart]
+      operationId: storefrontDeleteShoppingList
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/shopping-lists/{id}/items:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Cart]
+      operationId: storefrontListShoppingListItems
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperShoppingListItem' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Cart]
+      operationId: storefrontAddShoppingListItem
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AddShoppingListItem' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingListItem' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/shopping-lists/{id}/items/{itemID}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: itemID, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [Cart]
+      operationId: storefrontUpdateShoppingListItem
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UpdateShoppingListItemQty' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingListItem' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Cart]
+      operationId: storefrontRemoveShoppingListItem
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/shopping-lists/{id}/convert-to-cart:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Cart]
+      operationId: storefrontConvertShoppingList
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ConvertListResult' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /admin/rfqs:
     get:

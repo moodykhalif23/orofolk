@@ -98,6 +98,20 @@ FROM customer_users
 WHERE customer_id = $1
 ORDER BY full_name;
 
+-- GetCustomerUser fetches one customer-user scoped to their company (used by
+-- storefront self-service to read the caller's own role and to load a target
+-- user safely within the company boundary).
+-- name: GetCustomerUser :one
+SELECT id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at
+FROM customer_users
+WHERE id = $1 AND customer_id = $2;
+
+-- name: UpdateCustomerUser :one
+UPDATE customer_users
+SET full_name = $3, role = $4, spending_limit = $5, is_active = $6, updated_at = now()
+WHERE id = $1 AND customer_id = $2
+RETURNING id, customer_id, email, full_name, role, spending_limit, is_active, created_at, updated_at;
+
 -- name: CreateCustomerAddress :one
 INSERT INTO customer_addresses (
   customer_id, type, is_default, line1, line2, city, region, postal_code, country

@@ -14,6 +14,7 @@ import (
 	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/inventory"
+	"b2bcommerce/internal/modules/account"
 	authmod "b2bcommerce/internal/modules/auth"
 	"b2bcommerce/internal/modules/cart"
 	"b2bcommerce/internal/modules/catalog"
@@ -149,6 +150,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	authmod.New(st, issuer).Routes(r, loginLimit)
 	catalog.New(st.Queries()).Routes(r, authMW)
 	customers.New(st.Queries()).Routes(r, authMW)
+	account.New(st.Queries()).Routes(r, authMW)
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
 	cart.New(st.Queries()).Routes(r, authMW)
 	sales.New(st.Pool(), o.notifier).Routes(r, authMW)

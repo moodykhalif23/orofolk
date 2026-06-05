@@ -53,6 +53,9 @@ type seed struct {
 	pricedPublicID string
 	freePublicID   string // a product with no resolvable price
 	productPriced  int64
+	productFree    int64
+	pricedSKU      string
+	freeSKU        string
 }
 
 // seedCustomer creates a customer + login + a customer-assigned price list with
@@ -105,8 +108,39 @@ func seedCustomer(t *testing.T, pool *pgxpool.Pool, name, email string) seed {
 
 	return seed{
 		customerID: cust.ID, email: email,
-		pricedPublicID: priced.PublicID.String(), freePublicID: free.PublicID.String(), productPriced: priced.ID,
+		pricedPublicID: priced.PublicID.String(), freePublicID: free.PublicID.String(),
+		productPriced: priced.ID, productFree: free.ID,
+		pricedSKU: priced.Sku, freeSKU: free.Sku,
 	}
+}
+
+// seedOrder creates a placed order for the customer with the given line items
+// (productID -> quantity), snapshotting sku/name from the product.
+func seedOrder(t *testing.T, pool *pgxpool.Pool, s seed, lines map[int64]string) gen.Order {
+	t.Helper()
+	q := gen.New(pool)
+	ctx := context.Background()
+	order, err := q.CreateOrder(ctx, gen.CreateOrderParams{
+		OrganizationID: 1, WebsiteID: 1, CustomerID: s.customerID, Currency: "USD",
+		BillingAddress: []byte("{}"), ShippingAddress: []byte("{}"),
+		Subtotal: "0", TaxTotal: "0", ShippingTotal: "0", GrandTotal: "0",
+	})
+	if err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+	for productID, qty := range lines {
+		p, err := q.GetProductByID(ctx, gen.GetProductByIDParams{OrganizationID: 1, ID: productID})
+		if err != nil {
+			t.Fatalf("get product: %v", err)
+		}
+		if _, err := q.AddOrderItem(ctx, gen.AddOrderItemParams{
+			OrderID: order.ID, ProductID: productID, Sku: p.Sku, Name: p.Name,
+			Quantity: qty, Unit: "each", UnitPrice: "10.0000", TaxAmount: "0", RowTotal: "10.0000",
+		}); err != nil {
+			t.Fatalf("add order item: %v", err)
+		}
+	}
+	return order
 }
 
 func login(t *testing.T, h http.Handler, email string) string {
@@ -303,6 +337,257 @@ func TestShoppingListConvertAndDefault(t *testing.T) {
 	_ = json.Unmarshal(cartRR.Body.Bytes(), &c)
 	if len(c.Items) != 1 || c.Subtotal != "20.0000" {
 		t.Errorf("converted cart: want 1 item subtotal 20.0000, got items=%d subtotal=%s", len(c.Items), c.Subtotal)
+	}
+}
+
+// ---- Contract pricing visibility -----------------------------------------
+
+func TestProductPricingTiers(t *testing.T) {
+	h, _, pool := newServer(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+
+	// Add a volume tier (buy 10+ at 8) on the priced product's price list, rewarm.
+	lists, _ := q.ListPriceLists(ctx, 1)
+	var listID int64
+	for _, l := range lists {
+		if l.Currency == "USD" {
+			listID = l.ID
+		}
+	}
+	if _, err := q.UpsertPrice(ctx, gen.UpsertPriceParams{PriceListID: listID, ProductID: s.productPriced, Unit: "each", MinQuantity: "10", Value: "8.0000"}); err != nil {
+		t.Fatalf("tier price: %v", err)
+	}
+	wid := int64(1)
+	if err := jobs.RecomputeForCustomer(ctx, pool, jobs.RecomputeCombinedPricesArgs{CustomerID: s.customerID, WebsiteID: &wid, Currency: "USD"}); err != nil {
+		t.Fatalf("recompute: %v", err)
+	}
+
+	tok := login(t, h, s.email)
+	rr := do(t, h, http.MethodGet, "/storefront/products/acme-priced/pricing", tok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("pricing: want 200, got %d (%s)", rr.Code, rr.Body.String())
+	}
+	var res struct {
+		Currency       string `json:"currency"`
+		PriceOnRequest bool   `json:"price_on_request"`
+		Tiers          []struct {
+			MinQuantity string `json:"min_quantity"`
+			Value       string `json:"value"`
+		} `json:"tiers"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &res)
+	if res.PriceOnRequest || len(res.Tiers) != 2 {
+		t.Fatalf("tiers: want 2 priced tiers, got price_on_request=%v tiers=%+v", res.PriceOnRequest, res.Tiers)
+	}
+	// Tiers are ordered by min_quantity: 1 -> 10.0000, 10 -> 8.0000.
+	if res.Tiers[1].Value != "8.0000" {
+		t.Errorf("volume tier: want 8.0000 at qty 10, got %+v", res.Tiers)
+	}
+}
+
+func TestProductPricingOnRequest(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	tok := login(t, h, s.email)
+	// The unpriced product has no resolved tiers.
+	rr := do(t, h, http.MethodGet, "/storefront/products/acme-free/pricing", tok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("pricing: want 200, got %d", rr.Code)
+	}
+	var res struct {
+		PriceOnRequest bool `json:"price_on_request"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &res)
+	if !res.PriceOnRequest {
+		t.Errorf("unpriced product: want price_on_request=true")
+	}
+}
+
+// ---- Reorder -------------------------------------------------------------
+
+func TestReorderFromOrder(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	// An order with a priced line (qty 2) and an unpriced line (qty 1).
+	order := seedOrder(t, pool, s, map[int64]string{s.productPriced: "2", s.productFree: "1"})
+	tok := login(t, h, s.email)
+
+	rr := do(t, h, http.MethodPost, "/storefront/cart/reorder", tok, map[string]any{"order_public_id": order.PublicID.String()})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("reorder: want 200, got %d (%s)", rr.Code, rr.Body.String())
+	}
+	var res struct {
+		Skipped []string `json:"skipped_skus"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &res)
+	if len(res.Skipped) != 1 || res.Skipped[0] != s.freeSKU {
+		t.Errorf("reorder: want 1 skipped (%s), got %v", s.freeSKU, res.Skipped)
+	}
+
+	// Priced line is in the cart at the CURRENT price (10), qty 2 -> subtotal 20.
+	cartRR := do(t, h, http.MethodGet, "/storefront/cart", tok, nil)
+	var c cartResp
+	_ = json.Unmarshal(cartRR.Body.Bytes(), &c)
+	if len(c.Items) != 1 || c.Subtotal != "20.0000" {
+		t.Errorf("reordered cart: want 1 item subtotal 20.0000, got items=%d subtotal=%s", len(c.Items), c.Subtotal)
+	}
+}
+
+func TestReorderForeignOrderIsNotFound(t *testing.T) {
+	h, _, pool := newServer(t)
+	a := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	b := seedCustomer(t, pool, "beta", "buyer@beta.test")
+	order := seedOrder(t, pool, a, map[int64]string{a.productPriced: "1"})
+
+	tokB := login(t, h, b.email)
+	// Customer B must not be able to reorder customer A's order.
+	if rr := do(t, h, http.MethodPost, "/storefront/cart/reorder", tokB, map[string]any{"order_public_id": order.PublicID.String()}); rr.Code != http.StatusNotFound {
+		t.Errorf("foreign reorder: want 404, got %d (%s)", rr.Code, rr.Body.String())
+	}
+}
+
+// ---- Quick order (bulk add) ----------------------------------------------
+
+func TestBulkAddQuickOrder(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	tok := login(t, h, s.email)
+
+	rr := do(t, h, http.MethodPost, "/storefront/cart/bulk", tok, map[string]any{
+		"lines": []map[string]any{
+			{"sku": s.pricedSKU, "quantity": "2"},
+			{"sku": s.freeSKU, "quantity": "1"}, // exists but price-on-request
+			{"sku": "DOES-NOT-EXIST", "quantity": "1"},
+		},
+	})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("bulk: want 200, got %d (%s)", rr.Code, rr.Body.String())
+	}
+	var res struct {
+		Added          int      `json:"added"`
+		NotFound       []string `json:"not_found_skus"`
+		PriceOnRequest []string `json:"price_on_request"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &res)
+	if res.Added != 1 {
+		t.Errorf("bulk added: want 1, got %d", res.Added)
+	}
+	if len(res.NotFound) != 1 || res.NotFound[0] != "DOES-NOT-EXIST" {
+		t.Errorf("bulk not_found: want [DOES-NOT-EXIST], got %v", res.NotFound)
+	}
+	if len(res.PriceOnRequest) != 1 || res.PriceOnRequest[0] != s.freeSKU {
+		t.Errorf("bulk price_on_request: want [%s], got %v", s.freeSKU, res.PriceOnRequest)
+	}
+
+	cartRR := do(t, h, http.MethodGet, "/storefront/cart", tok, nil)
+	var c cartResp
+	_ = json.Unmarshal(cartRR.Body.Bytes(), &c)
+	if len(c.Items) != 1 || c.Subtotal != "20.0000" {
+		t.Errorf("bulk cart: want 1 item subtotal 20.0000, got items=%d subtotal=%s", len(c.Items), c.Subtotal)
+	}
+}
+
+func TestBulkAddEmptyRejected(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	tok := login(t, h, s.email)
+	if rr := do(t, h, http.MethodPost, "/storefront/cart/bulk", tok, map[string]any{"lines": []any{}}); rr.Code != http.StatusBadRequest {
+		t.Errorf("empty bulk: want 400, got %d", rr.Code)
+	}
+}
+
+// ---- Shopping list management --------------------------------------------
+
+func TestShoppingListManageItemsRenameDelete(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	tok := login(t, h, s.email)
+
+	// Create a list and add an item.
+	l := do(t, h, http.MethodPost, "/storefront/shopping-lists", tok, map[string]any{"name": "Weekly"})
+	if l.Code != http.StatusCreated {
+		t.Fatalf("create list: %d (%s)", l.Code, l.Body.String())
+	}
+	var list gen.ShoppingList
+	_ = json.Unmarshal(l.Body.Bytes(), &list)
+	base := "/storefront/shopping-lists/" + strconv.FormatInt(list.ID, 10)
+
+	add := do(t, h, http.MethodPost, base+"/items", tok, map[string]any{"product_public_id": s.pricedPublicID, "quantity": "2"})
+	if add.Code != http.StatusCreated {
+		t.Fatalf("add item: %d (%s)", add.Code, add.Body.String())
+	}
+	var item struct {
+		ID int64 `json:"id"`
+	}
+	_ = json.Unmarshal(add.Body.Bytes(), &item)
+
+	// Update quantity.
+	upd := do(t, h, http.MethodPatch, base+"/items/"+strconv.FormatInt(item.ID, 10), tok, map[string]any{"quantity": "5"})
+	if upd.Code != http.StatusOK {
+		t.Fatalf("update item: %d (%s)", upd.Code, upd.Body.String())
+	}
+	var updated struct {
+		Quantity string `json:"quantity"`
+	}
+	_ = json.Unmarshal(upd.Body.Bytes(), &updated)
+	if updated.Quantity != "5.0000" && updated.Quantity != "5" {
+		t.Errorf("update qty: want 5, got %s", updated.Quantity)
+	}
+
+	// Rename the list.
+	rn := do(t, h, http.MethodPatch, base, tok, map[string]any{"name": "Renamed"})
+	if rn.Code != http.StatusOK {
+		t.Fatalf("rename: %d (%s)", rn.Code, rn.Body.String())
+	}
+	var renamed gen.ShoppingList
+	_ = json.Unmarshal(rn.Body.Bytes(), &renamed)
+	if renamed.Name != "Renamed" {
+		t.Errorf("rename: want Renamed, got %s", renamed.Name)
+	}
+
+	// Remove the item.
+	if rm := do(t, h, http.MethodDelete, base+"/items/"+strconv.FormatInt(item.ID, 10), tok, nil); rm.Code != http.StatusNoContent {
+		t.Fatalf("remove item: want 204, got %d (%s)", rm.Code, rm.Body.String())
+	}
+	items := do(t, h, http.MethodGet, base+"/items", tok, nil)
+	var ir struct {
+		Items []any `json:"items"`
+	}
+	_ = json.Unmarshal(items.Body.Bytes(), &ir)
+	if len(ir.Items) != 0 {
+		t.Errorf("after remove: want 0 items, got %d", len(ir.Items))
+	}
+
+	// Delete the list.
+	if del := do(t, h, http.MethodDelete, base, tok, nil); del.Code != http.StatusNoContent {
+		t.Fatalf("delete list: want 204, got %d (%s)", del.Code, del.Body.String())
+	}
+	// Subsequent item fetch is 404 (list gone).
+	if again := do(t, h, http.MethodGet, base+"/items", tok, nil); again.Code != http.StatusNotFound {
+		t.Errorf("after delete: want 404, got %d", again.Code)
+	}
+}
+
+func TestShoppingListForeignAccessIsNotFound(t *testing.T) {
+	h, _, pool := newServer(t)
+	a := seedCustomer(t, pool, "acme", "buyer@acme.test")
+	b := seedCustomer(t, pool, "beta", "buyer@beta.test")
+	tokA := login(t, h, a.email)
+	tokB := login(t, h, b.email)
+
+	l := do(t, h, http.MethodPost, "/storefront/shopping-lists", tokA, map[string]any{"name": "Private"})
+	var list gen.ShoppingList
+	_ = json.Unmarshal(l.Body.Bytes(), &list)
+	base := "/storefront/shopping-lists/" + strconv.FormatInt(list.ID, 10)
+
+	// Customer B cannot rename or delete customer A's list.
+	if rn := do(t, h, http.MethodPatch, base, tokB, map[string]any{"name": "Hijacked"}); rn.Code != http.StatusNotFound {
+		t.Errorf("foreign rename: want 404, got %d", rn.Code)
+	}
+	if del := do(t, h, http.MethodDelete, base, tokB, nil); del.Code != http.StatusNotFound {
+		t.Errorf("foreign delete: want 404, got %d", del.Code)
 	}
 }
 

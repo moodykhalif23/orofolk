@@ -173,6 +173,8 @@ type Querier interface {
 	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
 	DeleteSSOState(ctx context.Context, id int64) error
 	DeleteShippingRate(ctx context.Context, arg DeleteShippingRateParams) error
+	DeleteShoppingList(ctx context.Context, arg DeleteShoppingListParams) (int64, error)
+	DeleteShoppingListItem(ctx context.Context, arg DeleteShoppingListItemParams) (int64, error)
 	DeleteTaxRate(ctx context.Context, arg DeleteTaxRateParams) error
 	// ===== Levels ==============================================================
 	EnsureInventoryLevel(ctx context.Context, arg EnsureInventoryLevelParams) error
@@ -210,6 +212,10 @@ type Querier interface {
 	// GetCustomerDefaultAddress returns the default (or first) address of a type
 	// for snapshotting onto an order.
 	GetCustomerDefaultAddress(ctx context.Context, arg GetCustomerDefaultAddressParams) (GetCustomerDefaultAddressRow, error)
+	// GetCustomerUser fetches one customer-user scoped to their company (used by
+	// storefront self-service to read the caller's own role and to load a target
+	// user safely within the company boundary).
+	GetCustomerUser(ctx context.Context, arg GetCustomerUserParams) (GetCustomerUserRow, error)
 	// GetCustomerUserByEmail links a buyer SSO subject to an existing customer-user.
 	GetCustomerUserByEmail(ctx context.Context, arg GetCustomerUserByEmailParams) (GetCustomerUserByEmailRow, error)
 	// GetCustomerUserForLogin resolves a customer-user by email within an org for
@@ -345,6 +351,10 @@ type Querier interface {
 	ListContactsForCustomer(ctx context.Context, arg ListContactsForCustomerParams) ([]Contact, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
+	// ListCustomerPriceTiersForSlug returns every volume tier (min_quantity break)
+	// resolved for a customer on a product, so the storefront can show the buyer
+	// their contract pricing ("buy 100+ at X").
+	ListCustomerPriceTiersForSlug(ctx context.Context, arg ListCustomerPriceTiersForSlugParams) ([]ListCustomerPriceTiersForSlugRow, error)
 	ListCustomerUsers(ctx context.Context, customerID int64) ([]ListCustomerUsersRow, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
 	// ListDueReportSchedules returns active schedules whose cadence interval has
@@ -380,6 +390,7 @@ type Querier interface {
 	ListOrderStatusHistory(ctx context.Context, orderID int64) ([]ListOrderStatusHistoryRow, error)
 	ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams) ([]Order, error)
 	ListOrdersForCustomer(ctx context.Context, customerID int64) ([]Order, error)
+	ListOrdersForCustomerByStatus(ctx context.Context, arg ListOrdersForCustomerByStatusParams) ([]Order, error)
 	// ===== Outbound work lists (idempotent: skip already-synced) ================
 	ListOrdersToSync(ctx context.Context, arg ListOrdersToSyncParams) ([]Order, error)
 	// ListPagesAdmin lists all pages for the org's websites.
@@ -449,6 +460,7 @@ type Querier interface {
 	RecomputeCombinedPricesForCustomer(ctx context.Context, arg RecomputeCombinedPricesForCustomerParams) error
 	RecordAutomationExecution(ctx context.Context, arg RecordAutomationExecutionParams) error
 	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
+	RenameShoppingList(ctx context.Context, arg RenameShoppingListParams) (ShoppingList, error)
 	// ===== Resolution (§12.1, on-the-fly) ======================================
 	// ResolvePrice returns the single unit price plus the source price list for a
 	// (customer, product, quantity, currency, website, at). Priority: customer (3)
@@ -519,6 +531,7 @@ type Querier interface {
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
+	UpdateCustomerUser(ctx context.Context, arg UpdateCustomerUserParams) (UpdateCustomerUserRow, error)
 	UpdateIdentityProvider(ctx context.Context, arg UpdateIdentityProviderParams) (IdentityProvider, error)
 	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)
@@ -526,6 +539,7 @@ type Querier interface {
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error)
 	UpdateReportDefinition(ctx context.Context, arg UpdateReportDefinitionParams) (ReportDefinition, error)
+	UpdateShoppingListItem(ctx context.Context, arg UpdateShoppingListItemParams) (ShoppingListItem, error)
 	UpdateTradingPartner(ctx context.Context, arg UpdateTradingPartnerParams) (TradingPartner, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,

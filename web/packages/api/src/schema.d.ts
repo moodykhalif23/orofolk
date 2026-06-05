@@ -492,6 +492,275 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/products/{slug}/pricing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        /** The authenticated buyer's contract price tiers for a product. */
+        get: operations["storefrontProductPricing"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/cart/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a previously placed order's lines into the active cart (current prices). */
+        post: operations["storefrontReorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/cart/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quick order — add a batch of SKUs to the active cart in one call. */
+        post: operations["storefrontBulkAdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/addresses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the buying company's saved addresses. */
+        get: operations["storefrontListAddresses"];
+        put?: never;
+        /** Save a new address for the buying company. */
+        post: operations["storefrontCreateAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The buying company's profile and the caller's own user. */
+        get: operations["storefrontGetCompany"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the company's users (company-admin only). */
+        get: operations["storefrontListUsers"];
+        put?: never;
+        /** Invite a new company user (company-admin only). */
+        post: operations["storefrontCreateUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/users/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a company user's role, spending limit or status (company-admin only). */
+        patch: operations["storefrontUpdateUser"];
+        trace?: never;
+    };
+    "/storefront/account/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Orders awaiting approval for the company (approver/admin only). */
+        get: operations["storefrontListApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/approvals/{publicID}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a held order — releases it to the normal flow (approver/admin only). */
+        post: operations["storefrontApproveOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/approvals/{publicID}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a held order — cancels it (approver/admin only). */
+        post: operations["storefrontRejectOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/shopping-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["storefrontListShoppingLists"];
+        put?: never;
+        post: operations["storefrontCreateShoppingList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/shopping-lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["storefrontDeleteShoppingList"];
+        options?: never;
+        head?: never;
+        patch: operations["storefrontRenameShoppingList"];
+        trace?: never;
+    };
+    "/storefront/shopping-lists/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontListShoppingListItems"];
+        put?: never;
+        post: operations["storefrontAddShoppingListItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/shopping-lists/{id}/items/{itemID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemID: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["storefrontRemoveShoppingListItem"];
+        options?: never;
+        head?: never;
+        patch: operations["storefrontUpdateShoppingListItem"];
+        trace?: never;
+    };
+    "/storefront/shopping-lists/{id}/convert-to-cart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontConvertShoppingList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/rfqs": {
         parameters: {
             query?: never;
@@ -2559,6 +2828,50 @@ export interface components {
             role?: "buyer" | "approver" | "admin";
             spending_limit?: string | null;
         };
+        CustomerUserUpdate: {
+            full_name?: string;
+            /** @enum {string} */
+            role?: "buyer" | "approver" | "admin";
+            spending_limit?: string | null;
+            is_active?: boolean;
+        };
+        CompanyProfile: {
+            company: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                tax_id?: string | null;
+                payment_terms_days?: number;
+                credit_limit?: string;
+            };
+            me: {
+                /** Format: int64 */
+                id: number;
+                email: string;
+                full_name: string;
+                /** @enum {string} */
+                role: "buyer" | "approver" | "admin";
+                spending_limit?: string | null;
+            };
+        };
+        ApprovalSummary: {
+            /** Format: uuid */
+            public_id: string;
+            grand_total: string;
+            currency: string;
+            /** Format: int64 */
+            placed_by_user?: number | null;
+            /** Format: date-time */
+            requested_at?: string;
+        };
+        ListWrapperApproval: {
+            items?: components["schemas"]["ApprovalSummary"][];
+        };
+        ApprovalDecision: {
+            /** Format: uuid */
+            public_id: string;
+            status: string;
+        };
         CustomerAddress: {
             /** Format: int64 */
             id: number;
@@ -2750,6 +3063,83 @@ export interface components {
                 old_price: string;
                 new_price: string;
             }[];
+        };
+        PriceTier: {
+            unit: string;
+            min_quantity: string;
+            value: string;
+        };
+        ProductPricing: {
+            currency: string;
+            price_on_request: boolean;
+            tiers: components["schemas"]["PriceTier"][];
+        };
+        ReorderRequest: {
+            /** Format: uuid */
+            order_public_id: string;
+        };
+        ReorderResult: {
+            /** Format: uuid */
+            cart_public_id: string;
+            /** @description SKUs not added because no price resolved for this buyer. */
+            skipped_skus: string[];
+        };
+        BulkAddRequest: {
+            lines: {
+                sku: string;
+                quantity?: string;
+                unit?: string;
+            }[];
+        };
+        BulkAddResult: {
+            /** Format: uuid */
+            cart_public_id: string;
+            added: number;
+            not_found_skus: string[];
+            price_on_request: string[];
+        };
+        ShoppingList: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            is_default: boolean;
+        };
+        ListWrapperShoppingList: {
+            items?: components["schemas"]["ShoppingList"][];
+        };
+        ShoppingListItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            sku: string;
+            name: string;
+            quantity: string;
+            unit: string;
+        };
+        ListWrapperShoppingListItem: {
+            items?: components["schemas"]["ShoppingListItem"][];
+        };
+        CreateShoppingList: {
+            name: string;
+            is_default?: boolean;
+        };
+        RenameShoppingList: {
+            name: string;
+        };
+        AddShoppingListItem: {
+            /** Format: uuid */
+            product_public_id: string;
+            quantity?: string;
+            unit?: string;
+        };
+        UpdateShoppingListItemQty: {
+            quantity: string;
+        };
+        ConvertListResult: {
+            /** Format: uuid */
+            cart_public_id: string;
+            skipped_product_ids: number[];
         };
         RfqItem: {
             /** Format: int64 */
@@ -5172,6 +5562,505 @@ export interface operations {
                     "application/json": components["schemas"]["RevalidateResult"];
                 };
             };
+        };
+    };
+    storefrontProductPricing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPricing"];
+                };
+            };
+        };
+    };
+    storefrontReorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontBulkAdd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAddRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkAddResult"];
+                };
+            };
+        };
+    };
+    storefrontListAddresses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerAddress"];
+                };
+            };
+        };
+    };
+    storefrontCreateAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerAddressInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerAddress"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontGetCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyProfile"];
+                };
+            };
+        };
+    };
+    storefrontListUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerUser"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontCreateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerUser"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontUpdateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerUserUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerUser"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            403: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperApproval"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontApproveOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecision"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontRejectOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalDecision"];
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListShoppingLists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperShoppingList"];
+                };
+            };
+        };
+    };
+    storefrontCreateShoppingList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShoppingList"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingList"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontDeleteShoppingList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontRenameShoppingList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameShoppingList"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingList"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListShoppingListItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperShoppingListItem"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontAddShoppingListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddShoppingListItem"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingListItem"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontRemoveShoppingListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontUpdateShoppingListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                itemID: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateShoppingListItemQty"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingListItem"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontConvertShoppingList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConvertListResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListRfqs: {
