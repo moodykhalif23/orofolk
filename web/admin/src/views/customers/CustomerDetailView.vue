@@ -34,6 +34,8 @@ const customer = ref<Customer | null>(null)
 const ancestors = ref<{ id: number; depth: number }[]>([])
 const users = ref<CustomerUser[]>([])
 const addresses = ref<CustomerAddress[]>([])
+type Budget = components['schemas']['CustomerBudget']
+const budgets = ref<Budget[]>([])
 const error = ref('')
 const loading = ref(false)
 
@@ -55,6 +57,37 @@ async function load() {
   ancestors.value = h.data?.ancestors ?? []
   users.value = u.data?.items ?? []
   addresses.value = a.data?.items ?? []
+  const b = await api.GET('/admin/customers/{id}/budgets', { params: { path: { id } } })
+  budgets.value = b.data?.items ?? []
+}
+
+// --- budgets ---
+const budgetDialog = ref(false)
+const savingBudget = ref(false)
+const budgetForm = reactive({ cost_center: '', period: 'monthly' as 'monthly' | 'quarterly' | 'annual', amount: '', currency: 'USD' })
+const periods = ['monthly', 'quarterly', 'annual']
+function openBudget() {
+  Object.assign(budgetForm, { cost_center: '', period: 'monthly', amount: '', currency: 'USD' })
+  budgetDialog.value = true
+}
+async function saveBudget() {
+  savingBudget.value = true
+  const { error: err } = await api.POST('/admin/customers/{id}/budgets', {
+    params: { path: { id } },
+    body: { cost_center: budgetForm.cost_center, period: budgetForm.period, amount: budgetForm.amount, currency: budgetForm.currency },
+  })
+  savingBudget.value = false
+  if (err) {
+    toast.add({ severity: 'error', summary: 'Failed', detail: errMessage(err), life: 4000 })
+    return
+  }
+  budgetDialog.value = false
+  toast.add({ severity: 'success', summary: 'Budget saved', life: 2000 })
+  load()
+}
+async function deleteBudget(b: Budget) {
+  const { error: err } = await api.DELETE('/admin/customers/{id}/budgets/{budgetID}', { params: { path: { id, budgetID: b.id } } })
+  if (!err) load()
 }
 
 // --- add user ---
@@ -170,6 +203,7 @@ onMounted(load)
         <TabList>
           <Tab value="users">Users ({{ users.length }})</Tab>
           <Tab value="addresses">Addresses ({{ addresses.length }})</Tab>
+          <Tab value="budgets">Budgets ({{ budgets.length }})</Tab>
         </TabList>
         <TabPanels>
           <TabPanel value="users">
@@ -197,9 +231,35 @@ onMounted(load)
               <Column header="Default"><template #body="{ data }"><Tag v-if="data.is_default" value="default" severity="info" /></template></Column>
             </DataTable>
           </TabPanel>
+          <TabPanel value="budgets">
+            <div class="tabhead">
+              <Button icon="pi pi-plus" label="Add budget" size="small" @click="openBudget" />
+            </div>
+            <DataTable :value="budgets" dataKey="id" stripedRows>
+              <template #empty>No budgets — spend is uncapped.</template>
+              <Column header="Cost center"><template #body="{ data }">{{ data.cost_center || 'Company-wide' }}</template></Column>
+              <Column field="period" header="Period" />
+              <Column header="Amount"><template #body="{ data }">{{ data.amount }} {{ data.currency }}</template></Column>
+              <Column header="" style="width: 4rem"><template #body="{ data }"><Button icon="pi pi-trash" text rounded severity="danger" size="small" @click="deleteBudget(data)" /></template></Column>
+            </DataTable>
+          </TabPanel>
         </TabPanels>
       </Tabs>
     </template>
+
+    <!-- Add budget dialog -->
+    <Dialog v-model:visible="budgetDialog" header="Add budget" modal :style="{ width: '420px' }">
+      <form class="form" @submit.prevent="saveBudget">
+        <div class="field"><label>Cost center <span class="muted">(blank = company-wide)</span></label><InputText v-model="budgetForm.cost_center" fluid /></div>
+        <div class="field"><label>Period</label><Select v-model="budgetForm.period" :options="periods" fluid /></div>
+        <div class="field"><label>Amount</label><InputText v-model="budgetForm.amount" fluid placeholder="e.g. 5000" /></div>
+        <div class="field"><label>Currency</label><InputText v-model="budgetForm.currency" fluid /></div>
+      </form>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text @click="budgetDialog = false" />
+        <Button label="Save" :loading="savingBudget" @click="saveBudget" />
+      </template>
+    </Dialog>
 
     <!-- Add user dialog -->
     <Dialog v-model:visible="userDialog" header="Add customer user" modal :style="{ width: '440px' }">

@@ -294,6 +294,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/customers/{id}/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListBudgets"];
+        put?: never;
+        post: operations["adminCreateBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/budgets/{budgetID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                budgetID: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteBudget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The buying company's cost-center budgets with consumption + remaining. */
+        get: operations["storefrontListBudgets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/customer-groups": {
         parameters: {
             query?: never;
@@ -3389,6 +3443,40 @@ export interface components {
             requested_delivery_date?: string | null;
             billing_address?: components["schemas"]["OrderAddressInput"];
             shipping_address?: components["schemas"]["OrderAddressInput"];
+            cost_center?: string | null;
+        };
+        CustomerBudget: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            customer_id: number;
+            cost_center: string;
+            /** @enum {string} */
+            period: "monthly" | "quarterly" | "annual";
+            amount: string;
+            currency: string;
+            is_active: boolean;
+        };
+        BudgetInput: {
+            cost_center?: string;
+            /** @enum {string} */
+            period: "monthly" | "quarterly" | "annual";
+            amount: string;
+            currency?: string;
+        };
+        ListWrapperCustomerBudget: {
+            items?: components["schemas"]["CustomerBudget"][];
+        };
+        BudgetConsumption: {
+            cost_center: string;
+            period: string;
+            amount: string;
+            currency: string;
+            spent: string;
+            remaining: string;
+        };
+        ListWrapperBudgetConsumption: {
+            items?: components["schemas"]["BudgetConsumption"][];
         };
         ListWrapperCustomerGroup: {
             items?: components["schemas"]["CustomerGroup"][];
@@ -5867,6 +5955,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerAddress"];
+                };
+            };
+        };
+    };
+    adminListBudgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerBudget"];
+                };
+            };
+        };
+    };
+    adminCreateBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerBudget"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                budgetID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListBudgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperBudgetConsumption"];
                 };
             };
         };

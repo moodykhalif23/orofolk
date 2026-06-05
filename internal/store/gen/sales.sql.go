@@ -169,7 +169,7 @@ INSERT INTO orders (
   placed_by_sales_rep_id, currency, po_number, requested_delivery_date,
   billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at
+RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center
 `
 
 type CreateOrderParams struct {
@@ -231,6 +231,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
@@ -400,7 +401,7 @@ func (q *Queries) GetCustomerDefaultAddress(ctx context.Context, arg GetCustomer
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE organization_id = $1 AND id = $2
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE organization_id = $1 AND id = $2
 `
 
 type GetOrderByIDParams struct {
@@ -432,12 +433,13 @@ func (q *Queries) GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Ord
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
 
 const getOrderByPublicID = `-- name: GetOrderByPublicID :one
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE public_id = $1
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE public_id = $1
 `
 
 func (q *Queries) GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (Order, error) {
@@ -464,6 +466,7 @@ func (q *Queries) GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (O
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
@@ -657,7 +660,7 @@ func (q *Queries) ListOrderStatusHistory(ctx context.Context, orderID int64) ([]
 }
 
 const listOrdersAdmin = `-- name: ListOrdersAdmin :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
 `
 
 type ListOrdersAdminParams struct {
@@ -696,6 +699,7 @@ func (q *Queries) ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -708,7 +712,7 @@ func (q *Queries) ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams
 }
 
 const listOrdersForCustomer = `-- name: ListOrdersForCustomer :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE customer_id = $1 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE customer_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) ([]Order, error) {
@@ -741,6 +745,7 @@ func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) (
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -753,7 +758,7 @@ func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) (
 }
 
 const listOrdersForCustomerByStatus = `-- name: ListOrdersForCustomerByStatus :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE customer_id = $1 AND status = $2 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE customer_id = $1 AND status = $2 ORDER BY created_at DESC
 `
 
 type ListOrdersForCustomerByStatusParams struct {
@@ -791,6 +796,7 @@ func (q *Queries) ListOrdersForCustomerByStatus(ctx context.Context, arg ListOrd
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -1240,7 +1246,7 @@ func (q *Queries) SendQuote(ctx context.Context, arg SendQuoteParams) (Quote, er
 }
 
 const setOrderStatus = `-- name: SetOrderStatus :one
-UPDATE orders SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at
+UPDATE orders SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center
 `
 
 type SetOrderStatusParams struct {
@@ -1272,6 +1278,7 @@ func (q *Queries) SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) 
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }

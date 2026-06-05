@@ -57,6 +57,8 @@ type Querier interface {
 	CreateAttribute(ctx context.Context, arg CreateAttributeParams) (Attribute, error)
 	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
 	CreateAutomationRule(ctx context.Context, arg CreateAutomationRuleParams) (AutomationRule, error)
+	// Procurement budgets (migration 0039).
+	CreateBudget(ctx context.Context, arg CreateBudgetParams) (CustomerBudget, error)
 	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
 	CreateCatalogVisibility(ctx context.Context, arg CreateCatalogVisibilityParams) (CatalogVisibility, error)
 	// ===== Categories ==========================================================
@@ -178,6 +180,7 @@ type Querier interface {
 	DailySales(ctx context.Context, arg DailySalesParams) ([]DailySalesRow, error)
 	DeleteApprovalRoutingRule(ctx context.Context, arg DeleteApprovalRoutingRuleParams) (int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
+	DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (int64, error)
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
@@ -201,6 +204,8 @@ type Querier interface {
 	FinishReportRun(ctx context.Context, arg FinishReportRunParams) (FinishReportRunRow, error)
 	// FirstStage returns the lowest-sort_order stage of a pipeline (the entry stage).
 	FirstStage(ctx context.Context, pipelineID int64) (PipelineStage, error)
+	// GetActiveBudget finds the active budget governing a (customer, cost_center).
+	GetActiveBudget(ctx context.Context, arg GetActiveBudgetParams) (CustomerBudget, error)
 	// Cart & shopping list queries — Implementation Pack 1 §5.
 	// ===== Carts ===============================================================
 	GetActiveCart(ctx context.Context, arg GetActiveCartParams) (Cart, error)
@@ -377,6 +382,7 @@ type Querier interface {
 	// ListAutomationRulesByEvent returns active rules for a trigger event, across
 	// orgs (the scheduler doesn't know orgs; each rule carries its own).
 	ListAutomationRulesByEvent(ctx context.Context, triggerEvent string) ([]AutomationRule, error)
+	ListBudgetsForCustomer(ctx context.Context, customerID int64) ([]CustomerBudget, error)
 	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
 	// ListCatalogVisibilityForProduct lists the rules attached to a product (org
 	// scoped via the product join so admins can't read across tenants).
@@ -570,6 +576,7 @@ type Querier interface {
 	SetLeadStatus(ctx context.Context, arg SetLeadStatusParams) (Lead, error)
 	SetMediaStatus(ctx context.Context, arg SetMediaStatusParams) error
 	SetOpportunityStage(ctx context.Context, arg SetOpportunityStageParams) (Opportunity, error)
+	SetOrderCostCenter(ctx context.Context, arg SetOrderCostCenterParams) error
 	SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) (Order, error)
 	SetPageStatus(ctx context.Context, arg SetPageStatusParams) (ContentPage, error)
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) (Payment, error)
@@ -588,6 +595,9 @@ type Querier interface {
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
+	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
+	// cost center since the period start. $3 = period start timestamp.
+	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
 	// SumCapturedForInvoice totals captured payments against an invoice.
 	SumCapturedForInvoice(ctx context.Context, invoiceID *int64) (string, error)
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to

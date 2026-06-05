@@ -691,3 +691,44 @@ func TestOrderApprovalRouting(t *testing.T) {
 		t.Errorf("final order status: want confirmed, got %s", status)
 	}
 }
+
+// ---- procurement budget gate ---------------------------------------------
+
+func TestBudgetGateOnOrderPlacement(t *testing.T) {
+	f := setup(t)
+	q := gen.New(f.pool)
+	ctx := context.Background()
+
+	// Company-wide monthly cap of 30.
+	if _, err := q.CreateBudget(ctx, gen.CreateBudgetParams{
+		CustomerID: f.customerID, CostCenter: "", Period: "monthly", Amount: "30.0000", Currency: "USD",
+	}); err != nil {
+		t.Fatalf("budget: %v", err)
+	}
+
+	// A 50.00 cart exceeds the 30.00 budget -> 422 budget_exceeded (tx rolls back,
+	// so the cart stays active for a retry).
+	f.seedCart(t, [3]any{f.p1ID, "5", "10.0000"})
+	rr := f.do(t, http.MethodPost, "/storefront/orders", f.custTok, map[string]any{})
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("over-budget order: want 422, got %d (%s)", rr.Code, rr.Body.String())
+	}
+	var fail struct {
+		Code string `json:"code"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &fail)
+	if fail.Code != "budget_exceeded" {
+		t.Errorf("error code: want budget_exceeded, got %s", fail.Code)
+	}
+
+	// Raise the cap to 100 (upsert) -> the same cart now places fine.
+	if _, err := q.CreateBudget(ctx, gen.CreateBudgetParams{
+		CustomerID: f.customerID, CostCenter: "", Period: "monthly", Amount: "100.0000", Currency: "USD",
+	}); err != nil {
+		t.Fatalf("raise budget: %v", err)
+	}
+	ok := f.do(t, http.MethodPost, "/storefront/orders", f.custTok, map[string]any{})
+	if ok.Code != http.StatusOK {
+		t.Fatalf("within-budget order: want 200, got %d (%s)", ok.Code, ok.Body.String())
+	}
+}

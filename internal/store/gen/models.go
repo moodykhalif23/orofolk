@@ -237,6 +237,17 @@ type CustomerAddress struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+type CustomerBudget struct {
+	ID         int64     `json:"id"`
+	CustomerID int64     `json:"customer_id"`
+	CostCenter string    `json:"cost_center"`
+	Period     string    `json:"period"`
+	Amount     string    `json:"amount"`
+	Currency   string    `json:"currency"`
+	IsActive   bool      `json:"is_active"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type CustomerGroup struct {
 	ID             int64  `json:"id"`
 	OrganizationID int64  `json:"organization_id"`
@@ -515,6 +526,7 @@ type Order struct {
 	GrandTotal            string      `json:"grand_total"`
 	CreatedAt             time.Time   `json:"created_at"`
 	UpdatedAt             time.Time   `json:"updated_at"`
+	CostCenter            *string     `json:"cost_center"`
 }
 
 type OrderItem struct {

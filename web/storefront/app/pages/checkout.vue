@@ -23,6 +23,7 @@ const error = ref('')
 const placing = ref(false)
 
 const poNumber = ref('')
+const costCenter = ref('')
 const deliveryDate = ref<Date | null>(null)
 const customAddress = ref(false)
 const shipping = reactive<AddressInput>({ line1: '', city: '', country: '' })
@@ -109,6 +110,7 @@ async function placeOrder() {
 
   const body: components['schemas']['PlaceOrderRequest'] = {}
   if (poNumber.value.trim()) body.po_number = poNumber.value.trim()
+  if (costCenter.value.trim()) body.cost_center = costCenter.value.trim()
   if (deliveryDate.value) body.requested_delivery_date = deliveryDate.value.toISOString()
   if (customAddress.value) {
     body.shipping_address = { ...shipping }
@@ -148,6 +150,10 @@ await load()
               <div class="field">
                 <label for="po">PO number <span class="muted">(optional)</span></label>
                 <InputText id="po" v-model="poNumber" placeholder="e.g. PO-1234" />
+              </div>
+              <div class="field">
+                <label for="cc">Cost center <span class="muted">(optional)</span></label>
+                <InputText id="cc" v-model="costCenter" placeholder="e.g. marketing" />
               </div>
               <div class="field">
                 <label for="dd">Requested delivery date <span class="muted">(optional)</span></label>
