@@ -8,6 +8,7 @@ package cart
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"b2bcommerce/internal/money"
+	"b2bcommerce/internal/pricing"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -105,7 +107,45 @@ func (h *Handler) resolvePrice(r *http.Request, p principal, productID int64, un
 	if err != nil {
 		return "", false, err
 	}
-	return row.Value, true, nil
+	adjusted, err := h.applyPriceRules(r, p, productID, row.Value)
+	if err != nil {
+		return "", false, err
+	}
+	return adjusted, true, nil
+}
+
+// applyPriceRules adjusts a resolved base price by the org's active
+// price-adjustment rules (PRD §7.2), matched on the buyer's customer group and
+// the product's attributes. No rules configured -> base returned unchanged.
+func (h *Handler) applyPriceRules(r *http.Request, p principal, productID int64, base string) (string, error) {
+	rules, err := h.q.ListActivePriceAdjustmentRules(r.Context(), p.orgID)
+	if err != nil {
+		return "", err
+	}
+	if len(rules) == 0 {
+		return base, nil
+	}
+	eng := make([]pricing.Rule, len(rules))
+	for i, ru := range rules {
+		eng[i] = pricing.Rule{
+			CustomerGroupID: ru.CustomerGroupID, AttributeKey: ru.AttributeKey, AttributeValue: ru.AttributeValue,
+			AdjustmentType: ru.AdjustmentType, AdjustmentValue: ru.AdjustmentValue, Priority: ru.Priority,
+		}
+	}
+	attrs := map[string]string{}
+	if prod, err := h.q.GetProductByID(r.Context(), gen.GetProductByIDParams{OrganizationID: p.orgID, ID: productID}); err == nil {
+		var m map[string]any
+		if json.Unmarshal(prod.Attributes, &m) == nil {
+			for k, v := range m {
+				attrs[k] = fmt.Sprintf("%v", v)
+			}
+		}
+	}
+	var grp *int64
+	if cu, err := h.q.GetCustomer(r.Context(), gen.GetCustomerParams{OrganizationID: p.orgID, ID: p.customerID}); err == nil {
+		grp = cu.CustomerGroupID
+	}
+	return pricing.Apply(base, attrs, grp, eng)
 }
 
 // ---- Cart ----------------------------------------------------------------

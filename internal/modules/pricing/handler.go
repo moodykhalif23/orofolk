@@ -52,6 +52,10 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("price_list.manage")).Post("/admin/price-list-assignments", h.createAssignment)
 		ar.With(mw.RequirePermission("price_list.manage")).Delete("/admin/price-list-assignments/{id}", h.deleteAssignment)
 
+		ar.With(mw.RequirePermission("price_list.view")).Get("/admin/price-adjustment-rules", h.listAdjustmentRules)
+		ar.With(mw.RequirePermission("price_list.manage")).Post("/admin/price-adjustment-rules", h.createAdjustmentRule)
+		ar.With(mw.RequirePermission("price_list.manage")).Delete("/admin/price-adjustment-rules/{id}", h.deleteAdjustmentRule)
+
 		ar.With(mw.RequirePermission("price_list.view")).Get("/admin/pricing/resolve", h.resolve)
 		ar.With(mw.RequirePermission("price_list.view")).Get("/admin/customers/{id}/combined-prices", h.combinedForCustomer)
 		ar.With(mw.RequirePermission("price_list.manage")).Post("/admin/pricing/recompute", h.recompute)

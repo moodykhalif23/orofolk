@@ -485,6 +485,35 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/PriceList' } }
+    PriceAdjustmentRule:
+      type: object
+      required: [id, name, adjustment_type, adjustment_value, priority, is_active]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        attribute_key: { type: string, nullable: true }
+        attribute_value: { type: string, nullable: true }
+        adjustment_type: { type: string, enum: [percent, amount] }
+        adjustment_value: { type: string }
+        priority: { type: integer }
+        is_active: { type: boolean }
+    PriceAdjustmentRuleInput:
+      type: object
+      required: [name, adjustment_type, adjustment_value]
+      properties:
+        name: { type: string }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        attribute_key: { type: string, nullable: true }
+        attribute_value: { type: string, nullable: true }
+        adjustment_type: { type: string, enum: [percent, amount] }
+        adjustment_value: { type: string }
+        priority: { type: integer }
+        is_active: { type: boolean }
+    ListWrapperPriceAdjustmentRule:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PriceAdjustmentRule' } }
     ListWrapperPrice:
       type: object
       properties:
@@ -2470,6 +2499,32 @@ paths:
         '201':
           description: Created
           content: { application/json: { schema: { $ref: '#/components/schemas/CustomerGroup' } } }
+
+  /admin/price-adjustment-rules:
+    get:
+      tags: [Pricing]
+      operationId: adminListPriceAdjustmentRules
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperPriceAdjustmentRule' } } } }
+    post:
+      tags: [Pricing]
+      operationId: adminCreatePriceAdjustmentRule
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/PriceAdjustmentRuleInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/PriceAdjustmentRule' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/price-adjustment-rules/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Pricing]
+      operationId: adminDeletePriceAdjustmentRule
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /admin/price-lists:
     get:

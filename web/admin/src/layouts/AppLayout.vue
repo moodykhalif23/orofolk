@@ -48,6 +48,7 @@ const groups: NavGroup[] = [
     icon: 'pi pi-dollar',
     items: [
       { label: 'Price lists', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
+      { label: 'Price rules', icon: 'pi pi-sliders-h', routeName: 'price-rules', permission: 'price_list.view' },
       { label: 'Tax & shipping', icon: 'pi pi-percentage', routeName: 'tax-shipping', permission: 'tax.view' },
     ],
   },

@@ -573,6 +573,20 @@ type Price struct {
 	CreatedAt   time.Time          `json:"created_at"`
 }
 
+type PriceAdjustmentRule struct {
+	ID              int64     `json:"id"`
+	OrganizationID  int64     `json:"organization_id"`
+	Name            string    `json:"name"`
+	CustomerGroupID *int64    `json:"customer_group_id"`
+	AttributeKey    *string   `json:"attribute_key"`
+	AttributeValue  *string   `json:"attribute_value"`
+	AdjustmentType  string    `json:"adjustment_type"`
+	AdjustmentValue string    `json:"adjustment_value"`
+	Priority        int32     `json:"priority"`
+	IsActive        bool      `json:"is_active"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type PriceList struct {
 	ID             int64              `json:"id"`
 	OrganizationID int64              `json:"organization_id"`

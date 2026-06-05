@@ -613,3 +613,32 @@ func TestCartCustomerIsolation(t *testing.T) {
 		t.Errorf("isolation: customer B should not see A's cart items, got %d", len(c.Items))
 	}
 }
+
+// ---- rule-based pricing applied in the live cart -------------------------
+
+func TestCartAppliesPriceAdjustmentRule(t *testing.T) {
+	h, _, pool := newServer(t)
+	s := seedCustomer(t, pool, "acme", "buyer@acme.test")
+
+	// A global -10% rule for org 1 (no group/attribute scope = matches all).
+	if _, err := gen.New(pool).CreatePriceAdjustmentRule(context.Background(), gen.CreatePriceAdjustmentRuleParams{
+		OrganizationID: 1, Name: "Promo", AdjustmentType: "percent", AdjustmentValue: "-10", Priority: 0, IsActive: true,
+	}); err != nil {
+		t.Fatalf("rule: %v", err)
+	}
+
+	tok := login(t, h, s.email)
+	rr := do(t, h, http.MethodPost, "/storefront/cart/items", tok, map[string]any{"product_public_id": s.pricedPublicID, "quantity": "1"})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("add: %d (%s)", rr.Code, rr.Body.String())
+	}
+	var c cartResp
+	_ = json.Unmarshal(rr.Body.Bytes(), &c)
+	// Base 10.0000 - 10% = 9.0000 charged in the cart.
+	if len(c.Items) != 1 || c.Items[0].UnitPrice != "9.0000" {
+		t.Fatalf("adjusted unit price: want 9.0000, got %+v", c.Items)
+	}
+	if c.Subtotal != "9.0000" {
+		t.Errorf("subtotal: want 9.0000, got %s", c.Subtotal)
+	}
+}

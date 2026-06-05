@@ -101,6 +101,7 @@ type Querier interface {
 	// ===== Payments ============================================================
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	CreatePreset(ctx context.Context, arg CreatePresetParams) (TransformationPreset, error)
+	CreatePriceAdjustmentRule(ctx context.Context, arg CreatePriceAdjustmentRuleParams) (PriceAdjustmentRule, error)
 	// Pricing engine queries — Implementation Pack 1 §4 + §12.1.
 	// NUMERIC params arrive as strings (sqlc money override), so quantity
 	// comparisons cast explicitly with ::numeric.
@@ -172,6 +173,7 @@ type Querier interface {
 	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
+	DeletePriceAdjustmentRule(ctx context.Context, arg DeletePriceAdjustmentRuleParams) (int64, error)
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
 	DeleteReportDefinition(ctx context.Context, arg DeleteReportDefinitionParams) error
 	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
@@ -342,6 +344,8 @@ type Querier interface {
 	HiddenProductIDsForCustomer(ctx context.Context, arg HiddenProductIDsForCustomerParams) ([]int64, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
+	// Price adjustment rules (migration 0035).
+	ListActivePriceAdjustmentRules(ctx context.Context, organizationID int64) ([]PriceAdjustmentRule, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
 	// ListActiveProductsInCategory returns active products in a category's whole
 	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
@@ -414,6 +418,7 @@ type Querier interface {
 	ListPipelineStages(ctx context.Context, pipelineID int64) ([]PipelineStage, error)
 	// ===== Presets =============================================================
 	ListPresets(ctx context.Context, organizationID int64) ([]TransformationPreset, error)
+	ListPriceAdjustmentRules(ctx context.Context, organizationID int64) ([]PriceAdjustmentRule, error)
 	ListPriceLists(ctx context.Context, organizationID int64) ([]PriceList, error)
 	ListPricesForList(ctx context.Context, priceListID int64) ([]Price, error)
 	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)

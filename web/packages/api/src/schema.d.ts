@@ -310,6 +310,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/price-adjustment-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListPriceAdjustmentRules"];
+        put?: never;
+        post: operations["adminCreatePriceAdjustmentRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-adjustment-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeletePriceAdjustmentRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/price-lists": {
         parameters: {
             query?: never;
@@ -3150,6 +3184,35 @@ export interface components {
         ListWrapperPriceList: {
             items?: components["schemas"]["PriceList"][];
         };
+        PriceAdjustmentRule: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            attribute_key?: string | null;
+            attribute_value?: string | null;
+            /** @enum {string} */
+            adjustment_type: "percent" | "amount";
+            adjustment_value: string;
+            priority: number;
+            is_active: boolean;
+        };
+        PriceAdjustmentRuleInput: {
+            name: string;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            attribute_key?: string | null;
+            attribute_value?: string | null;
+            /** @enum {string} */
+            adjustment_type: "percent" | "amount";
+            adjustment_value: string;
+            priority?: number;
+            is_active?: boolean;
+        };
+        ListWrapperPriceAdjustmentRule: {
+            items?: components["schemas"]["PriceAdjustmentRule"][];
+        };
         ListWrapperPrice: {
             items?: components["schemas"]["Price"][];
         };
@@ -5396,6 +5459,72 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerGroup"];
                 };
             };
+        };
+    };
+    adminListPriceAdjustmentRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPriceAdjustmentRule"];
+                };
+            };
+        };
+    };
+    adminCreatePriceAdjustmentRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceAdjustmentRuleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceAdjustmentRule"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeletePriceAdjustmentRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListPriceLists: {
