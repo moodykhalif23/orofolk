@@ -475,6 +475,49 @@ components:
               old_price: { type: string }
               new_price: { type: string }
 
+    ReorderRequest:
+      type: object
+      required: [order_public_id]
+      properties:
+        order_public_id: { type: string, format: uuid }
+
+    ReorderResult:
+      type: object
+      required: [cart_public_id, skipped_skus]
+      properties:
+        cart_public_id: { type: string, format: uuid }
+        skipped_skus:
+          type: array
+          items: { type: string }
+          description: SKUs not added because no price resolved for this buyer.
+
+    BulkAddRequest:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          items:
+            type: object
+            required: [sku]
+            properties:
+              sku: { type: string }
+              quantity: { type: string }
+              unit: { type: string }
+
+    BulkAddResult:
+      type: object
+      required: [cart_public_id, added, not_found_skus, price_on_request]
+      properties:
+        cart_public_id: { type: string, format: uuid }
+        added: { type: integer }
+        not_found_skus:
+          type: array
+          items: { type: string }
+        price_on_request:
+          type: array
+          items: { type: string }
+
     RfqItem:
       type: object
       required: [id, product_id, sku, name, quantity, unit]
@@ -2412,6 +2455,35 @@ paths:
         '200':
           description: OK
           content: { application/json: { schema: { $ref: '#/components/schemas/RevalidateResult' } } }
+
+  /storefront/cart/reorder:
+    post:
+      tags: [Cart]
+      operationId: storefrontReorder
+      summary: Copy a previously placed order's lines into the active cart (current prices).
+      security: [{ storefrontAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReorderRequest' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReorderResult' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/cart/bulk:
+    post:
+      tags: [Cart]
+      operationId: storefrontBulkAdd
+      summary: Quick order — add a batch of SKUs to the active cart in one call.
+      security: [{ storefrontAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BulkAddRequest' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/BulkAddResult' } } }
 
   /admin/rfqs:
     get:

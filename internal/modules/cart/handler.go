@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -37,6 +38,8 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		sr.Patch("/storefront/cart/items/{id}", h.updateItem)
 		sr.Delete("/storefront/cart/items/{id}", h.removeItem)
 		sr.Post("/storefront/cart/revalidate", h.revalidate)
+		sr.Post("/storefront/cart/reorder", h.reorder)
+		sr.Post("/storefront/cart/bulk", h.addBulk)
 
 		sr.Get("/storefront/shopping-lists", h.listLists)
 		sr.Post("/storefront/shopping-lists", h.createList)
@@ -316,6 +319,142 @@ func (h *Handler) revalidate(w http.ResponseWriter, r *http.Request) {
 		changes = append(changes, drift{ItemID: it.ID, OldPrice: it.UnitPrice, NewPrice: price})
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"changed": changes})
+}
+
+// reorder copies the line items of a previously placed order into the active
+// cart, re-resolving current prices (an order's historical price is a snapshot;
+// the cart must reflect the buyer's current contract price). Items with no
+// resolvable price, or whose product no longer exists, are skipped and their
+// SKUs reported. Mirrors convertList.
+func (h *Handler) reorder(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	var req struct {
+		OrderPublicID string `json:"order_public_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	oid, err := uuid.Parse(req.OrderPublicID)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "valid order_public_id required")
+		return
+	}
+	order, err := h.q.GetOrderByPublicID(r.Context(), oid)
+	if err != nil || order.CustomerID != p.customerID {
+		// Scope to the buying company — never leak another customer's order.
+		response.Fail(w, http.StatusNotFound, "not_found", "order not found")
+		return
+	}
+	items, err := h.q.ListOrderItems(r.Context(), order.ID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load order items")
+		return
+	}
+	c, err := h.activeCart(r, p)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load cart")
+		return
+	}
+	skipped := []string{}
+	for _, it := range items {
+		price, priced, err := h.resolvePrice(r, p, it.ProductID, it.Unit, it.Quantity, c.Currency)
+		if err != nil {
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not resolve price")
+			return
+		}
+		if !priced {
+			skipped = append(skipped, it.Sku)
+			continue
+		}
+		if _, err := h.q.UpsertCartItem(r.Context(), gen.UpsertCartItemParams{
+			CartID: c.ID, ProductID: it.ProductID, Quantity: it.Quantity, Unit: it.Unit, UnitPrice: price,
+		}); err != nil {
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not add item to cart")
+			return
+		}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"cart_public_id": c.PublicID.String(), "skipped_skus": skipped})
+}
+
+// addBulk is the quick-order path: a buyer pastes / uploads a list of SKUs and
+// quantities and the whole batch is added to the active cart in one call.
+// Unknown SKUs and price-on-request items are reported per line rather than
+// failing the whole request, so the buyer can fix only the offending rows.
+func (h *Handler) addBulk(w http.ResponseWriter, r *http.Request) {
+	p, ok := actor(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no customer context")
+		return
+	}
+	var req struct {
+		Lines []struct {
+			SKU      string `json:"sku"`
+			Quantity string `json:"quantity"`
+			Unit     string `json:"unit"`
+		} `json:"lines"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	if len(req.Lines) == 0 {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "at least one line required")
+		return
+	}
+	c, err := h.activeCart(r, p)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load cart")
+		return
+	}
+	added := 0
+	notFound := []string{}
+	priceOnRequest := []string{}
+	for _, ln := range req.Lines {
+		sku := strings.TrimSpace(ln.SKU)
+		if sku == "" {
+			continue
+		}
+		qty := strings.TrimSpace(ln.Quantity)
+		if qty == "" {
+			qty = "1"
+		}
+		unit := strings.TrimSpace(ln.Unit)
+		if unit == "" {
+			unit = "each"
+		}
+		prod, err := h.q.GetProductBySKU(r.Context(), gen.GetProductBySKUParams{OrganizationID: p.orgID, Sku: sku})
+		if err != nil {
+			notFound = append(notFound, sku)
+			continue
+		}
+		price, priced, err := h.resolvePrice(r, p, prod.ID, unit, qty, c.Currency)
+		if err != nil {
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not resolve price")
+			return
+		}
+		if !priced {
+			priceOnRequest = append(priceOnRequest, sku)
+			continue
+		}
+		if _, err := h.q.UpsertCartItem(r.Context(), gen.UpsertCartItemParams{
+			CartID: c.ID, ProductID: prod.ID, Quantity: qty, Unit: unit, UnitPrice: price,
+		}); err != nil {
+			response.Fail(w, http.StatusInternalServerError, "internal", "could not add item")
+			return
+		}
+		added++
+	}
+	response.JSON(w, http.StatusOK, map[string]any{
+		"cart_public_id":   c.PublicID.String(),
+		"added":            added,
+		"not_found_skus":   notFound,
+		"price_on_request": priceOnRequest,
+	})
 }
 
 // ---- Shopping lists ------------------------------------------------------

@@ -492,6 +492,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/cart/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a previously placed order's lines into the active cart (current prices). */
+        post: operations["storefrontReorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/cart/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quick order — add a batch of SKUs to the active cart in one call. */
+        post: operations["storefrontBulkAdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/rfqs": {
         parameters: {
             query?: never;
@@ -2750,6 +2784,30 @@ export interface components {
                 old_price: string;
                 new_price: string;
             }[];
+        };
+        ReorderRequest: {
+            /** Format: uuid */
+            order_public_id: string;
+        };
+        ReorderResult: {
+            /** Format: uuid */
+            cart_public_id: string;
+            /** @description SKUs not added because no price resolved for this buyer. */
+            skipped_skus: string[];
+        };
+        BulkAddRequest: {
+            lines: {
+                sku: string;
+                quantity?: string;
+                unit?: string;
+            }[];
+        };
+        BulkAddResult: {
+            /** Format: uuid */
+            cart_public_id: string;
+            added: number;
+            not_found_skus: string[];
+            price_on_request: string[];
         };
         RfqItem: {
             /** Format: int64 */
@@ -5170,6 +5228,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevalidateResult"];
+                };
+            };
+        };
+    };
+    storefrontReorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontBulkAdd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkAddRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkAddResult"];
                 };
             };
         };
