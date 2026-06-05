@@ -47,6 +47,10 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 
 		ar.With(mw.RequirePermission("customer.view")).Get("/admin/customers/{id}/addresses", h.listAddresses)
 		ar.With(mw.RequirePermission("customer.manage")).Post("/admin/customers/{id}/addresses", h.createAddress)
+
+		ar.With(mw.RequirePermission("customer.view")).Get("/admin/customers/{id}/budgets", h.listBudgets)
+		ar.With(mw.RequirePermission("customer.manage")).Post("/admin/customers/{id}/budgets", h.createBudget)
+		ar.With(mw.RequirePermission("customer.manage")).Delete("/admin/customers/{id}/budgets/{budgetID}", h.deleteBudget)
 	})
 }
 

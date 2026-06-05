@@ -123,6 +123,18 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'invoice.view' },
       },
       {
+        path: 'ar-aging',
+        name: 'ar-aging',
+        component: () => import('@/views/sales/ArAgingView.vue'),
+        meta: { permission: 'invoice.view' },
+      },
+      {
+        path: 'returns',
+        name: 'returns',
+        component: () => import('@/views/sales/ReturnsView.vue'),
+        meta: { permission: 'return.view' },
+      },
+      {
         path: 'invoices/:id',
         name: 'invoice-detail',
         component: () => import('@/views/sales/InvoiceDetailView.vue'),
@@ -150,6 +162,12 @@ const routes: RouteRecordRaw[] = [
         path: 'opportunities',
         name: 'opportunities',
         component: () => import('@/views/crm/OpportunityListView.vue'),
+        meta: { permission: 'crm.view' },
+      },
+      {
+        path: 'account-health',
+        name: 'account-health',
+        component: () => import('@/views/crm/AccountHealthView.vue'),
         meta: { permission: 'crm.view' },
       },
       {

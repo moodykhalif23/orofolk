@@ -149,8 +149,13 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		BillingAddress        *addressInput `json:"billing_address"`
 		ShippingAddress       *addressInput `json:"shipping_address"`
 		ShippingAmount        *string       `json:"shipping_amount"` // chosen shipping rate
+		CostCenter            *string       `json:"cost_center"`     // procurement budget attribution
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
+	costCenter := ""
+	if req.CostCenter != nil {
+		costCenter = *req.CostCenter
+	}
 
 	ws, err := h.q.GetDefaultWebsite(r.Context(), cc.orgID)
 	if err != nil {
@@ -211,6 +216,23 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		}
 		grand, _ := money.Sum(subtotal, taxTotal, shippingTotal)
 
+		// Procurement budget gate: if an active budget governs this customer +
+		// cost center, block the order when it would exceed the remaining budget
+		// for the current period. No budget configured -> no gate.
+		if budget, e := q.GetActiveBudget(r.Context(), gen.GetActiveBudgetParams{CustomerID: cc.customerID, CostCenter: costCenter}); e == nil {
+			cc2 := costCenter
+			spent, e := q.SpendForCustomerPeriod(r.Context(), gen.SpendForCustomerPeriodParams{
+				CustomerID: cc.customerID, CostCenter: &cc2, CreatedAt: periodStart(budget.Period, time.Now()),
+			})
+			if e != nil {
+				return e
+			}
+			projected, _ := money.Sum(spent, grand)
+			if cmp, _ := money.Cmp(projected, budget.Amount); cmp > 0 {
+				return errBudgetExceeded
+			}
+		}
+
 		var e error
 		order, e = q.CreateOrder(r.Context(), gen.CreateOrderParams{
 			OrganizationID: cc.orgID, WebsiteID: ws.ID, CustomerID: cc.customerID,
@@ -221,6 +243,11 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		})
 		if e != nil {
 			return e
+		}
+		if costCenter != "" {
+			if e := q.SetOrderCostCenter(r.Context(), gen.SetOrderCostCenterParams{ID: order.ID, CostCenter: &costCenter}); e != nil {
+				return e
+			}
 		}
 		for i, ln := range lines {
 			if _, e := q.AddOrderItem(r.Context(), gen.AddOrderItemParams{
@@ -241,6 +268,10 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 			OrderID: order.ID, FromStatus: nil, ToStatus: "pending", ChangedBy: by, Note: strPtr("placed from cart"),
 		})
 	})
+	if errors.Is(err, errBudgetExceeded) {
+		response.Fail(w, http.StatusUnprocessableEntity, "budget_exceeded", "this order would exceed the cost-center budget for the period")
+		return
+	}
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not place order")
 		return
@@ -627,4 +658,23 @@ func datePtr(t *time.Time) pgtype.Date {
 		return pgtype.Date{}
 	}
 	return pgtype.Date{Time: *t, Valid: true}
+}
+
+// errBudgetExceeded aborts an order-placement tx when a cost-center budget would
+// be exceeded (mapped to 422 by the caller).
+var errBudgetExceeded = errors.New("budget exceeded")
+
+// periodStart returns the start of the current budget period.
+func periodStart(period string, now time.Time) time.Time {
+	y, m, _ := now.Date()
+	loc := now.Location()
+	switch period {
+	case "annual":
+		return time.Date(y, 1, 1, 0, 0, 0, 0, loc)
+	case "quarterly":
+		qm := time.Month((int(m)-1)/3*3 + 1)
+		return time.Date(y, qm, 1, 0, 0, 0, 0, loc)
+	default: // monthly
+		return time.Date(y, m, 1, 0, 0, 0, 0, loc)
+	}
 }

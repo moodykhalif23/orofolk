@@ -84,15 +84,16 @@ type AutomationRule struct {
 }
 
 type Cart struct {
-	ID             int64     `json:"id"`
-	PublicID       uuid.UUID `json:"public_id"`
-	CustomerID     int64     `json:"customer_id"`
-	CustomerUserID *int64    `json:"customer_user_id"`
-	WebsiteID      int64     `json:"website_id"`
-	Currency       string    `json:"currency"`
-	Status         string    `json:"status"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	CustomerID     int64              `json:"customer_id"`
+	CustomerUserID *int64             `json:"customer_user_id"`
+	WebsiteID      int64              `json:"website_id"`
+	Currency       string             `json:"currency"`
+	Status         string             `json:"status"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	RemindedAt     pgtype.Timestamptz `json:"reminded_at"`
 }
 
 type CartItem struct {
@@ -191,6 +192,18 @@ type ContentPage struct {
 	UpdatedAt             time.Time          `json:"updated_at"`
 }
 
+type CreditNote struct {
+	ID         int64     `json:"id"`
+	PublicID   uuid.UUID `json:"public_id"`
+	ReturnID   *int64    `json:"return_id"`
+	InvoiceID  *int64    `json:"invoice_id"`
+	CustomerID int64     `json:"customer_id"`
+	Amount     string    `json:"amount"`
+	Currency   string    `json:"currency"`
+	Status     string    `json:"status"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type Customer struct {
 	ID                 int64              `json:"id"`
 	PublicID           uuid.UUID          `json:"public_id"`
@@ -222,6 +235,17 @@ type CustomerAddress struct {
 	Country    string    `json:"country"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type CustomerBudget struct {
+	ID         int64     `json:"id"`
+	CustomerID int64     `json:"customer_id"`
+	CostCenter string    `json:"cost_center"`
+	Period     string    `json:"period"`
+	Amount     string    `json:"amount"`
+	Currency   string    `json:"currency"`
+	IsActive   bool      `json:"is_active"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type CustomerGroup struct {
@@ -502,6 +526,7 @@ type Order struct {
 	GrandTotal            string      `json:"grand_total"`
 	CreatedAt             time.Time   `json:"created_at"`
 	UpdatedAt             time.Time   `json:"updated_at"`
+	CostCenter            *string     `json:"cost_center"`
 }
 
 type OrderItem struct {
@@ -718,6 +743,7 @@ type Quote struct {
 	Subtotal       string             `json:"subtotal"`
 	CreatedAt      time.Time          `json:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at"`
+	FollowupAt     pgtype.Timestamptz `json:"followup_at"`
 }
 
 type QuoteItem struct {
@@ -786,6 +812,26 @@ type ReportSchedule struct {
 	IsActive           bool               `json:"is_active"`
 	LastRunAt          pgtype.Timestamptz `json:"last_run_at"`
 	CreatedAt          time.Time          `json:"created_at"`
+}
+
+type Return struct {
+	ID         int64     `json:"id"`
+	PublicID   uuid.UUID `json:"public_id"`
+	OrderID    int64     `json:"order_id"`
+	CustomerID int64     `json:"customer_id"`
+	Status     string    `json:"status"`
+	Reason     *string   `json:"reason"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type ReturnItem struct {
+	ID          int64   `json:"id"`
+	ReturnID    int64   `json:"return_id"`
+	OrderItemID int64   `json:"order_item_id"`
+	ProductID   int64   `json:"product_id"`
+	Quantity    string  `json:"quantity"`
+	Reason      *string `json:"reason"`
 }
 
 type Rfq struct {

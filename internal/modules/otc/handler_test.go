@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"b2bcommerce/internal/auth"
+	"b2bcommerce/internal/money"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
 	"b2bcommerce/internal/server"
@@ -561,5 +563,183 @@ func TestShipmentWarehouseAssignmentAndFulfilment(t *testing.T) {
 	}
 	if main.QuantityOnHand != "100.0000" {
 		t.Errorf("Main on_hand: want 100.0000 (untouched), got %s", main.QuantityOnHand)
+	}
+}
+
+// ---- AR aging + overdue sweep --------------------------------------------
+
+func TestInvoiceAgingAndOverdueSweep(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	tok := adminToken(t, issuer)
+	custID, orderID, _ := seedOrder(t, pool, 30, "100000")
+	q := gen.New(pool)
+	ctx := context.Background()
+
+	ts := func(d time.Time) pgtype.Timestamptz { return pgtype.Timestamptz{Time: d, Valid: true} }
+	// An issued invoice that fell due 45 days ago.
+	inv, err := q.CreateInvoice(ctx, gen.CreateInvoiceParams{
+		OrderID: orderID, CustomerID: custID, Currency: "USD",
+		Subtotal: "100.0000", TaxTotal: "0", GrandTotal: "100.0000",
+		IssuedAt: ts(time.Now().AddDate(0, 0, -75)), DueAt: ts(time.Now().AddDate(0, 0, -45)),
+	})
+	if err != nil {
+		t.Fatalf("create invoice: %v", err)
+	}
+	pid := inv.PublicID.String()
+
+	// Sweep flips it issued -> overdue.
+	sw := do(t, h, http.MethodPost, "/admin/invoices/overdue-sweep", tok, nil)
+	if sw.Code != http.StatusOK {
+		t.Fatalf("sweep: %d (%s)", sw.Code, sw.Body.String())
+	}
+	var swres struct {
+		Marked int `json:"marked_overdue"`
+	}
+	_ = json.Unmarshal(sw.Body.Bytes(), &swres)
+	if swres.Marked < 1 {
+		t.Fatalf("sweep: want >=1 marked, got %d", swres.Marked)
+	}
+
+	// Aging report: our invoice is overdue, ~45 days, in the 31-60 bucket.
+	ag := do(t, h, http.MethodGet, "/admin/invoices/aging", tok, nil)
+	if ag.Code != http.StatusOK {
+		t.Fatalf("aging: %d (%s)", ag.Code, ag.Body.String())
+	}
+	var rep struct {
+		Buckets map[string]string `json:"buckets"`
+		Items   []struct {
+			PublicID    string `json:"public_id"`
+			Status      string `json:"status"`
+			DaysOverdue int    `json:"days_overdue"`
+			Bucket      string `json:"bucket"`
+		} `json:"items"`
+	}
+	_ = json.Unmarshal(ag.Body.Bytes(), &rep)
+	var found bool
+	for _, it := range rep.Items {
+		if it.PublicID == pid {
+			found = true
+			if it.Status != "overdue" || it.Bucket != "31-60" || it.DaysOverdue < 44 || it.DaysOverdue > 46 {
+				t.Errorf("aged invoice: want overdue/31-60/~45d, got %s/%s/%d", it.Status, it.Bucket, it.DaysOverdue)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("invoice %s not in aging report", pid)
+	}
+	if c, _ := moneyCmp(rep.Buckets["31-60"], "100.0000"); c < 0 {
+		t.Errorf("31-60 bucket should be >= 100.0000, got %s", rep.Buckets["31-60"])
+	}
+}
+
+func moneyCmp(a, b string) (int, error) { return money.Cmp(a, b) }
+
+// ---- returns / RMA + credit notes ----------------------------------------
+
+func TestReturnLifecycle(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	tok := adminToken(t, issuer)
+	// add return perms to the token
+	tok2, _ := issuer.Issue("1", 1, "admin", []string{
+		"order.view", "order.manage", "invoice.view", "invoice.manage",
+		"return.view", "return.manage",
+	})
+	_ = tok
+	custID, orderID, oiID := seedOrder(t, pool, 30, "100000") // line: qty 2 @ 10
+	q := gen.New(pool)
+	ctx := context.Background()
+	oi, _ := q.GetOrderItem(ctx, gen.GetOrderItemParams{ID: oiID, OrderID: orderID})
+
+	// Stock the product so restock-on-receive is observable.
+	wh, _ := q.CreateWarehouse(ctx, gen.CreateWarehouseParams{OrganizationID: 1, Name: "Main"})
+	_ = q.EnsureInventoryLevel(ctx, gen.EnsureInventoryLevelParams{ProductID: oi.ProductID, WarehouseID: wh.ID})
+	_, _ = q.AdjustInventoryLevel(ctx, gen.AdjustInventoryLevelParams{ProductID: oi.ProductID, WarehouseID: wh.ID, Column3: "50", Column4: "0"})
+	_ = custID
+
+	oid := strconv.FormatInt(orderID, 10)
+	// Create a return for qty 1.
+	cr := do(t, h, http.MethodPost, "/admin/orders/"+oid+"/returns", tok2, map[string]any{
+		"reason": "damaged", "items": []map[string]any{{"order_item_id": oiID, "quantity": "1"}},
+	})
+	if cr.Code != http.StatusCreated {
+		t.Fatalf("create return: %d (%s)", cr.Code, cr.Body.String())
+	}
+	var ret struct {
+		ID     int64  `json:"id"`
+		Status string `json:"status"`
+	}
+	_ = json.Unmarshal(cr.Body.Bytes(), &ret)
+	if ret.Status != "requested" {
+		t.Fatalf("new return status: want requested, got %s", ret.Status)
+	}
+
+	// Over-return: only 1 of 2 remains returnable.
+	if over := do(t, h, http.MethodPost, "/admin/orders/"+oid+"/returns", tok2, map[string]any{
+		"items": []map[string]any{{"order_item_id": oiID, "quantity": "2"}},
+	}); over.Code != http.StatusUnprocessableEntity {
+		t.Errorf("over-return: want 422, got %d (%s)", over.Code, over.Body.String())
+	}
+
+	rid := strconv.FormatInt(ret.ID, 10)
+	// Cannot receive before approval.
+	if early := do(t, h, http.MethodPost, "/admin/returns/"+rid+"/receive", tok2, nil); early.Code != http.StatusConflict {
+		t.Errorf("receive before approve: want 409, got %d", early.Code)
+	}
+	// Approve.
+	if ap := do(t, h, http.MethodPost, "/admin/returns/"+rid+"/approve", tok2, nil); ap.Code != http.StatusOK {
+		t.Fatalf("approve: %d (%s)", ap.Code, ap.Body.String())
+	}
+	// Receive -> restock + credit note.
+	rc := do(t, h, http.MethodPost, "/admin/returns/"+rid+"/receive", tok2, nil)
+	if rc.Code != http.StatusOK {
+		t.Fatalf("receive: %d (%s)", rc.Code, rc.Body.String())
+	}
+	var received struct {
+		Status      string `json:"status"`
+		CreditNotes []struct {
+			Amount   string `json:"amount"`
+			Currency string `json:"currency"`
+		} `json:"credit_notes"`
+	}
+	_ = json.Unmarshal(rc.Body.Bytes(), &received)
+	if received.Status != "received" {
+		t.Errorf("received status: want received, got %s", received.Status)
+	}
+	if len(received.CreditNotes) != 1 || received.CreditNotes[0].Amount != "10.0000" {
+		t.Errorf("credit note: want one for 10.0000, got %+v", received.CreditNotes)
+	}
+
+	// Restock: on_hand went 50 -> 51.
+	lvl, _ := q.GetInventoryLevel(ctx, gen.GetInventoryLevelParams{ProductID: oi.ProductID, WarehouseID: wh.ID})
+	if lvl.QuantityOnHand != "51.0000" {
+		t.Errorf("restock: want on_hand 51.0000, got %s", lvl.QuantityOnHand)
+	}
+}
+
+func TestStorefrontReturnRequest(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	custID, orderID, oiID := seedOrder(t, pool, 30, "100000")
+	q := gen.New(pool)
+	ctx := context.Background()
+	// Give the order a public id we can target + a buyer login.
+	ord, _ := q.GetOrderByID(ctx, gen.GetOrderByIDParams{OrganizationID: 1, ID: orderID})
+	hash, _ := auth.HashPassword(custPassword)
+	_, _ = q.CreateCustomerUser(ctx, gen.CreateCustomerUserParams{CustomerID: custID, Email: "buyer@acme.test", PasswordHash: hash, FullName: "Buyer", Role: "buyer"})
+	custTok, _ := issuer.IssueStorefront(1, 1, custID)
+
+	cr := do(t, h, http.MethodPost, "/storefront/orders/"+ord.PublicID.String()+"/returns", custTok, map[string]any{
+		"reason": "wrong item", "items": []map[string]any{{"order_item_id": oiID, "quantity": "1"}},
+	})
+	if cr.Code != http.StatusCreated {
+		t.Fatalf("storefront return: %d (%s)", cr.Code, cr.Body.String())
+	}
+	// Buyer can list their returns.
+	lr := do(t, h, http.MethodGet, "/storefront/returns", custTok, nil)
+	var resp struct {
+		Items []any `json:"items"`
+	}
+	_ = json.Unmarshal(lr.Body.Bytes(), &resp)
+	if len(resp.Items) != 1 {
+		t.Errorf("my returns: want 1, got %d", len(resp.Items))
 	}
 }

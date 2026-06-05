@@ -28,11 +28,14 @@ function signOut() {
         <NuxtLink to="/c/all">Catalog</NuxtLink>
         <NuxtLink to="/contact">Contact</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/quick-order">Quick order</NuxtLink>
+        <NuxtLink v-if="isAuthenticated" to="/account/reorder">Reorder</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/lists">Lists</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/rfqs">RFQs</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/quotes">Quotes</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/orders">Orders</NuxtLink>
+        <NuxtLink v-if="isAuthenticated" to="/account/returns">Returns</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/invoices">Invoices</NuxtLink>
+        <NuxtLink v-if="isAuthenticated" to="/account/budgets">Budgets</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/settings">Account</NuxtLink>
       </nav>
       <span class="spacer" />

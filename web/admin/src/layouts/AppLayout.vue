@@ -60,6 +60,8 @@ const groups: NavGroup[] = [
       { label: 'Quotes', icon: 'pi pi-file-edit', routeName: 'quotes', permission: 'quote.view' },
       { label: 'Orders', icon: 'pi pi-shopping-cart', routeName: 'orders', permission: 'order.view' },
       { label: 'Invoices', icon: 'pi pi-receipt', routeName: 'invoices', permission: 'invoice.view' },
+      { label: 'AR aging', icon: 'pi pi-chart-line', routeName: 'ar-aging', permission: 'invoice.view' },
+      { label: 'Returns', icon: 'pi pi-replay', routeName: 'returns', permission: 'return.view' },
     ],
   },
   {
@@ -71,6 +73,7 @@ const groups: NavGroup[] = [
       { label: 'Leads', icon: 'pi pi-filter', routeName: 'leads', permission: 'crm.view' },
       { label: 'Pipeline', icon: 'pi pi-chart-bar', routeName: 'pipeline', permission: 'crm.view' },
       { label: 'Opportunities', icon: 'pi pi-briefcase', routeName: 'opportunities', permission: 'crm.view' },
+      { label: 'Account health', icon: 'pi pi-heart', routeName: 'account-health', permission: 'crm.view' },
     ],
   },
   {

@@ -169,7 +169,7 @@ INSERT INTO orders (
   placed_by_sales_rep_id, currency, po_number, requested_delivery_date,
   billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at
+RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center
 `
 
 type CreateOrderParams struct {
@@ -231,6 +231,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
@@ -239,7 +240,7 @@ const createQuote = `-- name: CreateQuote :one
 
 INSERT INTO quotes (organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, currency, valid_until)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at
+RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at
 `
 
 type CreateQuoteParams struct {
@@ -279,6 +280,7 @@ func (q *Queries) CreateQuote(ctx context.Context, arg CreateQuoteParams) (Quote
 		&i.Subtotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FollowupAt,
 	)
 	return i, err
 }
@@ -399,7 +401,7 @@ func (q *Queries) GetCustomerDefaultAddress(ctx context.Context, arg GetCustomer
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE organization_id = $1 AND id = $2
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE organization_id = $1 AND id = $2
 `
 
 type GetOrderByIDParams struct {
@@ -431,12 +433,13 @@ func (q *Queries) GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Ord
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
 
 const getOrderByPublicID = `-- name: GetOrderByPublicID :one
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE public_id = $1
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE public_id = $1
 `
 
 func (q *Queries) GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (Order, error) {
@@ -463,12 +466,13 @@ func (q *Queries) GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (O
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
 
 const getQuoteByID = `-- name: GetQuoteByID :one
-SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at FROM quotes WHERE organization_id = $1 AND id = $2
+SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at FROM quotes WHERE organization_id = $1 AND id = $2
 `
 
 type GetQuoteByIDParams struct {
@@ -494,12 +498,13 @@ func (q *Queries) GetQuoteByID(ctx context.Context, arg GetQuoteByIDParams) (Quo
 		&i.Subtotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FollowupAt,
 	)
 	return i, err
 }
 
 const getQuoteByPublicID = `-- name: GetQuoteByPublicID :one
-SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at FROM quotes WHERE public_id = $1
+SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at FROM quotes WHERE public_id = $1
 `
 
 func (q *Queries) GetQuoteByPublicID(ctx context.Context, publicID uuid.UUID) (Quote, error) {
@@ -520,6 +525,7 @@ func (q *Queries) GetQuoteByPublicID(ctx context.Context, publicID uuid.UUID) (Q
 		&i.Subtotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FollowupAt,
 	)
 	return i, err
 }
@@ -654,7 +660,7 @@ func (q *Queries) ListOrderStatusHistory(ctx context.Context, orderID int64) ([]
 }
 
 const listOrdersAdmin = `-- name: ListOrdersAdmin :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
 `
 
 type ListOrdersAdminParams struct {
@@ -693,6 +699,7 @@ func (q *Queries) ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -705,7 +712,7 @@ func (q *Queries) ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams
 }
 
 const listOrdersForCustomer = `-- name: ListOrdersForCustomer :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE customer_id = $1 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE customer_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) ([]Order, error) {
@@ -738,6 +745,7 @@ func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) (
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -750,7 +758,7 @@ func (q *Queries) ListOrdersForCustomer(ctx context.Context, customerID int64) (
 }
 
 const listOrdersForCustomerByStatus = `-- name: ListOrdersForCustomerByStatus :many
-SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at FROM orders WHERE customer_id = $1 AND status = $2 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center FROM orders WHERE customer_id = $1 AND status = $2 ORDER BY created_at DESC
 `
 
 type ListOrdersForCustomerByStatusParams struct {
@@ -788,6 +796,7 @@ func (q *Queries) ListOrdersForCustomerByStatus(ctx context.Context, arg ListOrd
 			&i.GrandTotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CostCenter,
 		); err != nil {
 			return nil, err
 		}
@@ -887,7 +896,7 @@ func (q *Queries) ListQuoteRevisions(ctx context.Context, quoteID int64) ([]List
 }
 
 const listQuotesAdmin = `-- name: ListQuotesAdmin :many
-SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at FROM quotes WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
+SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at FROM quotes WHERE organization_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3
 `
 
 type ListQuotesAdminParams struct {
@@ -920,6 +929,7 @@ func (q *Queries) ListQuotesAdmin(ctx context.Context, arg ListQuotesAdminParams
 			&i.Subtotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.FollowupAt,
 		); err != nil {
 			return nil, err
 		}
@@ -932,7 +942,7 @@ func (q *Queries) ListQuotesAdmin(ctx context.Context, arg ListQuotesAdminParams
 }
 
 const listQuotesForCustomer = `-- name: ListQuotesForCustomer :many
-SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at FROM quotes WHERE customer_id = $1 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at FROM quotes WHERE customer_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListQuotesForCustomer(ctx context.Context, customerID int64) ([]Quote, error) {
@@ -959,7 +969,43 @@ func (q *Queries) ListQuotesForCustomer(ctx context.Context, customerID int64) (
 			&i.Subtotal,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.FollowupAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listQuotesForFollowup = `-- name: ListQuotesForFollowup :many
+SELECT id, public_id, customer_id FROM quotes
+WHERE status = 'sent' AND valid_until IS NOT NULL
+  AND valid_until > now() AND valid_until <= $1
+  AND followup_at IS NULL
+`
+
+type ListQuotesForFollowupRow struct {
+	ID         int64     `json:"id"`
+	PublicID   uuid.UUID `json:"public_id"`
+	CustomerID int64     `json:"customer_id"`
+}
+
+// ListQuotesForFollowup returns 'sent' quotes expiring within the cutoff that
+// haven't been followed up yet (one nudge per quote). $1 = cutoff timestamp.
+func (q *Queries) ListQuotesForFollowup(ctx context.Context, validUntil pgtype.Timestamptz) ([]ListQuotesForFollowupRow, error) {
+	rows, err := q.db.Query(ctx, listQuotesForFollowup, validUntil)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListQuotesForFollowupRow
+	for rows.Next() {
+		var i ListQuotesForFollowupRow
+		if err := rows.Scan(&i.ID, &i.PublicID, &i.CustomerID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1094,10 +1140,79 @@ func (q *Queries) ListRFQsForCustomer(ctx context.Context, customerID int64) ([]
 	return items, nil
 }
 
+const markQuoteFollowedUp = `-- name: MarkQuoteFollowedUp :exec
+UPDATE quotes SET followup_at = now() WHERE id = $1
+`
+
+func (q *Queries) MarkQuoteFollowedUp(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markQuoteFollowedUp, id)
+	return err
+}
+
+const reorderCadence = `-- name: ReorderCadence :many
+SELECT oi.product_id,
+       max(p.slug)::text        AS slug,
+       max(oi.sku)::text        AS sku,
+       max(oi.name)::text       AS name,
+       max(oi.unit)::text       AS unit,
+       count(DISTINCT o.id)     AS order_count,
+       min(o.created_at)::timestamptz AS first_ordered,
+       max(o.created_at)::timestamptz AS last_ordered
+FROM orders o
+JOIN order_items oi ON oi.order_id = o.id
+JOIN products p ON p.id = oi.product_id
+WHERE o.customer_id = $1 AND o.status <> 'cancelled' AND p.deleted_at IS NULL
+GROUP BY oi.product_id
+HAVING count(DISTINCT o.id) >= 2
+`
+
+type ReorderCadenceRow struct {
+	ProductID    int64     `json:"product_id"`
+	Slug         string    `json:"slug"`
+	Sku          string    `json:"sku"`
+	Name         string    `json:"name"`
+	Unit         string    `json:"unit"`
+	OrderCount   int64     `json:"order_count"`
+	FirstOrdered time.Time `json:"first_ordered"`
+	LastOrdered  time.Time `json:"last_ordered"`
+}
+
+// ReorderCadence aggregates a customer's purchase history per product (across
+// non-cancelled orders) so the app can infer reorder intervals and nudge buyers.
+// Only products ordered at least twice are returned (an interval needs 2 points).
+func (q *Queries) ReorderCadence(ctx context.Context, customerID int64) ([]ReorderCadenceRow, error) {
+	rows, err := q.db.Query(ctx, reorderCadence, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReorderCadenceRow
+	for rows.Next() {
+		var i ReorderCadenceRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.Slug,
+			&i.Sku,
+			&i.Name,
+			&i.Unit,
+			&i.OrderCount,
+			&i.FirstOrdered,
+			&i.LastOrdered,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sendQuote = `-- name: SendQuote :one
 UPDATE quotes SET status = 'sent', version = version + 1, valid_until = COALESCE($2, valid_until)
 WHERE id = $1
-RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at
+RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at
 `
 
 type SendQuoteParams struct {
@@ -1125,12 +1240,13 @@ func (q *Queries) SendQuote(ctx context.Context, arg SendQuoteParams) (Quote, er
 		&i.Subtotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FollowupAt,
 	)
 	return i, err
 }
 
 const setOrderStatus = `-- name: SetOrderStatus :one
-UPDATE orders SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at
+UPDATE orders SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, customer_user_id, quote_id, placed_by_sales_rep_id, status, currency, po_number, requested_delivery_date, billing_address, shipping_address, subtotal, tax_total, shipping_total, grand_total, created_at, updated_at, cost_center
 `
 
 type SetOrderStatusParams struct {
@@ -1162,12 +1278,13 @@ func (q *Queries) SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) 
 		&i.GrandTotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CostCenter,
 	)
 	return i, err
 }
 
 const setQuoteStatus = `-- name: SetQuoteStatus :one
-UPDATE quotes SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at
+UPDATE quotes SET status = $2 WHERE id = $1 RETURNING id, public_id, organization_id, website_id, customer_id, rfq_id, sales_rep_user_id, status, currency, version, valid_until, subtotal, created_at, updated_at, followup_at
 `
 
 type SetQuoteStatusParams struct {
@@ -1193,6 +1310,7 @@ func (q *Queries) SetQuoteStatus(ctx context.Context, arg SetQuoteStatusParams) 
 		&i.Subtotal,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.FollowupAt,
 	)
 	return i, err
 }

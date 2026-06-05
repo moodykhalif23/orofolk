@@ -294,6 +294,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/customers/{id}/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListBudgets"];
+        put?: never;
+        post: operations["adminCreateBudget"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/customers/{id}/budgets/{budgetID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                budgetID: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteBudget"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The buying company's cost-center budgets with consumption + remaining. */
+        get: operations["storefrontListBudgets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/customer-groups": {
         parameters: {
             query?: never;
@@ -717,6 +771,23 @@ export interface paths {
         put?: never;
         /** Quick order — add a batch of SKUs to the active cart in one call. */
         post: operations["storefrontBulkAdd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/account/reorder-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Products due for reorder, inferred from the buyer's order cadence. */
+        get: operations["storefrontReorderSuggestions"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1450,6 +1521,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/invoices/aging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** AR-aging report — open invoices bucketed by days past due. */
+        get: operations["adminInvoiceAging"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invoices/overdue-sweep": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Flip past-due issued invoices to overdue and dun the customers. */
+        post: operations["adminRunOverdueSweep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListReturns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/returns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/returns/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminApproveReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/returns/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRejectReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/returns/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark received — restock items and issue a credit note. */
+        post: operations["adminReceiveReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/orders/{id}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListOrderReturns"];
+        put?: never;
+        post: operations["adminCreateReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListCreditNotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["storefrontListReturns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/orders/{publicID}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Buyer self-serve return request for their own order. */
+        post: operations["storefrontCreateReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storefront/quotes": {
         parameters: {
             query?: never;
@@ -1542,6 +1805,23 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["adminInventoryAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-account churn-risk signals from order history. */
+        get: operations["adminAccountHealth"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3122,6 +3402,22 @@ export interface components {
             postal_code?: string | null;
             country: string;
         };
+        ReorderSuggestion: {
+            slug: string;
+            sku: string;
+            name: string;
+            unit: string;
+            /** Format: int64 */
+            order_count: number;
+            /** Format: date-time */
+            last_ordered: string;
+            avg_interval_days: number;
+            days_since: number;
+            days_overdue: number;
+        };
+        ListWrapperReorderSuggestion: {
+            items?: components["schemas"]["ReorderSuggestion"][];
+        };
         CustomerAddressInput: {
             /** @enum {string} */
             type: "billing" | "shipping";
@@ -3147,6 +3443,40 @@ export interface components {
             requested_delivery_date?: string | null;
             billing_address?: components["schemas"]["OrderAddressInput"];
             shipping_address?: components["schemas"]["OrderAddressInput"];
+            cost_center?: string | null;
+        };
+        CustomerBudget: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            customer_id: number;
+            cost_center: string;
+            /** @enum {string} */
+            period: "monthly" | "quarterly" | "annual";
+            amount: string;
+            currency: string;
+            is_active: boolean;
+        };
+        BudgetInput: {
+            cost_center?: string;
+            /** @enum {string} */
+            period: "monthly" | "quarterly" | "annual";
+            amount: string;
+            currency?: string;
+        };
+        ListWrapperCustomerBudget: {
+            items?: components["schemas"]["CustomerBudget"][];
+        };
+        BudgetConsumption: {
+            cost_center: string;
+            period: string;
+            amount: string;
+            currency: string;
+            spent: string;
+            remaining: string;
+        };
+        ListWrapperBudgetConsumption: {
+            items?: components["schemas"]["BudgetConsumption"][];
         };
         ListWrapperCustomerGroup: {
             items?: components["schemas"]["CustomerGroup"][];
@@ -3662,6 +3992,100 @@ export interface components {
             tax_amount?: string;
             row_total: string;
         };
+        ReturnItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            order_item_id: number;
+            /** Format: int64 */
+            product_id: number;
+            quantity: string;
+            reason?: string | null;
+            sku: string;
+            name: string;
+            unit_price: string;
+        };
+        CreditNote: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            invoice_id?: number | null;
+            amount: string;
+            currency: string;
+            /** @enum {string} */
+            status: "draft" | "issued" | "void";
+        };
+        ReturnSummary: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            order_id: number;
+            /** Format: int64 */
+            customer_id: number;
+            /** @enum {string} */
+            status: "requested" | "approved" | "rejected" | "received" | "closed";
+            reason?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ReturnDetail: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            order_id: number;
+            /** Format: int64 */
+            customer_id: number;
+            /** @enum {string} */
+            status: "requested" | "approved" | "rejected" | "received" | "closed";
+            reason?: string | null;
+            items: components["schemas"]["ReturnItem"][];
+            credit_notes: components["schemas"]["CreditNote"][];
+        };
+        ReturnInput: {
+            reason?: string | null;
+            items: {
+                /** Format: int64 */
+                order_item_id: number;
+                quantity: string;
+                reason?: string | null;
+            }[];
+        };
+        ListWrapperReturn: {
+            items?: components["schemas"]["ReturnSummary"][];
+        };
+        ListWrapperCreditNote: {
+            items?: components["schemas"]["CreditNote"][];
+        };
+        AgingInvoice: {
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            customer_id: number;
+            status: string;
+            grand_total: string;
+            currency: string;
+            /** Format: date-time */
+            due_at?: string;
+            days_overdue: number;
+            /** @enum {string} */
+            bucket: "current" | "1-30" | "31-60" | "61-90" | "90+";
+        };
+        ARAgingReport: {
+            buckets: {
+                [key: string]: string;
+            };
+            open_total: string;
+            items: components["schemas"]["AgingInvoice"][];
+        };
+        OverdueSweepResult: {
+            marked_overdue: number;
+        };
         InvoiceDetail: {
             /** Format: int64 */
             id: number;
@@ -3828,6 +4252,29 @@ export interface components {
         };
         ListWrapperInventoryMovement: {
             items?: components["schemas"]["InventoryMovement"][];
+        };
+        AccountHealth: {
+            /** Format: int64 */
+            customer_id: number;
+            name: string;
+            /** Format: int64 */
+            rep_id?: number | null;
+            /** Format: int64 */
+            order_count: number;
+            /** Format: date-time */
+            last_ordered: string;
+            days_since: number;
+            avg_interval_days: number;
+            lifetime_value: string;
+            /** Format: int64 */
+            recent_count: number;
+            /** Format: int64 */
+            prior_count: number;
+            at_risk: boolean;
+            reason?: string;
+        };
+        ListWrapperAccountHealth: {
+            items?: components["schemas"]["AccountHealth"][];
         };
         Lead: {
             /** Format: int64 */
@@ -5512,6 +5959,97 @@ export interface operations {
             };
         };
     };
+    adminListBudgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCustomerBudget"];
+                };
+            };
+        };
+    };
+    adminCreateBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerBudget"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                budgetID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListBudgets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperBudgetConsumption"];
+                };
+            };
+        };
+    };
     adminListCustomerGroups: {
         parameters: {
             query?: never;
@@ -6258,6 +6796,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkAddResult"];
+                };
+            };
+        };
+    };
+    storefrontReorderSuggestions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReorderSuggestion"];
                 };
             };
         };
@@ -7530,6 +8088,274 @@ export interface operations {
             };
         };
     };
+    adminInvoiceAging: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ARAgingReport"];
+                };
+            };
+        };
+    };
+    adminRunOverdueSweep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverdueSweepResult"];
+                };
+            };
+        };
+    };
+    adminListReturns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReturn"];
+                };
+            };
+        };
+    };
+    adminGetReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminApproveReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminRejectReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminReceiveReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListOrderReturns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReturn"];
+                };
+            };
+        };
+    };
+    adminCreateReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListCreditNotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCreditNote"];
+                };
+            };
+        };
+    };
+    storefrontListReturns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperReturn"];
+                };
+            };
+        };
+    };
+    storefrontCreateReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnDetail"];
+                };
+            };
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
     storefrontListQuotes: {
         parameters: {
             query?: never;
@@ -7709,6 +8535,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InventoryLevel"];
+                };
+            };
+        };
+    };
+    adminAccountHealth: {
+        parameters: {
+            query?: {
+                at_risk?: boolean;
+                rep_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperAccountHealth"];
                 };
             };
         };

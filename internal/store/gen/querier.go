@@ -6,12 +6,17 @@ package gen
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
+	// AccountHealth aggregates each customer's order history (org-scoped, excluding
+	// cancelled) into the signals a rep needs to spot a slipping account: lifetime
+	// value, first/last order, and recent vs prior 90-day order counts.
+	AccountHealth(ctx context.Context, organizationID int64) ([]AccountHealthRow, error)
 	AddConfiguredQuoteItem(ctx context.Context, arg AddConfiguredQuoteItemParams) (QuoteItem, error)
 	// ===== Movements ===========================================================
 	AddInventoryMovement(ctx context.Context, arg AddInventoryMovementParams) (InventoryMovement, error)
@@ -24,6 +29,7 @@ type Querier interface {
 	AddOrderStatusHistory(ctx context.Context, arg AddOrderStatusHistoryParams) error
 	AddQuoteItem(ctx context.Context, arg AddQuoteItemParams) (QuoteItem, error)
 	AddRFQItem(ctx context.Context, arg AddRFQItemParams) (RfqItem, error)
+	AddReturnItem(ctx context.Context, arg AddReturnItemParams) (ReturnItem, error)
 	AddShipmentItem(ctx context.Context, arg AddShipmentItemParams) (ShipmentItem, error)
 	AddWorkflowTransitionLog(ctx context.Context, arg AddWorkflowTransitionLogParams) error
 	// AdjustInventoryLevel applies signed deltas to on-hand and reserved.
@@ -51,6 +57,8 @@ type Querier interface {
 	CreateAttribute(ctx context.Context, arg CreateAttributeParams) (Attribute, error)
 	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
 	CreateAutomationRule(ctx context.Context, arg CreateAutomationRuleParams) (AutomationRule, error)
+	// Procurement budgets (migration 0039).
+	CreateBudget(ctx context.Context, arg CreateBudgetParams) (CustomerBudget, error)
 	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
 	CreateCatalogVisibility(ctx context.Context, arg CreateCatalogVisibilityParams) (CatalogVisibility, error)
 	// ===== Categories ==========================================================
@@ -61,6 +69,7 @@ type Querier interface {
 	CreateConfigRule(ctx context.Context, arg CreateConfigRuleParams) (ConfigRule, error)
 	// ===== Contacts ============================================================
 	CreateContact(ctx context.Context, arg CreateContactParams) (Contact, error)
+	CreateCreditNote(ctx context.Context, arg CreateCreditNoteParams) (CreditNote, error)
 	CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error)
 	CreateCustomerAddress(ctx context.Context, arg CreateCustomerAddressParams) (CustomerAddress, error)
 	// Customers & accounts queries — Implementation Pack 1 §2 + §12.2.
@@ -134,6 +143,8 @@ type Querier interface {
 	CreateReportRun(ctx context.Context, arg CreateReportRunParams) (int64, error)
 	// ===== Schedules ===========================================================
 	CreateReportSchedule(ctx context.Context, arg CreateReportScheduleParams) (ReportSchedule, error)
+	// Returns / RMA + credit notes (migration 0038).
+	CreateReturn(ctx context.Context, arg CreateReturnParams) (Return, error)
 	// ===== Login state (CSRF/replay) ===========================================
 	CreateSSOState(ctx context.Context, arg CreateSSOStateParams) (SsoState, error)
 	// Order-to-cash queries — Implementation Pack 1 §7.
@@ -169,6 +180,7 @@ type Querier interface {
 	DailySales(ctx context.Context, arg DailySalesParams) ([]DailySalesRow, error)
 	DeleteApprovalRoutingRule(ctx context.Context, arg DeleteApprovalRoutingRuleParams) (int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
+	DeleteBudget(ctx context.Context, arg DeleteBudgetParams) (int64, error)
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
@@ -192,6 +204,8 @@ type Querier interface {
 	FinishReportRun(ctx context.Context, arg FinishReportRunParams) (FinishReportRunRow, error)
 	// FirstStage returns the lowest-sort_order stage of a pipeline (the entry stage).
 	FirstStage(ctx context.Context, pipelineID int64) (PipelineStage, error)
+	// GetActiveBudget finds the active budget governing a (customer, cost_center).
+	GetActiveBudget(ctx context.Context, arg GetActiveBudgetParams) (CustomerBudget, error)
 	// Cart & shopping list queries — Implementation Pack 1 §5.
 	// ===== Carts ===============================================================
 	GetActiveCart(ctx context.Context, arg GetActiveCartParams) (Cart, error)
@@ -305,6 +319,10 @@ type Querier interface {
 	GetRendition(ctx context.Context, arg GetRenditionParams) (MediaRendition, error)
 	GetReportDefinition(ctx context.Context, arg GetReportDefinitionParams) (ReportDefinition, error)
 	GetReportRunArtifact(ctx context.Context, arg GetReportRunArtifactParams) (GetReportRunArtifactRow, error)
+	// GetReturn loads a return scoped to its org (via the order).
+	GetReturn(ctx context.Context, arg GetReturnParams) (Return, error)
+	// GetReturnByPublicID loads a return by public id within the customer (storefront).
+	GetReturnByPublicID(ctx context.Context, publicID uuid.UUID) (Return, error)
 	GetSSOState(ctx context.Context, state string) (SsoState, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
 	// GetShipmentWithOrg authorizes a shipment by org (via its order) and returns
@@ -343,6 +361,9 @@ type Querier interface {
 	// a product or to any category the product belongs to. With cust+grp both null
 	// (anonymous) it returns nothing — the default catalog is fully visible.
 	HiddenProductIDsForCustomer(ctx context.Context, arg HiddenProductIDsForCustomerParams) ([]int64, error)
+	// ListAbandonedCarts returns active carts with items that have gone idle past
+	// the cutoff and weren't reminded since their last change. $1 = idle cutoff.
+	ListAbandonedCarts(ctx context.Context, updatedAt time.Time) ([]ListAbandonedCartsRow, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
 	// Price adjustment rules (migration 0035).
@@ -361,6 +382,7 @@ type Querier interface {
 	// ListAutomationRulesByEvent returns active rules for a trigger event, across
 	// orgs (the scheduler doesn't know orgs; each rule carries its own).
 	ListAutomationRulesByEvent(ctx context.Context, triggerEvent string) ([]AutomationRule, error)
+	ListBudgetsForCustomer(ctx context.Context, customerID int64) ([]CustomerBudget, error)
 	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
 	// ListCatalogVisibilityForProduct lists the rules attached to a product (org
 	// scoped via the product join so admins can't read across tenants).
@@ -371,6 +393,8 @@ type Querier interface {
 	// Hierarchical config settings (migration 0036).
 	ListConfigSettings(ctx context.Context, organizationID int64) ([]ConfigSetting, error)
 	ListContactsForCustomer(ctx context.Context, arg ListContactsForCustomerParams) ([]Contact, error)
+	ListCreditNotesAdmin(ctx context.Context, arg ListCreditNotesAdminParams) ([]CreditNote, error)
+	ListCreditNotesForReturn(ctx context.Context, returnID *int64) ([]CreditNote, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
 	// ListCustomerPriceTiersForSlug returns every volume tier (min_quantity break)
@@ -403,6 +427,9 @@ type Querier interface {
 	ListMediaTags(ctx context.Context, mediaAssetID int64) ([]string, error)
 	ListMenuItems(ctx context.Context, menuID int64) ([]MenuItem, error)
 	ListMenusForWebsite(ctx context.Context, websiteID int64) ([]Menu, error)
+	// ListOpenInvoicesForOrg returns the org's unpaid (issued/overdue) invoices for
+	// the AR-aging report.
+	ListOpenInvoicesForOrg(ctx context.Context, organizationID int64) ([]ListOpenInvoicesForOrgRow, error)
 	ListOpportunities(ctx context.Context, arg ListOpportunitiesParams) ([]Opportunity, error)
 	ListOptionGroups(ctx context.Context, productID int64) ([]ProductOptionGroup, error)
 	// ListOptionsForProduct returns every option of a product's groups, ordered for
@@ -430,6 +457,9 @@ type Querier interface {
 	ListQuoteRevisions(ctx context.Context, quoteID int64) ([]ListQuoteRevisionsRow, error)
 	ListQuotesAdmin(ctx context.Context, arg ListQuotesAdminParams) ([]Quote, error)
 	ListQuotesForCustomer(ctx context.Context, customerID int64) ([]Quote, error)
+	// ListQuotesForFollowup returns 'sent' quotes expiring within the cutoff that
+	// haven't been followed up yet (one nudge per quote). $1 = cutoff timestamp.
+	ListQuotesForFollowup(ctx context.Context, validUntil pgtype.Timestamptz) ([]ListQuotesForFollowupRow, error)
 	ListRFQItems(ctx context.Context, rfqID int64) ([]ListRFQItemsRow, error)
 	ListRFQsAdmin(ctx context.Context, arg ListRFQsAdminParams) ([]Rfq, error)
 	ListRFQsForCustomer(ctx context.Context, customerID int64) ([]Rfq, error)
@@ -438,6 +468,10 @@ type Querier interface {
 	ListReportDefinitions(ctx context.Context, organizationID int64) ([]ReportDefinition, error)
 	ListReportRuns(ctx context.Context, reportDefinitionID int64) ([]ListReportRunsRow, error)
 	ListReportSchedules(ctx context.Context, reportDefinitionID int64) ([]ReportSchedule, error)
+	ListReturnItems(ctx context.Context, returnID int64) ([]ListReturnItemsRow, error)
+	ListReturnsAdmin(ctx context.Context, arg ListReturnsAdminParams) ([]Return, error)
+	ListReturnsForCustomer(ctx context.Context, customerID int64) ([]Return, error)
+	ListReturnsForOrder(ctx context.Context, orderID int64) ([]Return, error)
 	// ListShipmentItemProducts resolves a shipment's lines to product + quantity
 	// (for converting reservations to fulfilment on ship).
 	ListShipmentItemProducts(ctx context.Context, shipmentID int64) ([]ListShipmentItemProductsRow, error)
@@ -459,9 +493,18 @@ type Querier interface {
 	ListWorkflowStates(ctx context.Context, definitionID int64) ([]WorkflowState, error)
 	ListWorkflowTransitions(ctx context.Context, definitionID int64) ([]WorkflowTransition, error)
 	MarkCartConverted(ctx context.Context, id int64) error
+	MarkCartReminded(ctx context.Context, id int64) error
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
 	MarkLeadConverted(ctx context.Context, arg MarkLeadConvertedParams) (Lead, error)
+	// MarkOverdueInvoicesForOrg is the org-scoped variant used by the admin
+	// manual "run sweep" action.
+	MarkOverdueInvoicesForOrg(ctx context.Context, organizationID int64) ([]MarkOverdueInvoicesForOrgRow, error)
+	// ===== AR aging & dunning (revenue ops) ====================================
+	// MarkOverdueInvoicesGlobal flips every past-due 'issued' invoice to 'overdue'
+	// across all orgs — driven by the scheduled mark_overdue automation action.
+	MarkOverdueInvoicesGlobal(ctx context.Context) ([]MarkOverdueInvoicesGlobalRow, error)
+	MarkQuoteFollowedUp(ctx context.Context, id int64) error
 	// MaxScopedCursor is the current high-water mark for the rep's scope (used when
 	// a pull returns no rows so the client still advances its cursor).
 	MaxScopedCursor(ctx context.Context, arg MaxScopedCursorParams) (int64, error)
@@ -487,6 +530,10 @@ type Querier interface {
 	RecordAutomationExecution(ctx context.Context, arg RecordAutomationExecutionParams) error
 	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
 	RenameShoppingList(ctx context.Context, arg RenameShoppingListParams) (ShoppingList, error)
+	// ReorderCadence aggregates a customer's purchase history per product (across
+	// non-cancelled orders) so the app can infer reorder intervals and nudge buyers.
+	// Only products ordered at least twice are returned (an interval needs 2 points).
+	ReorderCadence(ctx context.Context, customerID int64) ([]ReorderCadenceRow, error)
 	// ResolveConfig returns the most specific value for a key given the optional
 	// website/group/customer in scope (customer > group > website > org).
 	ResolveConfig(ctx context.Context, arg ResolveConfigParams) (ResolveConfigRow, error)
@@ -529,6 +576,7 @@ type Querier interface {
 	SetLeadStatus(ctx context.Context, arg SetLeadStatusParams) (Lead, error)
 	SetMediaStatus(ctx context.Context, arg SetMediaStatusParams) error
 	SetOpportunityStage(ctx context.Context, arg SetOpportunityStageParams) (Opportunity, error)
+	SetOrderCostCenter(ctx context.Context, arg SetOrderCostCenterParams) error
 	SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) (Order, error)
 	SetPageStatus(ctx context.Context, arg SetPageStatusParams) (ContentPage, error)
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) (Payment, error)
@@ -538,6 +586,7 @@ type Querier interface {
 	SetQuoteSubtotal(ctx context.Context, arg SetQuoteSubtotalParams) error
 	SetRFQStatus(ctx context.Context, arg SetRFQStatusParams) (Rfq, error)
 	SetReportScheduleLastRun(ctx context.Context, arg SetReportScheduleLastRunParams) error
+	SetReturnStatus(ctx context.Context, arg SetReturnStatusParams) (Return, error)
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
 	SetShipmentTracking(ctx context.Context, arg SetShipmentTrackingParams) (Shipment, error)
 	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
@@ -546,12 +595,18 @@ type Querier interface {
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
+	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
+	// cost center since the period start. $3 = period start timestamp.
+	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
 	// SumCapturedForInvoice totals captured payments against an invoice.
 	SumCapturedForInvoice(ctx context.Context, invoiceID *int64) (string, error)
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to
 	// enforce the credit limit when paying on terms.
 	SumOpenInvoices(ctx context.Context, customerID int64) (string, error)
 	SumQuoteItems(ctx context.Context, quoteID int64) (string, error)
+	// SumReturnedForOrderItem totals quantity already returned for an order line
+	// across non-rejected returns (the returnable cap).
+	SumReturnedForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	// TopProducts ranks products by revenue in a month, joined to product names.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)
 	TouchUserLogin(ctx context.Context, id int64) error
