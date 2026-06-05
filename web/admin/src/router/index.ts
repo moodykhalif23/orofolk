@@ -69,6 +69,18 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'price_list.view' },
       },
       {
+        path: 'price-rules',
+        name: 'price-rules',
+        component: () => import('@/views/pricing/PriceRulesView.vue'),
+        meta: { permission: 'price_list.view' },
+      },
+      {
+        path: 'settings',
+        name: 'settings',
+        component: () => import('@/views/settings/SettingsView.vue'),
+        meta: { permission: 'settings.view' },
+      },
+      {
         path: 'rfqs',
         name: 'rfqs',
         component: () => import('@/views/sales/RfqListView.vue'),

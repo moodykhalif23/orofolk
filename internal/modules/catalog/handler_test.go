@@ -482,3 +482,193 @@ func TestFacetedSearch(t *testing.T) {
 		t.Errorf("sort=newest: want F3 first, got %+v", newest.Items)
 	}
 }
+
+// ---- per-customer catalog visibility -------------------------------------
+
+func TestCatalogVisibilityHidesProductsPerCustomer(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+	admin := catalogToken(t, issuer)
+
+	// Two active products.
+	mk := func(sku, slug string) (int64, string) {
+		rr := do(t, h, http.MethodPost, "/admin/products", admin, map[string]any{
+			"sku": sku, "name": sku, "slug": slug, "status": "active",
+		})
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("create %s: %d (%s)", sku, rr.Code, rr.Body.String())
+		}
+		var p struct {
+			ID   int64  `json:"id"`
+			Slug string `json:"slug"`
+		}
+		_ = json.Unmarshal(rr.Body.Bytes(), &p)
+		return p.ID, p.Slug
+	}
+	_, slugA := mk("VIS-A", "vis-a")
+	idB, slugB := mk("VIS-B", "vis-b")
+
+	cust, err := q.CreateCustomer(ctx, gen.CreateCustomerParams{OrganizationID: 1, Name: "Acme", CreditLimit: "0"})
+	if err != nil {
+		t.Fatalf("customer: %v", err)
+	}
+	custTok, _ := issuer.IssueStorefront(1, 1, cust.ID)
+
+	_ = slugA
+	// has reports whether the storefront list for a token includes a slug. The
+	// seed DB has other demo products, so we assert membership, not counts.
+	has := func(tok, slug string) bool {
+		rr := do(t, h, http.MethodGet, "/storefront/products?page_size=200", tok, nil)
+		var resp struct {
+			Items []struct {
+				Slug string `json:"slug"`
+			} `json:"items"`
+		}
+		_ = json.Unmarshal(rr.Body.Bytes(), &resp)
+		for _, it := range resp.Items {
+			if it.Slug == slug {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Before any rule the customer sees product B.
+	if !has(custTok, slugB) {
+		t.Fatalf("cust pre-rule: should see %s", slugB)
+	}
+
+	// Hide product B from this customer.
+	cr := do(t, h, http.MethodPost, "/admin/products/"+strconv.FormatInt(idB, 10)+"/visibility", admin, map[string]any{
+		"customer_id": cust.ID, "visible": false,
+	})
+	if cr.Code != http.StatusCreated {
+		t.Fatalf("create visibility: %d (%s)", cr.Code, cr.Body.String())
+	}
+	var rule struct {
+		ID int64 `json:"id"`
+	}
+	_ = json.Unmarshal(cr.Body.Bytes(), &rule)
+
+	// The customer no longer sees B; anonymous still does.
+	if has(custTok, slugB) {
+		t.Errorf("cust post-rule: should NOT see %s", slugB)
+	}
+	if !has("", slugB) {
+		t.Errorf("anon post-rule: should still see %s (rules are per-customer)", slugB)
+	}
+
+	// Detail for B: 404 for the customer, 200 for anonymous.
+	if rr := do(t, h, http.MethodGet, "/storefront/products/"+slugB, custTok, nil); rr.Code != http.StatusNotFound {
+		t.Errorf("cust detail hidden product: want 404, got %d", rr.Code)
+	}
+	if rr := do(t, h, http.MethodGet, "/storefront/products/"+slugB, "", nil); rr.Code != http.StatusOK {
+		t.Errorf("anon detail: want 200, got %d", rr.Code)
+	}
+
+	// Admin can list + delete the rule.
+	lr := do(t, h, http.MethodGet, "/admin/products/"+strconv.FormatInt(idB, 10)+"/visibility", admin, nil)
+	var lresp struct {
+		Items []any `json:"items"`
+	}
+	_ = json.Unmarshal(lr.Body.Bytes(), &lresp)
+	if len(lresp.Items) != 1 {
+		t.Errorf("list visibility: want 1, got %d", len(lresp.Items))
+	}
+	if del := do(t, h, http.MethodDelete, "/admin/catalog-visibility/"+strconv.FormatInt(rule.ID, 10), admin, nil); del.Code != http.StatusNoContent {
+		t.Errorf("delete visibility: want 204, got %d", del.Code)
+	}
+	// After delete, the customer sees B again.
+	if !has(custTok, slugB) {
+		t.Errorf("cust after delete: should see %s again", slugB)
+	}
+}
+
+func TestCatalogVisibilityByGroup(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+	admin := catalogToken(t, issuer)
+
+	rr := do(t, h, http.MethodPost, "/admin/products", admin, map[string]any{"sku": "GV-1", "name": "GV1", "slug": "gv-1", "status": "active"})
+	var p struct {
+		ID int64 `json:"id"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &p)
+
+	grp, err := q.CreateCustomerGroup(ctx, gen.CreateCustomerGroupParams{OrganizationID: 1, Name: "Wholesale"})
+	if err != nil {
+		t.Fatalf("group: %v", err)
+	}
+	cust, err := q.CreateCustomer(ctx, gen.CreateCustomerParams{OrganizationID: 1, Name: "Acme", CreditLimit: "0", CustomerGroupID: &grp.ID})
+	if err != nil {
+		t.Fatalf("customer: %v", err)
+	}
+	custTok, _ := issuer.IssueStorefront(1, 1, cust.ID)
+
+	// Hide from the GROUP, not the customer directly.
+	if cr := do(t, h, http.MethodPost, "/admin/products/"+strconv.FormatInt(p.ID, 10)+"/visibility", admin, map[string]any{
+		"customer_group_id": grp.ID, "visible": false,
+	}); cr.Code != http.StatusCreated {
+		t.Fatalf("group rule: %d (%s)", cr.Code, cr.Body.String())
+	}
+
+	lr := do(t, h, http.MethodGet, "/storefront/products?page_size=200", custTok, nil)
+	var resp struct {
+		Items []struct {
+			Slug string `json:"slug"`
+		} `json:"items"`
+	}
+	_ = json.Unmarshal(lr.Body.Bytes(), &resp)
+	for _, it := range resp.Items {
+		if it.Slug == "gv-1" {
+			t.Errorf("group-hidden product gv-1 still visible to a group member")
+		}
+	}
+}
+
+// ---- per-warehouse availability ------------------------------------------
+
+func TestStorefrontPerWarehouseAvailability(t *testing.T) {
+	h, issuer, pool := newServer(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+	admin := catalogToken(t, issuer)
+
+	rr := do(t, h, http.MethodPost, "/admin/products", admin, map[string]any{"sku": "WH-1", "name": "WH1", "slug": "wh-1", "status": "active"})
+	var p struct {
+		ID int64 `json:"id"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &p)
+
+	wA, _ := q.CreateWarehouse(ctx, gen.CreateWarehouseParams{OrganizationID: 1, Name: "Main"})
+	wB, _ := q.CreateWarehouse(ctx, gen.CreateWarehouseParams{OrganizationID: 1, Name: "East"})
+	for _, w := range []int64{wA.ID, wB.ID} {
+		_ = q.EnsureInventoryLevel(ctx, gen.EnsureInventoryLevelParams{ProductID: p.ID, WarehouseID: w})
+	}
+	_, _ = q.AdjustInventoryLevel(ctx, gen.AdjustInventoryLevelParams{ProductID: p.ID, WarehouseID: wA.ID, Column3: "40", Column4: "0"})
+	_, _ = q.AdjustInventoryLevel(ctx, gen.AdjustInventoryLevelParams{ProductID: p.ID, WarehouseID: wB.ID, Column3: "10", Column4: "3"})
+
+	av := do(t, h, http.MethodGet, "/storefront/products/wh-1/availability", "", nil)
+	if av.Code != http.StatusOK {
+		t.Fatalf("availability: %d (%s)", av.Code, av.Body.String())
+	}
+	var resp struct {
+		Warehouses []struct {
+			WarehouseName string `json:"warehouse_name"`
+			Available     string `json:"available"`
+		} `json:"warehouses"`
+	}
+	_ = json.Unmarshal(av.Body.Bytes(), &resp)
+	if len(resp.Warehouses) != 2 {
+		t.Fatalf("want 2 warehouses, got %d (%+v)", len(resp.Warehouses), resp.Warehouses)
+	}
+	got := map[string]string{}
+	for _, w := range resp.Warehouses {
+		got[w.WarehouseName] = w.Available
+	}
+	if got["Main"] != "40.0000" || got["East"] != "7.0000" {
+		t.Errorf("availability: want Main 40, East 7 (10-3), got %+v", got)
+	}
+}

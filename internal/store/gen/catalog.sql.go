@@ -205,6 +205,40 @@ func (q *Queries) CreateAttributeFamily(ctx context.Context, arg CreateAttribute
 	return i, err
 }
 
+const createCatalogVisibility = `-- name: CreateCatalogVisibility :one
+INSERT INTO catalog_visibility (product_id, category_id, customer_id, customer_group_id, visible)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, product_id, category_id, customer_id, customer_group_id, visible
+`
+
+type CreateCatalogVisibilityParams struct {
+	ProductID       *int64 `json:"product_id"`
+	CategoryID      *int64 `json:"category_id"`
+	CustomerID      *int64 `json:"customer_id"`
+	CustomerGroupID *int64 `json:"customer_group_id"`
+	Visible         bool   `json:"visible"`
+}
+
+func (q *Queries) CreateCatalogVisibility(ctx context.Context, arg CreateCatalogVisibilityParams) (CatalogVisibility, error) {
+	row := q.db.QueryRow(ctx, createCatalogVisibility,
+		arg.ProductID,
+		arg.CategoryID,
+		arg.CustomerID,
+		arg.CustomerGroupID,
+		arg.Visible,
+	)
+	var i CatalogVisibility
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.CategoryID,
+		&i.CustomerID,
+		&i.CustomerGroupID,
+		&i.Visible,
+	)
+	return i, err
+}
+
 const createCategory = `-- name: CreateCategory :one
 
 INSERT INTO categories (organization_id, parent_id, name, slug, sort_order)
@@ -305,6 +339,25 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.TaxClass,
 	)
 	return i, err
+}
+
+const deleteCatalogVisibility = `-- name: DeleteCatalogVisibility :execrows
+DELETE FROM catalog_visibility v
+USING products p
+WHERE v.id = $1 AND v.product_id = p.id AND p.organization_id = $2
+`
+
+type DeleteCatalogVisibilityParams struct {
+	ID             int64 `json:"id"`
+	OrganizationID int64 `json:"organization_id"`
+}
+
+func (q *Queries) DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCatalogVisibility, arg.ID, arg.OrganizationID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const filterActiveProductsByAttributes = `-- name: FilterActiveProductsByAttributes :many
@@ -469,6 +522,57 @@ func (q *Queries) GetProductIDByPublicID(ctx context.Context, arg GetProductIDBy
 	return id, err
 }
 
+const hiddenProductIDsForCustomer = `-- name: HiddenProductIDsForCustomer :many
+
+SELECT DISTINCT p.id
+FROM products p
+WHERE p.organization_id = $1
+  AND (
+    EXISTS (
+      SELECT 1 FROM catalog_visibility v
+      WHERE v.visible = false AND v.product_id = p.id
+        AND (v.customer_id = $2 OR v.customer_group_id = $3)
+    )
+    OR EXISTS (
+      SELECT 1 FROM catalog_visibility v
+      JOIN product_categories pc ON pc.category_id = v.category_id
+      WHERE v.visible = false AND pc.product_id = p.id
+        AND (v.customer_id = $2 OR v.customer_group_id = $3)
+    )
+  )
+`
+
+type HiddenProductIDsForCustomerParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Cust           *int64 `json:"cust"`
+	Grp            *int64 `json:"grp"`
+}
+
+// ===== Catalog visibility (per-customer/group, migration 0005) =============
+// HiddenProductIDsForCustomer returns the product ids hidden from a buyer by a
+// visible=false rule matching the customer or their group, applied directly to
+// a product or to any category the product belongs to. With cust+grp both null
+// (anonymous) it returns nothing — the default catalog is fully visible.
+func (q *Queries) HiddenProductIDsForCustomer(ctx context.Context, arg HiddenProductIDsForCustomerParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, hiddenProductIDsForCustomer, arg.OrganizationID, arg.Cust, arg.Grp)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveProductsInCategory = `-- name: ListActiveProductsInCategory :many
 WITH RECURSIVE subtree AS (
   SELECT c0.id FROM categories c0 WHERE c0.id = $2 AND c0.organization_id = $1
@@ -588,6 +692,47 @@ func (q *Queries) ListAttributes(ctx context.Context, organizationID int64) ([]A
 			&i.Options,
 			&i.IsFilterable,
 			&i.IsVariantAxis,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCatalogVisibilityForProduct = `-- name: ListCatalogVisibilityForProduct :many
+SELECT v.id, v.product_id, v.category_id, v.customer_id, v.customer_group_id, v.visible FROM catalog_visibility v
+JOIN products p ON p.id = v.product_id
+WHERE v.product_id = $1 AND p.organization_id = $2
+ORDER BY v.id
+`
+
+type ListCatalogVisibilityForProductParams struct {
+	ProductID      *int64 `json:"product_id"`
+	OrganizationID int64  `json:"organization_id"`
+}
+
+// ListCatalogVisibilityForProduct lists the rules attached to a product (org
+// scoped via the product join so admins can't read across tenants).
+func (q *Queries) ListCatalogVisibilityForProduct(ctx context.Context, arg ListCatalogVisibilityForProductParams) ([]CatalogVisibility, error) {
+	rows, err := q.db.Query(ctx, listCatalogVisibilityForProduct, arg.ProductID, arg.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CatalogVisibility
+	for rows.Next() {
+		var i CatalogVisibility
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.CategoryID,
+			&i.CustomerID,
+			&i.CustomerGroupID,
+			&i.Visible,
 		); err != nil {
 			return nil, err
 		}

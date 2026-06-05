@@ -52,6 +52,7 @@ type Querier interface {
 	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
 	CreateAutomationRule(ctx context.Context, arg CreateAutomationRuleParams) (AutomationRule, error)
 	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
+	CreateCatalogVisibility(ctx context.Context, arg CreateCatalogVisibilityParams) (CatalogVisibility, error)
 	// ===== Categories ==========================================================
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	// ===== Change log (cursor outbox) ==========================================
@@ -100,6 +101,7 @@ type Querier interface {
 	// ===== Payments ============================================================
 	CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error)
 	CreatePreset(ctx context.Context, arg CreatePresetParams) (TransformationPreset, error)
+	CreatePriceAdjustmentRule(ctx context.Context, arg CreatePriceAdjustmentRuleParams) (PriceAdjustmentRule, error)
 	// Pricing engine queries — Implementation Pack 1 §4 + §12.1.
 	// NUMERIC params arrive as strings (sqlc money override), so quantity
 	// comparisons cast explicitly with ::numeric.
@@ -168,8 +170,11 @@ type Querier interface {
 	DeleteApprovalRoutingRule(ctx context.Context, arg DeleteApprovalRoutingRuleParams) (int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
+	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
+	DeleteConfigSetting(ctx context.Context, arg DeleteConfigSettingParams) (int64, error)
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
+	DeletePriceAdjustmentRule(ctx context.Context, arg DeletePriceAdjustmentRuleParams) (int64, error)
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
 	DeleteReportDefinition(ctx context.Context, arg DeleteReportDefinitionParams) error
 	DeleteReportSchedule(ctx context.Context, arg DeleteReportScheduleParams) error
@@ -332,8 +337,16 @@ type Querier interface {
 	GetWorkflowInstance(ctx context.Context, id int64) (WorkflowInstance, error)
 	GetWorkflowState(ctx context.Context, id int64) (WorkflowState, error)
 	GetWorkflowStateByCode(ctx context.Context, arg GetWorkflowStateByCodeParams) (WorkflowState, error)
+	// ===== Catalog visibility (per-customer/group, migration 0005) =============
+	// HiddenProductIDsForCustomer returns the product ids hidden from a buyer by a
+	// visible=false rule matching the customer or their group, applied directly to
+	// a product or to any category the product belongs to. With cust+grp both null
+	// (anonymous) it returns nothing — the default catalog is fully visible.
+	HiddenProductIDsForCustomer(ctx context.Context, arg HiddenProductIDsForCustomerParams) ([]int64, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
+	// Price adjustment rules (migration 0035).
+	ListActivePriceAdjustmentRules(ctx context.Context, organizationID int64) ([]PriceAdjustmentRule, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
 	// ListActiveProductsInCategory returns active products in a category's whole
 	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
@@ -349,9 +362,14 @@ type Querier interface {
 	// orgs (the scheduler doesn't know orgs; each rule carries its own).
 	ListAutomationRulesByEvent(ctx context.Context, triggerEvent string) ([]AutomationRule, error)
 	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
+	// ListCatalogVisibilityForProduct lists the rules attached to a product (org
+	// scoped via the product join so admins can't read across tenants).
+	ListCatalogVisibilityForProduct(ctx context.Context, arg ListCatalogVisibilityForProductParams) ([]CatalogVisibility, error)
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCombinedPricesForCustomer(ctx context.Context, arg ListCombinedPricesForCustomerParams) ([]CombinedPrice, error)
 	ListConfigRules(ctx context.Context, productID int64) ([]ConfigRule, error)
+	// Hierarchical config settings (migration 0036).
+	ListConfigSettings(ctx context.Context, organizationID int64) ([]ConfigSetting, error)
 	ListContactsForCustomer(ctx context.Context, arg ListContactsForCustomerParams) ([]Contact, error)
 	ListCustomerAddresses(ctx context.Context, customerID int64) ([]CustomerAddress, error)
 	ListCustomerGroups(ctx context.Context, organizationID int64) ([]CustomerGroup, error)
@@ -403,6 +421,7 @@ type Querier interface {
 	ListPipelineStages(ctx context.Context, pipelineID int64) ([]PipelineStage, error)
 	// ===== Presets =============================================================
 	ListPresets(ctx context.Context, organizationID int64) ([]TransformationPreset, error)
+	ListPriceAdjustmentRules(ctx context.Context, organizationID int64) ([]PriceAdjustmentRule, error)
 	ListPriceLists(ctx context.Context, organizationID int64) ([]PriceList, error)
 	ListPricesForList(ctx context.Context, priceListID int64) ([]Price, error)
 	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)
@@ -449,6 +468,9 @@ type Querier interface {
 	// PipelineBoard: per-stage open count, total and probability-weighted amounts
 	// (Pack 2 §1.4). Sums cast to text via the numeric override; count is bigint.
 	PipelineBoard(ctx context.Context, pipelineID int64) ([]PipelineBoardRow, error)
+	// ProductAvailabilityByWarehouse lists per-warehouse available qty (on_hand -
+	// reserved) for a product, for storefront per-location availability display.
+	ProductAvailabilityByWarehouse(ctx context.Context, arg ProductAvailabilityByWarehouseParams) ([]ProductAvailabilityByWarehouseRow, error)
 	// ProductFacets unnests the JSONB attributes of the filtered result set into
 	// (attribute, value, count) for the storefront filter sidebar.
 	ProductFacets(ctx context.Context, arg ProductFacetsParams) ([]ProductFacetsRow, error)
@@ -465,6 +487,9 @@ type Querier interface {
 	RecordAutomationExecution(ctx context.Context, arg RecordAutomationExecutionParams) error
 	RemoveProductFromCategory(ctx context.Context, arg RemoveProductFromCategoryParams) error
 	RenameShoppingList(ctx context.Context, arg RenameShoppingListParams) (ShoppingList, error)
+	// ResolveConfig returns the most specific value for a key given the optional
+	// website/group/customer in scope (customer > group > website > org).
+	ResolveConfig(ctx context.Context, arg ResolveConfigParams) (ResolveConfigRow, error)
 	// ===== Resolution (§12.1, on-the-fly) ======================================
 	// ResolvePrice returns the single unit price plus the source price list for a
 	// (customer, product, quantity, currency, website, at). Priority: customer (3)
@@ -553,6 +578,8 @@ type Querier interface {
 	// UpsertCartItem snapshots unit_price at add-time; re-adding the same product
 	// sets the quantity and refreshes the price.
 	UpsertCartItem(ctx context.Context, arg UpsertCartItemParams) (CartItem, error)
+	// UpsertConfigSetting sets (or replaces) a value at a specific scope.
+	UpsertConfigSetting(ctx context.Context, arg UpsertConfigSettingParams) (ConfigSetting, error)
 	// Field-sales offline sync (Pack 3 §4).
 	// ===== Devices =============================================================
 	// UpsertFieldDevice registers a device on first contact and refreshes its

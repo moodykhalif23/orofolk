@@ -62,7 +62,7 @@ func (q *Queries) GetProductBySlug(ctx context.Context, arg GetProductBySlugPara
 }
 
 const listActiveProducts = `-- name: ListActiveProducts :many
-SELECT public_id, sku, name, slug, description, status, attributes, unit
+SELECT id, public_id, sku, name, slug, description, status, attributes, unit
 FROM products
 WHERE organization_id = $1
   AND status = 'active'
@@ -78,6 +78,7 @@ type ListActiveProductsParams struct {
 }
 
 type ListActiveProductsRow struct {
+	ID          int64     `json:"id"`
 	PublicID    uuid.UUID `json:"public_id"`
 	Sku         string    `json:"sku"`
 	Name        string    `json:"name"`
@@ -98,6 +99,7 @@ func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProducts
 	for rows.Next() {
 		var i ListActiveProductsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.PublicID,
 			&i.Sku,
 			&i.Name,

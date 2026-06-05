@@ -214,3 +214,45 @@ FROM attribute_family_attributes fa
 JOIN attributes a ON a.id = fa.attribute_id
 WHERE fa.family_id = $1
 ORDER BY fa.sort_order, a.label;
+
+-- ===== Catalog visibility (per-customer/group, migration 0005) =============
+
+-- HiddenProductIDsForCustomer returns the product ids hidden from a buyer by a
+-- visible=false rule matching the customer or their group, applied directly to
+-- a product or to any category the product belongs to. With cust+grp both null
+-- (anonymous) it returns nothing — the default catalog is fully visible.
+-- name: HiddenProductIDsForCustomer :many
+SELECT DISTINCT p.id
+FROM products p
+WHERE p.organization_id = $1
+  AND (
+    EXISTS (
+      SELECT 1 FROM catalog_visibility v
+      WHERE v.visible = false AND v.product_id = p.id
+        AND (v.customer_id = sqlc.narg('cust') OR v.customer_group_id = sqlc.narg('grp'))
+    )
+    OR EXISTS (
+      SELECT 1 FROM catalog_visibility v
+      JOIN product_categories pc ON pc.category_id = v.category_id
+      WHERE v.visible = false AND pc.product_id = p.id
+        AND (v.customer_id = sqlc.narg('cust') OR v.customer_group_id = sqlc.narg('grp'))
+    )
+  );
+
+-- name: CreateCatalogVisibility :one
+INSERT INTO catalog_visibility (product_id, category_id, customer_id, customer_group_id, visible)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- ListCatalogVisibilityForProduct lists the rules attached to a product (org
+-- scoped via the product join so admins can't read across tenants).
+-- name: ListCatalogVisibilityForProduct :many
+SELECT v.* FROM catalog_visibility v
+JOIN products p ON p.id = v.product_id
+WHERE v.product_id = $1 AND p.organization_id = $2
+ORDER BY v.id;
+
+-- name: DeleteCatalogVisibility :execrows
+DELETE FROM catalog_visibility v
+USING products p
+WHERE v.id = $1 AND v.product_id = p.id AND p.organization_id = $2;

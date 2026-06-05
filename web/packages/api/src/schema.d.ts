@@ -102,6 +102,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/{id}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** List per-customer/group catalog-visibility rules for a product. */
+        get: operations["adminListProductVisibility"];
+        put?: never;
+        /** Add a visibility rule (hide/show a product for a customer or group). */
+        post: operations["adminCreateProductVisibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/catalog-visibility/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteCatalogVisibility"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/products/{id}/categories": {
         parameters: {
             query?: never;
@@ -267,6 +305,110 @@ export interface paths {
         put?: never;
         post: operations["adminCreateCustomerGroup"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListSettings"];
+        put: operations["adminUpsertSetting"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteSetting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview the cascade-resolved value for a key at given scope ids. */
+        get: operations["adminResolveSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        /** Resolve a config key for the current buyer (or org defaults if anonymous). */
+        get: operations["storefrontResolveSetting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-adjustment-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListPriceAdjustmentRules"];
+        put?: never;
+        post: operations["adminCreatePriceAdjustmentRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/price-adjustment-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeletePriceAdjustmentRule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -503,6 +645,25 @@ export interface paths {
         put?: never;
         /** Public storefront enquiry/contact form — creates a CRM lead. */
         post: operations["storefrontSubmitLead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/products/{slug}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        /** Per-warehouse available quantity for a product. */
+        get: operations["storefrontProductAvailability"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2691,6 +2852,29 @@ export interface components {
         Attributes: {
             [key: string]: unknown;
         };
+        CatalogVisibilityRule: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id?: number | null;
+            /** Format: int64 */
+            category_id?: number | null;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            visible: boolean;
+        };
+        CatalogVisibilityInput: {
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            visible?: boolean;
+        };
+        ListWrapperCatalogVisibility: {
+            items?: components["schemas"]["CatalogVisibilityRule"][];
+        };
         AdminProduct: {
             /** Format: int64 */
             id: number;
@@ -3070,6 +3254,62 @@ export interface components {
         ListWrapperPriceList: {
             items?: components["schemas"]["PriceList"][];
         };
+        PriceAdjustmentRule: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            attribute_key?: string | null;
+            attribute_value?: string | null;
+            /** @enum {string} */
+            adjustment_type: "percent" | "amount";
+            adjustment_value: string;
+            priority: number;
+            is_active: boolean;
+        };
+        PriceAdjustmentRuleInput: {
+            name: string;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            attribute_key?: string | null;
+            attribute_value?: string | null;
+            /** @enum {string} */
+            adjustment_type: "percent" | "amount";
+            adjustment_value: string;
+            priority?: number;
+            is_active?: boolean;
+        };
+        ListWrapperPriceAdjustmentRule: {
+            items?: components["schemas"]["PriceAdjustmentRule"][];
+        };
+        ConfigSetting: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            scope: "org" | "website" | "group" | "customer";
+            /** Format: int64 */
+            scope_id?: number | null;
+            key: string;
+            value: unknown;
+        };
+        ConfigSettingInput: {
+            /** @enum {string} */
+            scope: "org" | "website" | "group" | "customer";
+            /** Format: int64 */
+            scope_id?: number | null;
+            key: string;
+            value: unknown;
+        };
+        ListWrapperConfigSetting: {
+            items?: components["schemas"]["ConfigSetting"][];
+        };
+        ConfigResolveResult: {
+            key: string;
+            found: boolean;
+            scope?: string;
+            value?: unknown;
+        };
         ListWrapperPrice: {
             items?: components["schemas"]["Price"][];
         };
@@ -3387,10 +3627,22 @@ export interface components {
             status: "pending" | "shipped" | "delivered" | "returned";
             /** Format: date-time */
             shipped_at?: string | null;
+            /** Format: int64 */
+            warehouse_id?: number | null;
+        };
+        WarehouseAvailability: {
+            warehouses: {
+                /** Format: int64 */
+                warehouse_id: number;
+                warehouse_name: string;
+                available: string;
+            }[];
         };
         ShipmentInput: {
             carrier?: string | null;
             tracking_number?: string | null;
+            /** Format: int64 */
+            warehouse_id?: number | null;
             items: {
                 /** Format: int64 */
                 order_item_id: number;
@@ -4767,6 +5019,77 @@ export interface operations {
             404: components["responses"]["ErrorResponse"];
         };
     };
+    adminListProductVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCatalogVisibility"];
+                };
+            };
+        };
+    };
+    adminCreateProductVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogVisibilityInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogVisibilityRule"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteCatalogVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
     adminListProductCategories: {
         parameters: {
             query?: never;
@@ -5235,6 +5558,185 @@ export interface operations {
             };
         };
     };
+    adminListSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperConfigSetting"];
+                };
+            };
+        };
+    };
+    adminUpsertSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigSettingInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigSetting"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminResolveSetting: {
+        parameters: {
+            query: {
+                key: string;
+                website_id?: number;
+                group_id?: number;
+                customer_id?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigResolveResult"];
+                };
+            };
+        };
+    };
+    storefrontResolveSetting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigResolveResult"];
+                };
+            };
+        };
+    };
+    adminListPriceAdjustmentRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperPriceAdjustmentRule"];
+                };
+            };
+        };
+    };
+    adminCreatePriceAdjustmentRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriceAdjustmentRuleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceAdjustmentRule"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeletePriceAdjustmentRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
     adminListPriceLists: {
         parameters: {
             query?: never;
@@ -5664,6 +6166,29 @@ export interface operations {
                 };
             };
             400: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontProductAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseAvailability"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     storefrontProductPricing: {

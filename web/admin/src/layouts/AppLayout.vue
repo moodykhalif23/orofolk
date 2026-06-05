@@ -48,6 +48,7 @@ const groups: NavGroup[] = [
     icon: 'pi pi-dollar',
     items: [
       { label: 'Price lists', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view' },
+      { label: 'Price rules', icon: 'pi pi-sliders-h', routeName: 'price-rules', permission: 'price_list.view' },
       { label: 'Tax & shipping', icon: 'pi pi-percentage', routeName: 'tax-shipping', permission: 'tax.view' },
     ],
   },
@@ -110,6 +111,7 @@ const groups: NavGroup[] = [
     icon: 'pi pi-cog',
     items: [
       { label: 'Websites', icon: 'pi pi-globe', routeName: 'websites', permission: 'tenant.view' },
+      { label: 'Configuration', icon: 'pi pi-cog', routeName: 'settings', permission: 'settings.view' },
       { label: 'Integrations', icon: 'pi pi-sync', routeName: 'integrations', permission: 'integration.view' },
       { label: 'ERP sync', icon: 'pi pi-server', routeName: 'erp', permission: 'erp.view' },
       { label: 'SSO providers', icon: 'pi pi-id-card', routeName: 'identity-providers', permission: 'sso.view' },

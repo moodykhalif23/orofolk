@@ -27,10 +27,24 @@ type Handler struct {
 func New(q *gen.Queries) *Handler { return &Handler{q: q} }
 
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
-	// Public storefront reads.
-	r.Get("/storefront/products", h.storefrontList)
-	r.Get("/storefront/products/{slug}", h.storefrontGet)
-	r.Get("/storefront/catalog", h.storefrontFacetedSearch)
+	h.RoutesWithOptionalAuth(r, authMW, nil)
+}
+
+// RoutesWithOptionalAuth mounts the catalog routes; optAuthMW (when non-nil)
+// wraps the public storefront reads so a signed-in buyer's token is parsed and
+// per-customer catalog visibility can be applied — anonymous visitors still get
+// the default catalog.
+func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(http.Handler) http.Handler) {
+	// Public storefront reads (optionally authenticated for visibility).
+	r.Group(func(sr chi.Router) {
+		if optAuthMW != nil {
+			sr.Use(optAuthMW)
+		}
+		sr.Get("/storefront/products", h.storefrontList)
+		sr.Get("/storefront/products/{slug}", h.storefrontGet)
+		sr.Get("/storefront/products/{slug}/availability", h.storefrontAvailability)
+		sr.Get("/storefront/catalog", h.storefrontFacetedSearch)
+	})
 
 	// Admin (bearer + permission gated).
 	r.Group(func(ar chi.Router) {
@@ -44,6 +58,9 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/products/{id}", h.adminDelete)
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/categories", h.listProductCategories)
 		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/categories", h.assignProductCategory)
+		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/visibility", h.listVisibility)
+		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/visibility", h.createVisibility)
+		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/catalog-visibility/{id}", h.deleteVisibility)
 
 		ar.With(mw.RequirePermission("category.view")).Get("/admin/categories", h.listCategories)
 		ar.With(mw.RequirePermission("category.manage")).Post("/admin/categories", h.createCategory)
@@ -139,6 +156,12 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * limit
 
+	hidden, err := h.hiddenSet(r, orgID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not resolve catalog visibility")
+		return
+	}
+
 	var items []storefrontProduct
 
 	switch {
@@ -153,6 +176,9 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, p := range rows {
+			if hidden[p.ID] {
+				continue // hidden from this buyer by a catalog-visibility rule
+			}
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
@@ -176,6 +202,9 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, p := range rows {
+			if hidden[p.ID] {
+				continue // hidden from this buyer by a catalog-visibility rule
+			}
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
@@ -197,6 +226,9 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, p := range rows {
+			if hidden[p.ID] {
+				continue // hidden from this buyer by a catalog-visibility rule
+			}
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
@@ -212,6 +244,9 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, p := range rows {
+			if hidden[p.ID] {
+				continue // hidden from this buyer by a catalog-visibility rule
+			}
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
@@ -234,10 +269,54 @@ func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
 		return
 	}
+	// A product hidden from this buyer by a visibility rule is treated as
+	// not-found (don't leak its existence). Only checked when a buyer is signed in.
+	if hidden, herr := h.hiddenSet(r, orgID); herr == nil && len(hidden) > 0 {
+		if pid, e := h.q.GetProductIDByPublicID(r.Context(), gen.GetProductIDByPublicIDParams{OrganizationID: orgID, PublicID: p.PublicID}); e == nil && hidden[pid] {
+			response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+			return
+		}
+	}
 	response.JSON(w, http.StatusOK, storefrontProduct{
 		PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 		Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
 	})
+}
+
+// storefrontAvailability returns per-warehouse available quantity for a product
+// (multi-warehouse buyer visibility). Empty when the product is untracked.
+func (h *Handler) storefrontAvailability(w http.ResponseWriter, r *http.Request) {
+	orgID := h.resolveOrg(r)
+	p, err := h.q.GetProductBySlug(r.Context(), gen.GetProductBySlugParams{OrganizationID: orgID, Slug: chi.URLParam(r, "slug")})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+		return
+	}
+	// Respect catalog visibility: a hidden product reports as not-found.
+	pid, err := h.q.GetProductIDByPublicID(r.Context(), gen.GetProductIDByPublicIDParams{OrganizationID: orgID, PublicID: p.PublicID})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+		return
+	}
+	if hidden, herr := h.hiddenSet(r, orgID); herr == nil && hidden[pid] {
+		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+		return
+	}
+	rows, err := h.q.ProductAvailabilityByWarehouse(r.Context(), gen.ProductAvailabilityByWarehouseParams{ProductID: pid, OrganizationID: orgID})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load availability")
+		return
+	}
+	type loc struct {
+		WarehouseID   int64  `json:"warehouse_id"`
+		WarehouseName string `json:"warehouse_name"`
+		Available     string `json:"available"`
+	}
+	out := make([]loc, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, loc{WarehouseID: row.WarehouseID, WarehouseName: row.WarehouseName, Available: row.Available})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"warehouses": out})
 }
 
 // storefrontFacetedSearch is the V1 faceted catalog endpoint (PRD §14): keyword
@@ -308,12 +387,24 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	hidden, err := h.hiddenSet(r, orgID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not resolve catalog visibility")
+		return
+	}
 	items := make([]storefrontProduct, 0, len(rows))
 	for _, p := range rows {
+		if hidden[p.ID] {
+			total-- // keep the count consistent with the filtered page
+			continue
+		}
 		items = append(items, storefrontProduct{
 			PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 			Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
 		})
+	}
+	if total < 0 {
+		total = 0
 	}
 
 	// Group facet rows (already ordered attr, count desc) into per-attribute lists.
