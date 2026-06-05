@@ -114,9 +114,13 @@ async function saveMeta() {
 // ---- presets ----
 const presetOpen = ref(false)
 const savingPreset = ref(false)
-const presetForm = reactive({ name: '', width: 400, height: 400, fit: 'cover', format: 'jpeg', quality: 82 })
-const fitOptions = ['cover', 'contain', 'fill', 'inside']
-const formatOptions = ['jpeg', 'png', 'webp', 'avif']
+type Fit = 'fill' | 'contain' | 'cover' | 'inside'
+type Format = 'webp' | 'avif' | 'jpeg' | 'png'
+const presetForm = reactive<{ name: string; width: number; height: number; fit: Fit; format: Format; quality: number }>({
+  name: '', width: 400, height: 400, fit: 'cover', format: 'jpeg', quality: 82,
+})
+const fitOptions: Fit[] = ['cover', 'contain', 'fill', 'inside']
+const formatOptions: Format[] = ['jpeg', 'png', 'webp', 'avif']
 
 async function savePreset() {
   if (!presetForm.name) return

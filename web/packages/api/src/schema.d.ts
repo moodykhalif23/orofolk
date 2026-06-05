@@ -3381,6 +3381,8 @@ export interface components {
             id: number;
             /** Format: uuid */
             public_id: string;
+            /** Format: int64 */
+            customer_id?: number;
             /** @enum {string} */
             status: "draft" | "issued" | "paid" | "overdue" | "void";
             currency: string;

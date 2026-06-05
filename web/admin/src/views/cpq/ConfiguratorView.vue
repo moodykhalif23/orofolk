@@ -167,10 +167,10 @@ onMounted(loadProducts)
                 <li v-for="o in g.options" :key="o.id"><code>#{{ o.id }}</code> {{ o.name }} <span class="muted">({{ o.code }}, +{{ o.price_delta }})</span></li>
               </ul>
               <div class="mrow">
-                <InputText v-model="optionForm(g.id).code" placeholder="code" />
-                <InputText v-model="optionForm(g.id).name" placeholder="name" />
-                <InputText v-model="optionForm(g.id).price_delta" placeholder="+price" />
-                <Button icon="pi pi-plus" size="small" @click="addOption(g.id)" />
+                <InputText v-model="optionForm(g.id!).code" placeholder="code" />
+                <InputText v-model="optionForm(g.id!).name" placeholder="name" />
+                <InputText v-model="optionForm(g.id!).price_delta" placeholder="+price" />
+                <Button icon="pi pi-plus" size="small" @click="addOption(g.id!)" />
               </div>
             </div>
             <h4>Add group</h4>
@@ -198,7 +198,7 @@ onMounted(loadProducts)
             <h3>Price preview</h3>
             <div v-for="g in def.groups" :key="g.id" class="grp">
               <div class="grp-head"><strong>{{ g.name }}</strong></div>
-              <label v-for="o in g.options" :key="o.id" class="opt"><Checkbox v-model="picked[o.id]" :binary="true" /> {{ o.name }} <span class="muted">+{{ o.price_delta }}</span></label>
+              <label v-for="o in g.options" :key="o.id" class="opt"><Checkbox v-model="picked[o.id!]" :binary="true" /> {{ o.name }} <span class="muted">+{{ o.price_delta }}</span></label>
             </div>
             <Button label="Configure" icon="pi pi-calculator" @click="runPreview" />
             <div v-if="preview" class="preview">

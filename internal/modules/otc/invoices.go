@@ -292,6 +292,7 @@ func (h *Handler) renderInvoice(w http.ResponseWriter, r *http.Request, inv gen.
 	response.JSON(w, http.StatusOK, map[string]any{
 		"id":          inv.ID,
 		"public_id":   inv.PublicID.String(),
+		"customer_id": inv.CustomerID,
 		"status":      inv.Status,
 		"currency":    inv.Currency,
 		"subtotal":    inv.Subtotal,

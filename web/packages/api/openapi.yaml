@@ -899,6 +899,7 @@ components:
       properties:
         id: { type: integer, format: int64 }
         public_id: { type: string, format: uuid }
+        customer_id: { type: integer, format: int64 }
         status: { type: string, enum: [draft, issued, paid, overdue, void] }
         currency: { type: string }
         subtotal: { type: string }
