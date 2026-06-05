@@ -1,5 +1,5 @@
 -- name: ListActiveProducts :many
-SELECT public_id, sku, name, slug, description, status, attributes, unit
+SELECT id, public_id, sku, name, slug, description, status, attributes, unit
 FROM products
 WHERE organization_id = $1
   AND status = 'active'

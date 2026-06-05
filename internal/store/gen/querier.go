@@ -52,6 +52,7 @@ type Querier interface {
 	CreateAttributeFamily(ctx context.Context, arg CreateAttributeFamilyParams) (AttributeFamily, error)
 	CreateAutomationRule(ctx context.Context, arg CreateAutomationRuleParams) (AutomationRule, error)
 	CreateCart(ctx context.Context, arg CreateCartParams) (Cart, error)
+	CreateCatalogVisibility(ctx context.Context, arg CreateCatalogVisibilityParams) (CatalogVisibility, error)
 	// ===== Categories ==========================================================
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (Category, error)
 	// ===== Change log (cursor outbox) ==========================================
@@ -168,6 +169,7 @@ type Querier interface {
 	DeleteApprovalRoutingRule(ctx context.Context, arg DeleteApprovalRoutingRuleParams) (int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
+	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteCombinedPricesForCustomerCurrency(ctx context.Context, arg DeleteCombinedPricesForCustomerCurrencyParams) error
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeleteQuoteItems(ctx context.Context, quoteID int64) error
@@ -332,6 +334,12 @@ type Querier interface {
 	GetWorkflowInstance(ctx context.Context, id int64) (WorkflowInstance, error)
 	GetWorkflowState(ctx context.Context, id int64) (WorkflowState, error)
 	GetWorkflowStateByCode(ctx context.Context, arg GetWorkflowStateByCodeParams) (WorkflowState, error)
+	// ===== Catalog visibility (per-customer/group, migration 0005) =============
+	// HiddenProductIDsForCustomer returns the product ids hidden from a buyer by a
+	// visible=false rule matching the customer or their group, applied directly to
+	// a product or to any category the product belongs to. With cust+grp both null
+	// (anonymous) it returns nothing — the default catalog is fully visible.
+	HiddenProductIDsForCustomer(ctx context.Context, arg HiddenProductIDsForCustomerParams) ([]int64, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
@@ -349,6 +357,9 @@ type Querier interface {
 	// orgs (the scheduler doesn't know orgs; each rule carries its own).
 	ListAutomationRulesByEvent(ctx context.Context, triggerEvent string) ([]AutomationRule, error)
 	ListCartItems(ctx context.Context, cartID int64) ([]ListCartItemsRow, error)
+	// ListCatalogVisibilityForProduct lists the rules attached to a product (org
+	// scoped via the product join so admins can't read across tenants).
+	ListCatalogVisibilityForProduct(ctx context.Context, arg ListCatalogVisibilityForProductParams) ([]CatalogVisibility, error)
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
 	ListCombinedPricesForCustomer(ctx context.Context, arg ListCombinedPricesForCustomerParams) ([]CombinedPrice, error)
 	ListConfigRules(ctx context.Context, productID int64) ([]ConfigRule, error)

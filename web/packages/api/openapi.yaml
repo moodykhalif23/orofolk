@@ -52,6 +52,27 @@ components:
       additionalProperties: true
       description: Flexible product attributes keyed by attribute code.
 
+    CatalogVisibilityRule:
+      type: object
+      required: [id, visible]
+      properties:
+        id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64, nullable: true }
+        category_id: { type: integer, format: int64, nullable: true }
+        customer_id: { type: integer, format: int64, nullable: true }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        visible: { type: boolean }
+    CatalogVisibilityInput:
+      type: object
+      properties:
+        customer_id: { type: integer, format: int64, nullable: true }
+        customer_group_id: { type: integer, format: int64, nullable: true }
+        visible: { type: boolean }
+    ListWrapperCatalogVisibility:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CatalogVisibilityRule' } }
+
     AdminProduct:
       type: object
       required: [id, public_id, sku, type, name, slug, status, unit]
@@ -2158,6 +2179,37 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '204': { description: No Content }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/products/{id}/visibility:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Catalog]
+      operationId: adminListProductVisibility
+      summary: List per-customer/group catalog-visibility rules for a product.
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperCatalogVisibility' } } } }
+    post:
+      tags: [Catalog]
+      operationId: adminCreateProductVisibility
+      summary: Add a visibility rule (hide/show a product for a customer or group).
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogVisibilityInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogVisibilityRule' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/catalog-visibility/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Catalog]
+      operationId: adminDeleteCatalogVisibility
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: Deleted }
         '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /admin/products/{id}/categories:

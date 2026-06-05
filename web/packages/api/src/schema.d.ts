@@ -102,6 +102,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/{id}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** List per-customer/group catalog-visibility rules for a product. */
+        get: operations["adminListProductVisibility"];
+        put?: never;
+        /** Add a visibility rule (hide/show a product for a customer or group). */
+        post: operations["adminCreateProductVisibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/catalog-visibility/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["adminDeleteCatalogVisibility"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/products/{id}/categories": {
         parameters: {
             query?: never;
@@ -2691,6 +2729,29 @@ export interface components {
         Attributes: {
             [key: string]: unknown;
         };
+        CatalogVisibilityRule: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id?: number | null;
+            /** Format: int64 */
+            category_id?: number | null;
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            visible: boolean;
+        };
+        CatalogVisibilityInput: {
+            /** Format: int64 */
+            customer_id?: number | null;
+            /** Format: int64 */
+            customer_group_id?: number | null;
+            visible?: boolean;
+        };
+        ListWrapperCatalogVisibility: {
+            items?: components["schemas"]["CatalogVisibilityRule"][];
+        };
         AdminProduct: {
             /** Format: int64 */
             id: number;
@@ -4758,6 +4819,77 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListProductVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperCatalogVisibility"];
+                };
+            };
+        };
+    };
+    adminCreateProductVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogVisibilityInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogVisibilityRule"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteCatalogVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
             204: {
                 headers: {
                     [name: string]: unknown;

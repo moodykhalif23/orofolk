@@ -148,7 +148,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	// Modules mount their own routes. Add new modules here as they land.
 	health.New(st).Routes(r)
 	authmod.New(st, issuer).Routes(r, loginLimit)
-	catalog.New(st.Queries()).Routes(r, authMW)
+	catalog.New(st.Queries()).RoutesWithOptionalAuth(r, authMW, mw.OptionalAuthenticator(issuer))
 	customers.New(st.Queries()).Routes(r, authMW)
 	account.New(st.Queries()).Routes(r, authMW)
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
