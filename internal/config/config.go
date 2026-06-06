@@ -46,6 +46,14 @@ type Config struct {
 	PunchoutStorefrontURL string
 	EDISenderID           string
 	PunchoutTTL           time.Duration
+
+	// AI assistant. AIProvider selects the decision engine for the copilot:
+	// "deterministic" (default — a local intent/slot engine, fully reproducible,
+	// no external calls) or "claude" (the Anthropic Messages API, used only when
+	// AnthropicAPIKey is set). The deterministic engine is always the fallback.
+	AIProvider      string
+	AnthropicAPIKey string
+	AIModel         string
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -72,6 +80,10 @@ func Load() (Config, error) {
 
 		PunchoutStorefrontURL: getenv("PUNCHOUT_STOREFRONT_URL", "/"),
 		EDISenderID:           getenv("EDI_SENDER_ID", "TEGGO"),
+
+		AIProvider:      getenv("AI_PROVIDER", "deterministic"),
+		AnthropicAPIKey: getenv("ANTHROPIC_API_KEY", ""),
+		AIModel:         getenv("AI_MODEL", "claude-opus-4-8"),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))
