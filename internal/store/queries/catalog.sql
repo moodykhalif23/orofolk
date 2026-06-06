@@ -71,7 +71,7 @@ SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit
 FROM products p
 WHERE p.organization_id = $1
-  AND p.status = 'active' AND p.deleted_at IS NULL
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND p.search_vector @@ websearch_to_tsquery('english', $2)
 ORDER BY ts_rank(p.search_vector, websearch_to_tsquery('english', $2)) DESC, p.name
 LIMIT $3 OFFSET $4;
@@ -85,7 +85,7 @@ LIMIT $3 OFFSET $4;
 -- name: SearchProductsFaceted :many
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit
 FROM products p
-WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
   AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))))
@@ -97,7 +97,7 @@ LIMIT sqlc.arg('lim') OFFSET sqlc.arg('off');
 
 -- name: CountProductsFaceted :one
 SELECT count(*) FROM products p
-WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
   AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))));
@@ -107,7 +107,7 @@ WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.deleted_
 -- name: ProductFacets :many
 SELECT kv.key::text AS attr, kv.value::text AS value, count(*)::bigint AS count
 FROM products p, jsonb_each_text(p.attributes) AS kv(key, value)
-WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
   AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))))
@@ -120,7 +120,7 @@ ORDER BY kv.key, count DESC, kv.value;
 -- name: FilterActiveProductsByAttributes :many
 SELECT * FROM products
 WHERE organization_id = $1
-  AND status = 'active' AND deleted_at IS NULL
+  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
   AND attributes @> $2
 ORDER BY name
 LIMIT $3 OFFSET $4;
@@ -167,7 +167,7 @@ FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)
   AND p.organization_id = $1
-  AND p.status = 'active' AND p.deleted_at IS NULL
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
 ORDER BY p.name
 LIMIT $3 OFFSET $4;
 

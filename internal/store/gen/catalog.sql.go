@@ -101,7 +101,7 @@ func (q *Queries) CountProductsAdmin(ctx context.Context, organizationID int64) 
 
 const countProductsFaceted = `-- name: CountProductsFaceted :one
 SELECT count(*) FROM products p
-WHERE p.organization_id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))
@@ -365,7 +365,7 @@ func (q *Queries) DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalog
 const filterActiveProductsByAttributes = `-- name: FilterActiveProductsByAttributes :many
 SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class, vendor_id, approval_status FROM products
 WHERE organization_id = $1
-  AND status = 'active' AND deleted_at IS NULL
+  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
   AND attributes @> $2
 ORDER BY name
 LIMIT $3 OFFSET $4
@@ -591,7 +591,7 @@ FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)
   AND p.organization_id = $1
-  AND p.status = 'active' AND p.deleted_at IS NULL
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
 ORDER BY p.name
 LIMIT $3 OFFSET $4
 `
@@ -915,7 +915,7 @@ func (q *Queries) ListProductsAdmin(ctx context.Context, arg ListProductsAdminPa
 const productFacets = `-- name: ProductFacets :many
 SELECT kv.key::text AS attr, kv.value::text AS value, count(*)::bigint AS count
 FROM products p, jsonb_each_text(p.attributes) AS kv(key, value)
-WHERE p.organization_id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))
@@ -982,7 +982,7 @@ SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit
 FROM products p
 WHERE p.organization_id = $1
-  AND p.status = 'active' AND p.deleted_at IS NULL
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND p.search_vector @@ websearch_to_tsquery('english', $2)
 ORDER BY ts_rank(p.search_vector, websearch_to_tsquery('english', $2)) DESC, p.name
 LIMIT $3 OFFSET $4
@@ -1112,7 +1112,7 @@ const searchProductsFaceted = `-- name: SearchProductsFaceted :many
 
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit
 FROM products p
-WHERE p.organization_id = $1 AND p.status = 'active' AND p.deleted_at IS NULL
+WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))

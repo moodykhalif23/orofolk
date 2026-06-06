@@ -133,6 +133,41 @@ SELECT * FROM vendor_payouts WHERE vendor_id = $1 AND organization_id = $2 ORDER
 -- name: ListVendorPayoutsForVendor :many
 SELECT * FROM vendor_payouts WHERE vendor_id = $1 ORDER BY created_at DESC;
 
+-- ---- vendor catalog ownership + operator moderation ---------------------
+
+-- name: CreateVendorProduct :one
+INSERT INTO products (organization_id, sku, type, name, slug, description, status, attributes, unit, vendor_id, approval_status)
+VALUES ($1, $2, 'simple', $3, $4, $5, $6, $7, $8, $9, 'pending')
+RETURNING id, sku, name, slug, status, approval_status;
+
+-- name: GetVendorProduct :one
+SELECT id, sku, name, slug, description, status, attributes, unit, approval_status
+FROM products
+WHERE id = $1 AND vendor_id = $2 AND deleted_at IS NULL;
+
+-- name: UpdateVendorProduct :one
+UPDATE products
+   SET name = $3, description = $4, status = $5, attributes = $6, unit = $7
+ WHERE id = $1 AND vendor_id = $2 AND deleted_at IS NULL
+RETURNING id, sku, name, slug, status, approval_status;
+
+-- SubmitVendorProduct re-submits a draft/rejected vendor product for moderation.
+-- name: SubmitVendorProduct :one
+UPDATE products SET approval_status = 'pending'
+ WHERE id = $1 AND vendor_id = $2 AND approval_status IN ('draft','rejected') AND deleted_at IS NULL
+RETURNING id, approval_status;
+
+-- name: ListPendingProducts :many
+SELECT id, sku, name, vendor_id, created_at
+FROM products
+WHERE organization_id = $1 AND approval_status = 'pending' AND deleted_at IS NULL
+ORDER BY created_at;
+
+-- name: SetProductApproval :one
+UPDATE products SET approval_status = $3
+ WHERE organization_id = $1 AND id = $2 AND vendor_id IS NOT NULL AND deleted_at IS NULL
+RETURNING id, approval_status;
+
 -- GetVendorUserForLogin resolves a vendor-user by email within an org for vendor
 -- portal authentication (email is citext, so case-insensitive).
 -- name: GetVendorUserForLogin :one

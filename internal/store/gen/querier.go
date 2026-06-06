@@ -166,6 +166,8 @@ type Querier interface {
 	CreateVendor(ctx context.Context, arg CreateVendorParams) (Vendor, error)
 	CreateVendorOrder(ctx context.Context, arg CreateVendorOrderParams) (VendorOrder, error)
 	CreateVendorPayout(ctx context.Context, arg CreateVendorPayoutParams) (VendorPayout, error)
+	// ---- vendor catalog ownership + operator moderation ---------------------
+	CreateVendorProduct(ctx context.Context, arg CreateVendorProductParams) (CreateVendorProductRow, error)
 	CreateVendorUser(ctx context.Context, arg CreateVendorUserParams) (CreateVendorUserRow, error)
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
@@ -222,6 +224,10 @@ type Querier interface {
 	// ===== Activity get/update (writable on device) ============================
 	GetActivity(ctx context.Context, arg GetActivityParams) (Activity, error)
 	GetAutomationRule(ctx context.Context, arg GetAutomationRuleParams) (AutomationRule, error)
+	// GetBuyableProductIDByPublicID resolves a product id only when the product is
+	// buyable from the storefront: approved (operator products default approved;
+	// unapproved vendor listings cannot be added to a cart) and not deleted.
+	GetBuyableProductIDByPublicID(ctx context.Context, arg GetBuyableProductIDByPublicIDParams) (int64, error)
 	GetCartByID(ctx context.Context, id int64) (Cart, error)
 	GetCartItem(ctx context.Context, arg GetCartItemParams) (CartItem, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
@@ -305,6 +311,8 @@ type Querier interface {
 	// Punchout + EDI integration (Pack 3 §3).
 	// ===== Product lookup (EDI 850 / punchout mapping) =========================
 	GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error)
+	// GetProductBySlug is a storefront read: only approved products are visible
+	// (operator products default to 'approved'; unapproved vendor listings are hidden).
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
 	GetProductConfig(ctx context.Context, productID int64) (ProductConfig, error)
 	GetProductIDByPublicID(ctx context.Context, arg GetProductIDByPublicIDParams) (int64, error)
@@ -354,6 +362,7 @@ type Querier interface {
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
 	GetVendor(ctx context.Context, arg GetVendorParams) (Vendor, error)
 	GetVendorOrderForVendor(ctx context.Context, arg GetVendorOrderForVendorParams) (GetVendorOrderForVendorRow, error)
+	GetVendorProduct(ctx context.Context, arg GetVendorProductParams) (GetVendorProductRow, error)
 	// GetVendorUserForLogin resolves a vendor-user by email within an org for vendor
 	// portal authentication (email is citext, so case-insensitive).
 	GetVendorUserForLogin(ctx context.Context, arg GetVendorUserForLoginParams) (GetVendorUserForLoginRow, error)
@@ -465,6 +474,7 @@ type Querier interface {
 	// ListPagesAdmin lists all pages for the org's websites.
 	ListPagesAdmin(ctx context.Context, organizationID int64) ([]ContentPage, error)
 	ListPaymentsForInvoice(ctx context.Context, invoiceID *int64) ([]Payment, error)
+	ListPendingProducts(ctx context.Context, organizationID int64) ([]ListPendingProductsRow, error)
 	ListPipelineStages(ctx context.Context, pipelineID int64) ([]PipelineStage, error)
 	// ===== Presets =============================================================
 	ListPresets(ctx context.Context, organizationID int64) ([]TransformationPreset, error)
@@ -615,6 +625,7 @@ type Querier interface {
 	SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) (Order, error)
 	SetPageStatus(ctx context.Context, arg SetPageStatusParams) (ContentPage, error)
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) (Payment, error)
+	SetProductApproval(ctx context.Context, arg SetProductApprovalParams) (SetProductApprovalRow, error)
 	SetPunchoutCart(ctx context.Context, arg SetPunchoutCartParams) error
 	SetPunchoutStatus(ctx context.Context, arg SetPunchoutStatusParams) error
 	SetQuoteStatus(ctx context.Context, arg SetQuoteStatusParams) (Quote, error)
@@ -635,6 +646,8 @@ type Querier interface {
 	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
 	// cost center since the period start. $3 = period start timestamp.
 	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
+	// SubmitVendorProduct re-submits a draft/rejected vendor product for moderation.
+	SubmitVendorProduct(ctx context.Context, arg SubmitVendorProductParams) (SubmitVendorProductRow, error)
 	// SumCapturedForInvoice totals captured payments against an invoice.
 	SumCapturedForInvoice(ctx context.Context, invoiceID *int64) (string, error)
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to
@@ -663,6 +676,7 @@ type Querier interface {
 	UpdateShoppingListItem(ctx context.Context, arg UpdateShoppingListItemParams) (ShoppingListItem, error)
 	UpdateTradingPartner(ctx context.Context, arg UpdateTradingPartnerParams) (TradingPartner, error)
 	UpdateVendor(ctx context.Context, arg UpdateVendorParams) (Vendor, error)
+	UpdateVendorProduct(ctx context.Context, arg UpdateVendorProductParams) (UpdateVendorProductRow, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).

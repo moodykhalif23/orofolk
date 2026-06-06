@@ -13,7 +13,7 @@ import (
 
 const countActiveProducts = `-- name: CountActiveProducts :one
 SELECT count(*) FROM products
-WHERE organization_id = $1 AND status = 'active' AND deleted_at IS NULL
+WHERE organization_id = $1 AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
 `
 
 func (q *Queries) CountActiveProducts(ctx context.Context, organizationID int64) (int64, error) {
@@ -23,10 +23,30 @@ func (q *Queries) CountActiveProducts(ctx context.Context, organizationID int64)
 	return count, err
 }
 
+const getBuyableProductIDByPublicID = `-- name: GetBuyableProductIDByPublicID :one
+SELECT id FROM products
+WHERE organization_id = $1 AND public_id = $2 AND approval_status = 'approved' AND deleted_at IS NULL
+`
+
+type GetBuyableProductIDByPublicIDParams struct {
+	OrganizationID int64     `json:"organization_id"`
+	PublicID       uuid.UUID `json:"public_id"`
+}
+
+// GetBuyableProductIDByPublicID resolves a product id only when the product is
+// buyable from the storefront: approved (operator products default approved;
+// unapproved vendor listings cannot be added to a cart) and not deleted.
+func (q *Queries) GetBuyableProductIDByPublicID(ctx context.Context, arg GetBuyableProductIDByPublicIDParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getBuyableProductIDByPublicID, arg.OrganizationID, arg.PublicID)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getProductBySlug = `-- name: GetProductBySlug :one
 SELECT public_id, sku, name, slug, description, status, attributes, unit
 FROM products
-WHERE organization_id = $1 AND slug = $2 AND deleted_at IS NULL
+WHERE organization_id = $1 AND slug = $2 AND approval_status = 'approved' AND deleted_at IS NULL
 `
 
 type GetProductBySlugParams struct {
@@ -45,6 +65,8 @@ type GetProductBySlugRow struct {
 	Unit        string    `json:"unit"`
 }
 
+// GetProductBySlug is a storefront read: only approved products are visible
+// (operator products default to 'approved'; unapproved vendor listings are hidden).
 func (q *Queries) GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error) {
 	row := q.db.QueryRow(ctx, getProductBySlug, arg.OrganizationID, arg.Slug)
 	var i GetProductBySlugRow
@@ -66,6 +88,7 @@ SELECT id, public_id, sku, name, slug, description, status, attributes, unit
 FROM products
 WHERE organization_id = $1
   AND status = 'active'
+  AND approval_status = 'approved'
   AND deleted_at IS NULL
 ORDER BY name
 LIMIT $2 OFFSET $3

@@ -230,7 +230,7 @@ func (h *Handler) addItem(w http.ResponseWriter, r *http.Request) {
 	if req.Unit == "" {
 		req.Unit = "each"
 	}
-	productID, err := h.q.GetProductIDByPublicID(r.Context(), gen.GetProductIDByPublicIDParams{OrganizationID: p.orgID, PublicID: pid})
+	productID, err := h.q.GetBuyableProductIDByPublicID(r.Context(), gen.GetBuyableProductIDByPublicIDParams{OrganizationID: p.orgID, PublicID: pid})
 	if err != nil {
 		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
 		return
@@ -473,7 +473,8 @@ func (h *Handler) addBulk(w http.ResponseWriter, r *http.Request) {
 			unit = "each"
 		}
 		prod, err := h.q.GetProductBySKU(r.Context(), gen.GetProductBySKUParams{OrganizationID: p.orgID, Sku: sku})
-		if err != nil {
+		if err != nil || prod.ApprovalStatus != "approved" {
+			// Unknown SKU, or an unapproved vendor listing: not buyable.
 			notFound = append(notFound, sku)
 			continue
 		}
@@ -649,7 +650,7 @@ func (h *Handler) addListItem(w http.ResponseWriter, r *http.Request) {
 	if req.Unit == "" {
 		req.Unit = "each"
 	}
-	productID, err := h.q.GetProductIDByPublicID(r.Context(), gen.GetProductIDByPublicIDParams{OrganizationID: p.orgID, PublicID: pid})
+	productID, err := h.q.GetBuyableProductIDByPublicID(r.Context(), gen.GetBuyableProductIDByPublicIDParams{OrganizationID: p.orgID, PublicID: pid})
 	if err != nil {
 		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
 		return

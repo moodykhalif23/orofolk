@@ -62,6 +62,11 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("vendor.view")).Get("/admin/vendors/{id}/payouts", h.listPayouts)
 		ar.With(mw.RequirePermission("vendor.manage")).Post("/admin/vendors/{id}/payouts", h.generatePayout)
 		ar.With(mw.RequirePermission("vendor.manage")).Post("/admin/payouts/{id}/pay", h.markPayoutPaid)
+
+		// Operator moderation of vendor-submitted catalog listings.
+		ar.With(mw.RequirePermission("vendor.view")).Get("/admin/products/pending", h.listPendingProducts)
+		ar.With(mw.RequirePermission("vendor.manage")).Post("/admin/products/{id}/approve", h.moderateProduct("approved"))
+		ar.With(mw.RequirePermission("vendor.manage")).Post("/admin/products/{id}/reject", h.moderateProduct("rejected"))
 	})
 }
 

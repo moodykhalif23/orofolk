@@ -166,6 +166,59 @@ func (q *Queries) CreateVendorPayout(ctx context.Context, arg CreateVendorPayout
 	return i, err
 }
 
+const createVendorProduct = `-- name: CreateVendorProduct :one
+
+INSERT INTO products (organization_id, sku, type, name, slug, description, status, attributes, unit, vendor_id, approval_status)
+VALUES ($1, $2, 'simple', $3, $4, $5, $6, $7, $8, $9, 'pending')
+RETURNING id, sku, name, slug, status, approval_status
+`
+
+type CreateVendorProductParams struct {
+	OrganizationID int64   `json:"organization_id"`
+	Sku            string  `json:"sku"`
+	Name           string  `json:"name"`
+	Slug           string  `json:"slug"`
+	Description    *string `json:"description"`
+	Status         string  `json:"status"`
+	Attributes     []byte  `json:"attributes"`
+	Unit           string  `json:"unit"`
+	VendorID       *int64  `json:"vendor_id"`
+}
+
+type CreateVendorProductRow struct {
+	ID             int64  `json:"id"`
+	Sku            string `json:"sku"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug"`
+	Status         string `json:"status"`
+	ApprovalStatus string `json:"approval_status"`
+}
+
+// ---- vendor catalog ownership + operator moderation ---------------------
+func (q *Queries) CreateVendorProduct(ctx context.Context, arg CreateVendorProductParams) (CreateVendorProductRow, error) {
+	row := q.db.QueryRow(ctx, createVendorProduct,
+		arg.OrganizationID,
+		arg.Sku,
+		arg.Name,
+		arg.Slug,
+		arg.Description,
+		arg.Status,
+		arg.Attributes,
+		arg.Unit,
+		arg.VendorID,
+	)
+	var i CreateVendorProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Sku,
+		&i.Name,
+		&i.Slug,
+		&i.Status,
+		&i.ApprovalStatus,
+	)
+	return i, err
+}
+
 const createVendorUser = `-- name: CreateVendorUser :one
 INSERT INTO vendor_users (vendor_id, email, password_hash, full_name, role)
 VALUES ($1, $2, $3, $4, $5)
@@ -296,6 +349,46 @@ func (q *Queries) GetVendorOrderForVendor(ctx context.Context, arg GetVendorOrde
 	return i, err
 }
 
+const getVendorProduct = `-- name: GetVendorProduct :one
+SELECT id, sku, name, slug, description, status, attributes, unit, approval_status
+FROM products
+WHERE id = $1 AND vendor_id = $2 AND deleted_at IS NULL
+`
+
+type GetVendorProductParams struct {
+	ID       int64  `json:"id"`
+	VendorID *int64 `json:"vendor_id"`
+}
+
+type GetVendorProductRow struct {
+	ID             int64   `json:"id"`
+	Sku            string  `json:"sku"`
+	Name           string  `json:"name"`
+	Slug           string  `json:"slug"`
+	Description    *string `json:"description"`
+	Status         string  `json:"status"`
+	Attributes     []byte  `json:"attributes"`
+	Unit           string  `json:"unit"`
+	ApprovalStatus string  `json:"approval_status"`
+}
+
+func (q *Queries) GetVendorProduct(ctx context.Context, arg GetVendorProductParams) (GetVendorProductRow, error) {
+	row := q.db.QueryRow(ctx, getVendorProduct, arg.ID, arg.VendorID)
+	var i GetVendorProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Sku,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.Status,
+		&i.Attributes,
+		&i.Unit,
+		&i.ApprovalStatus,
+	)
+	return i, err
+}
+
 const getVendorUserForLogin = `-- name: GetVendorUserForLogin :one
 SELECT vu.id, vu.vendor_id, v.organization_id, vu.password_hash, vu.is_active
 FROM vendor_users vu
@@ -361,6 +454,47 @@ func (q *Queries) ListOrderItemsWithVendor(ctx context.Context, orderID int64) (
 	for rows.Next() {
 		var i ListOrderItemsWithVendorRow
 		if err := rows.Scan(&i.ID, &i.RowTotal, &i.VendorID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingProducts = `-- name: ListPendingProducts :many
+SELECT id, sku, name, vendor_id, created_at
+FROM products
+WHERE organization_id = $1 AND approval_status = 'pending' AND deleted_at IS NULL
+ORDER BY created_at
+`
+
+type ListPendingProductsRow struct {
+	ID        int64     `json:"id"`
+	Sku       string    `json:"sku"`
+	Name      string    `json:"name"`
+	VendorID  *int64    `json:"vendor_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (q *Queries) ListPendingProducts(ctx context.Context, organizationID int64) ([]ListPendingProductsRow, error) {
+	rows, err := q.db.Query(ctx, listPendingProducts, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingProductsRow
+	for rows.Next() {
+		var i ListPendingProductsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Sku,
+			&i.Name,
+			&i.VendorID,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -821,6 +955,30 @@ func (q *Queries) SetOrderItemVendor(ctx context.Context, arg SetOrderItemVendor
 	return err
 }
 
+const setProductApproval = `-- name: SetProductApproval :one
+UPDATE products SET approval_status = $3
+ WHERE organization_id = $1 AND id = $2 AND vendor_id IS NOT NULL AND deleted_at IS NULL
+RETURNING id, approval_status
+`
+
+type SetProductApprovalParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	ID             int64  `json:"id"`
+	ApprovalStatus string `json:"approval_status"`
+}
+
+type SetProductApprovalRow struct {
+	ID             int64  `json:"id"`
+	ApprovalStatus string `json:"approval_status"`
+}
+
+func (q *Queries) SetProductApproval(ctx context.Context, arg SetProductApprovalParams) (SetProductApprovalRow, error) {
+	row := q.db.QueryRow(ctx, setProductApproval, arg.OrganizationID, arg.ID, arg.ApprovalStatus)
+	var i SetProductApprovalRow
+	err := row.Scan(&i.ID, &i.ApprovalStatus)
+	return i, err
+}
+
 const setVendorOrderStatus = `-- name: SetVendorOrderStatus :one
 UPDATE vendor_orders SET status = $3
 WHERE id = $1 AND vendor_id = $2
@@ -870,6 +1028,30 @@ func (q *Queries) SoftDeleteVendor(ctx context.Context, arg SoftDeleteVendorPara
 	return err
 }
 
+const submitVendorProduct = `-- name: SubmitVendorProduct :one
+UPDATE products SET approval_status = 'pending'
+ WHERE id = $1 AND vendor_id = $2 AND approval_status IN ('draft','rejected') AND deleted_at IS NULL
+RETURNING id, approval_status
+`
+
+type SubmitVendorProductParams struct {
+	ID       int64  `json:"id"`
+	VendorID *int64 `json:"vendor_id"`
+}
+
+type SubmitVendorProductRow struct {
+	ID             int64  `json:"id"`
+	ApprovalStatus string `json:"approval_status"`
+}
+
+// SubmitVendorProduct re-submits a draft/rejected vendor product for moderation.
+func (q *Queries) SubmitVendorProduct(ctx context.Context, arg SubmitVendorProductParams) (SubmitVendorProductRow, error) {
+	row := q.db.QueryRow(ctx, submitVendorProduct, arg.ID, arg.VendorID)
+	var i SubmitVendorProductRow
+	err := row.Scan(&i.ID, &i.ApprovalStatus)
+	return i, err
+}
+
 const updateVendor = `-- name: UpdateVendor :one
 UPDATE vendors
    SET name = $2, contact_email = $3, status = $4, commission_rate = $5, payout_terms_days = $6
@@ -911,6 +1093,54 @@ func (q *Queries) UpdateVendor(ctx context.Context, arg UpdateVendorParams) (Ven
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const updateVendorProduct = `-- name: UpdateVendorProduct :one
+UPDATE products
+   SET name = $3, description = $4, status = $5, attributes = $6, unit = $7
+ WHERE id = $1 AND vendor_id = $2 AND deleted_at IS NULL
+RETURNING id, sku, name, slug, status, approval_status
+`
+
+type UpdateVendorProductParams struct {
+	ID          int64   `json:"id"`
+	VendorID    *int64  `json:"vendor_id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Status      string  `json:"status"`
+	Attributes  []byte  `json:"attributes"`
+	Unit        string  `json:"unit"`
+}
+
+type UpdateVendorProductRow struct {
+	ID             int64  `json:"id"`
+	Sku            string `json:"sku"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug"`
+	Status         string `json:"status"`
+	ApprovalStatus string `json:"approval_status"`
+}
+
+func (q *Queries) UpdateVendorProduct(ctx context.Context, arg UpdateVendorProductParams) (UpdateVendorProductRow, error) {
+	row := q.db.QueryRow(ctx, updateVendorProduct,
+		arg.ID,
+		arg.VendorID,
+		arg.Name,
+		arg.Description,
+		arg.Status,
+		arg.Attributes,
+		arg.Unit,
+	)
+	var i UpdateVendorProductRow
+	err := row.Scan(
+		&i.ID,
+		&i.Sku,
+		&i.Name,
+		&i.Slug,
+		&i.Status,
+		&i.ApprovalStatus,
 	)
 	return i, err
 }
