@@ -64,6 +64,8 @@ function signOut() {
     <footer class="footer">
       <p>Teggo storefront — server-rendered for SEO. © {{ new Date().getFullYear() }}</p>
     </footer>
+
+    <AssistantWidget v-if="isAuthenticated" />
   </div>
 </template>
 

@@ -31,7 +31,10 @@ interface NavGroup {
 const groups: NavGroup[] = [
   {
     label: '',
-    items: [{ label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' }],
+    items: [
+      { label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' },
+      { label: 'Assistant', icon: 'pi pi-sparkles', routeName: 'assistant' },
+    ],
   },
   {
     label: 'Catalog',

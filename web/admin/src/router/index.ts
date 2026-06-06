@@ -201,6 +201,11 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'cms.view' },
       },
       {
+        path: 'assistant',
+        name: 'assistant',
+        component: () => import('@/views/assistant/AssistantView.vue'),
+      },
+      {
         path: 'vendors',
         name: 'vendors',
         component: () => import('@/views/marketplace/VendorsView.vue'),

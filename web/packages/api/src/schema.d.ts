@@ -3415,6 +3415,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["storefrontAssistant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminAssistant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5689,6 +5721,24 @@ export interface components {
         };
         PendingProductList: {
             items?: components["schemas"]["PendingProduct"][];
+        };
+        AssistantTurn: {
+            /** @enum {string} */
+            role: "user" | "assistant";
+            text: string;
+        };
+        AssistantRequest: {
+            message: string;
+            history?: components["schemas"]["AssistantTurn"][];
+        };
+        AssistantReply: {
+            text: string;
+            /** @description The tool the assistant invoked, if any. */
+            tool?: string;
+            /** @description Structured result from the tool, for rich rendering. */
+            data?: {
+                [key: string]: unknown;
+            };
         };
     };
     responses: {
@@ -11894,6 +11944,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VendorPayoutList"];
+                };
+            };
+        };
+    };
+    storefrontAssistant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantReply"];
+                };
+            };
+        };
+    };
+    adminAssistant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssistantReply"];
                 };
             };
         };

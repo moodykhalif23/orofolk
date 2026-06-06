@@ -20,6 +20,7 @@ tags:
   - { name: Inventory }
   - { name: Marketplace }
   - { name: VendorPortal }
+  - { name: Assistant }
 
 components:
   securitySchemes:
@@ -2467,6 +2468,27 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/PendingProduct' } }
+
+    # ===== Assistant (AI copilot) ==========================================
+    AssistantTurn:
+      type: object
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [user, assistant] }
+        text: { type: string }
+    AssistantRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        history: { type: array, items: { $ref: '#/components/schemas/AssistantTurn' } }
+    AssistantReply:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string }
+        tool: { type: string, description: 'The tool the assistant invoked, if any.' }
+        data: { type: object, additionalProperties: true, description: 'Structured result from the tool, for rich rendering.' }
 
   responses:
     ErrorResponse:
@@ -5127,3 +5149,25 @@ paths:
       security: [{ vendorAuth: [] }]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorPayoutList' } } } }
+
+  # ===== AI assistant / copilot ============================================
+  /storefront/assistant:
+    post:
+      tags: [Assistant]
+      operationId: storefrontAssistant
+      security: [{ storefrontAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AssistantRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AssistantReply' } } } }
+  /admin/assistant:
+    post:
+      tags: [Assistant]
+      operationId: adminAssistant
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AssistantRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AssistantReply' } } } }
