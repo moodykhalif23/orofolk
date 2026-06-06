@@ -83,6 +83,27 @@ func (q *Queries) GetProductBySlug(ctx context.Context, arg GetProductBySlugPara
 	return i, err
 }
 
+const getProductVendorBySlug = `-- name: GetProductVendorBySlug :one
+SELECT v.name AS vendor_name
+FROM products p
+JOIN vendors v ON v.id = p.vendor_id
+WHERE p.organization_id = $1 AND p.slug = $2 AND p.deleted_at IS NULL
+`
+
+type GetProductVendorBySlugParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Slug           string `json:"slug"`
+}
+
+// GetProductVendorBySlug returns the marketplace vendor name for a product, when
+// it is vendor-owned (no row for operator/house products). Storefront "sold by".
+func (q *Queries) GetProductVendorBySlug(ctx context.Context, arg GetProductVendorBySlugParams) (string, error) {
+	row := q.db.QueryRow(ctx, getProductVendorBySlug, arg.OrganizationID, arg.Slug)
+	var vendor_name string
+	err := row.Scan(&vendor_name)
+	return vendor_name, err
+}
+
 const listActiveProducts = `-- name: ListActiveProducts :many
 SELECT id, public_id, sku, name, slug, description, status, attributes, unit
 FROM products

@@ -321,6 +321,9 @@ type Querier interface {
 	GetProductIDByPublicIDGlobal(ctx context.Context, publicID uuid.UUID) (int64, error)
 	// GetProductTaxClasses returns the tax class for a set of products (order tax).
 	GetProductTaxClasses(ctx context.Context, arg GetProductTaxClassesParams) ([]GetProductTaxClassesRow, error)
+	// GetProductVendorBySlug returns the marketplace vendor name for a product, when
+	// it is vendor-owned (no row for operator/house products). Storefront "sold by".
+	GetProductVendorBySlug(ctx context.Context, arg GetProductVendorBySlugParams) (string, error)
 	// GetPublishedPage resolves a published page by website + locale + slug (the
 	// storefront read path).
 	GetPublishedPage(ctx context.Context, arg GetPublishedPageParams) (ContentPage, error)

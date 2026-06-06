@@ -77,6 +77,14 @@ const groups: NavGroup[] = [
     ],
   },
   {
+    label: 'Marketplace',
+    icon: 'pi pi-shop',
+    items: [
+      { label: 'Vendors', icon: 'pi pi-shop', routeName: 'vendors', permission: 'vendor.view' },
+      { label: 'Catalog moderation', icon: 'pi pi-check-square', routeName: 'moderation', permission: 'vendor.view' },
+    ],
+  },
+  {
     label: 'Operations',
     icon: 'pi pi-warehouse',
     items: [

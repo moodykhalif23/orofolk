@@ -110,6 +110,7 @@ type storefrontProduct struct {
 	Status      string          `json:"status"`
 	Attributes  json.RawMessage `json:"attributes"`
 	Unit        string          `json:"unit"`
+	SoldBy      *string         `json:"sold_by,omitempty"`
 }
 
 // adminProduct is the full back-office projection.
@@ -277,9 +278,15 @@ func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// "Sold by" marketplace vendor name, when the product is vendor-owned.
+	var soldBy *string
+	if name, e := h.q.GetProductVendorBySlug(r.Context(), gen.GetProductVendorBySlugParams{OrganizationID: orgID, Slug: chi.URLParam(r, "slug")}); e == nil && name != "" {
+		soldBy = &name
+	}
 	response.JSON(w, http.StatusOK, storefrontProduct{
 		PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 		Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+		SoldBy: soldBy,
 	})
 }
 

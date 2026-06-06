@@ -19,6 +19,14 @@ WHERE organization_id = $1 AND slug = $2 AND approval_status = 'approved' AND de
 SELECT count(*) FROM products
 WHERE organization_id = $1 AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL;
 
+-- GetProductVendorBySlug returns the marketplace vendor name for a product, when
+-- it is vendor-owned (no row for operator/house products). Storefront "sold by".
+-- name: GetProductVendorBySlug :one
+SELECT v.name AS vendor_name
+FROM products p
+JOIN vendors v ON v.id = p.vendor_id
+WHERE p.organization_id = $1 AND p.slug = $2 AND p.deleted_at IS NULL;
+
 -- GetBuyableProductIDByPublicID resolves a product id only when the product is
 -- buyable from the storefront: approved (operator products default approved;
 -- unapproved vendor listings cannot be added to a cart) and not deleted.

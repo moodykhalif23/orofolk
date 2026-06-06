@@ -3515,6 +3515,8 @@ export interface components {
             status: string;
             attributes?: components["schemas"]["Attributes"];
             unit: string;
+            /** @description Marketplace vendor name when the product is vendor-owned; absent for operator (house) products. */
+            sold_by?: string | null;
         };
         StorefrontProductList: {
             items: components["schemas"]["StorefrontProduct"][];
@@ -5537,15 +5539,15 @@ export interface components {
         };
         Vendor: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             public_id?: string;
-            name?: string;
-            slug?: string;
+            name: string;
+            slug: string;
             contact_email?: string | null;
             /** @enum {string} */
-            status?: "pending" | "active" | "suspended";
-            commission_rate?: string;
-            payout_terms_days?: number;
+            status: "pending" | "active" | "suspended";
+            commission_rate: string;
+            payout_terms_days: number;
         };
         VendorInput: {
             name: string;
@@ -5583,14 +5585,14 @@ export interface components {
         };
         VendorPayout: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             public_id?: string;
             /** Format: int64 */
             vendor_id?: number;
             /** @enum {string} */
-            status?: "pending" | "paid" | "cancelled";
-            currency?: string;
-            amount?: string;
+            status: "pending" | "paid" | "cancelled";
+            currency: string;
+            amount: string;
             reference?: string | null;
         };
         VendorPayoutList: {
@@ -5678,9 +5680,9 @@ export interface components {
         };
         PendingProduct: {
             /** Format: int64 */
-            id?: number;
-            sku?: string;
-            name?: string;
+            id: number;
+            sku: string;
+            name: string;
             /** Format: int64 */
             vendor_id?: number | null;
             created_at?: string;
