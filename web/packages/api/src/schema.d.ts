@@ -3107,6 +3107,314 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/vendors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListVendors"];
+        put?: never;
+        post: operations["adminCreateVendor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vendors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetVendor"];
+        put: operations["adminUpdateVendor"];
+        post?: never;
+        delete: operations["adminDeleteVendor"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vendors/{id}/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListVendorUsers"];
+        put?: never;
+        post: operations["adminCreateVendorUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vendors/{id}/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListVendorPayouts"];
+        put?: never;
+        post: operations["adminGenerateVendorPayout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payouts/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminMarkPayoutPaid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListPendingProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminApproveProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminRejectProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["vendorLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vendorMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vendorDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vendorListProducts"];
+        put?: never;
+        post: operations["vendorCreateProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["vendorUpdateProduct"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/products/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["vendorSubmitProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vendorListOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["vendorGetOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendor/orders/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["vendorSetOrderStatus"];
+        trace?: never;
+    };
+    "/vendor/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vendorListPayouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5226,6 +5534,159 @@ export interface components {
         };
         ListWrapperIdentityProvider: {
             items?: components["schemas"]["IdentityProvider"][];
+        };
+        Vendor: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            name?: string;
+            slug?: string;
+            contact_email?: string | null;
+            /** @enum {string} */
+            status?: "pending" | "active" | "suspended";
+            commission_rate?: string;
+            payout_terms_days?: number;
+        };
+        VendorInput: {
+            name: string;
+            slug?: string;
+            contact_email?: string | null;
+            /** @enum {string} */
+            status?: "pending" | "active" | "suspended";
+            commission_rate?: string;
+            payout_terms_days?: number;
+        };
+        VendorList: {
+            items?: components["schemas"]["Vendor"][];
+        };
+        VendorUser: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            vendor_id?: number;
+            email?: string;
+            full_name?: string;
+            /** @enum {string} */
+            role?: "member" | "admin";
+            is_active?: boolean;
+        };
+        VendorUserInput: {
+            /** Format: email */
+            email: string;
+            password: string;
+            full_name: string;
+            /** @enum {string} */
+            role?: "member" | "admin";
+        };
+        VendorUserList: {
+            items?: components["schemas"]["VendorUser"][];
+        };
+        VendorPayout: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            /** Format: int64 */
+            vendor_id?: number;
+            /** @enum {string} */
+            status?: "pending" | "paid" | "cancelled";
+            currency?: string;
+            amount?: string;
+            reference?: string | null;
+        };
+        VendorPayoutList: {
+            items?: components["schemas"]["VendorPayout"][];
+        };
+        PayoutPayInput: {
+            reference?: string | null;
+        };
+        VendorOrderSummary: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            order_public_id?: string;
+            status?: string;
+            order_status?: string;
+            currency?: string;
+            gross_total?: string;
+            commission_total?: string;
+            net_total?: string;
+            /** Format: int64 */
+            payout_id?: number | null;
+            created_at?: string;
+        };
+        VendorOrderList: {
+            items?: components["schemas"]["VendorOrderSummary"][];
+        };
+        VendorOrderLine: {
+            /** Format: int64 */
+            id?: number;
+            sku?: string;
+            name?: string;
+            quantity?: string;
+            unit?: string;
+            unit_price?: string;
+            row_total?: string;
+        };
+        VendorOrderDetail: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            order_public_id?: string;
+            status?: string;
+            currency?: string;
+            gross_total?: string;
+            commission_rate?: string;
+            commission_total?: string;
+            net_total?: string;
+            items?: components["schemas"]["VendorOrderLine"][];
+        };
+        VendorOrderStatusInput: {
+            /** @enum {string} */
+            status: "accepted" | "shipped" | "delivered" | "cancelled";
+        };
+        VendorDashboard: {
+            /** Format: int64 */
+            order_count?: number;
+            gross_total?: string;
+            commission_total?: string;
+            net_total?: string;
+        };
+        VendorProduct: {
+            /** Format: int64 */
+            id?: number;
+            sku?: string;
+            name?: string;
+            slug?: string;
+            status?: string;
+            /** @enum {string} */
+            approval_status?: "draft" | "pending" | "approved" | "rejected";
+            created_at?: string;
+        };
+        VendorProductList: {
+            items?: components["schemas"]["VendorProduct"][];
+        };
+        VendorProductInput: {
+            sku: string;
+            name: string;
+            slug?: string;
+            description?: string | null;
+            status?: string;
+            unit?: string;
+            attributes?: {
+                [key: string]: unknown;
+            };
+        };
+        PendingProduct: {
+            /** Format: int64 */
+            id?: number;
+            sku?: string;
+            name?: string;
+            /** Format: int64 */
+            vendor_id?: number | null;
+            created_at?: string;
+        };
+        PendingProductList: {
+            items?: components["schemas"]["PendingProduct"][];
         };
     };
     responses: {
@@ -10890,6 +11351,548 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    adminListVendors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorList"];
+                };
+            };
+        };
+    };
+    adminCreateVendor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vendor"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetVendor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vendor"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateVendor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vendor"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteVendor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminListVendorUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorUserList"];
+                };
+            };
+        };
+    };
+    adminCreateVendorUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorUserInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorUser"];
+                };
+            };
+        };
+    };
+    adminListVendorPayouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPayoutList"];
+                };
+            };
+        };
+    };
+    adminGenerateVendorPayout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPayout"];
+                };
+            };
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminMarkPayoutPaid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PayoutPayInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPayout"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListPendingProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingProductList"];
+                };
+            };
+        };
+    };
+    adminApproveProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminRejectProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthToken"];
+                };
+            };
+            401: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Vendor"];
+                };
+            };
+        };
+    };
+    vendorDashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorDashboard"];
+                };
+            };
+        };
+    };
+    vendorListProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorProductList"];
+                };
+            };
+        };
+    };
+    vendorCreateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorProductInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorProduct"];
+                };
+            };
+        };
+    };
+    vendorUpdateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorProductInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorProduct"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorSubmitProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorListOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorOrderList"];
+                };
+            };
+        };
+    };
+    vendorGetOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorOrderDetail"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorSetOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VendorOrderStatusInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    vendorListPayouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorPayoutList"];
+                };
             };
         };
     };

@@ -18,11 +18,14 @@ tags:
   - { name: Sales }
   - { name: OrderToCash }
   - { name: Inventory }
+  - { name: Marketplace }
+  - { name: VendorPortal }
 
 components:
   securitySchemes:
     adminAuth: { type: http, scheme: bearer, bearerFormat: JWT }
     storefrontAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    vendorAuth: { type: http, scheme: bearer, bearerFormat: JWT }
 
   schemas:
     Error:
@@ -2299,6 +2302,162 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/IdentityProvider' } }
+
+    # ===== Marketplace =====================================================
+    Vendor:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        contact_email: { type: string, nullable: true }
+        status: { type: string, enum: [pending, active, suspended] }
+        commission_rate: { type: string }
+        payout_terms_days: { type: integer }
+    VendorInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        contact_email: { type: string, nullable: true }
+        status: { type: string, enum: [pending, active, suspended] }
+        commission_rate: { type: string }
+        payout_terms_days: { type: integer }
+    VendorList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Vendor' } }
+    VendorUser:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        vendor_id: { type: integer, format: int64 }
+        email: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [member, admin] }
+        is_active: { type: boolean }
+    VendorUserInput:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [member, admin] }
+    VendorUserList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/VendorUser' } }
+    VendorPayout:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        vendor_id: { type: integer, format: int64 }
+        status: { type: string, enum: [pending, paid, cancelled] }
+        currency: { type: string }
+        amount: { type: string }
+        reference: { type: string, nullable: true }
+    VendorPayoutList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/VendorPayout' } }
+    PayoutPayInput:
+      type: object
+      properties:
+        reference: { type: string, nullable: true }
+    VendorOrderSummary:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        order_public_id: { type: string }
+        status: { type: string }
+        order_status: { type: string }
+        currency: { type: string }
+        gross_total: { type: string }
+        commission_total: { type: string }
+        net_total: { type: string }
+        payout_id: { type: integer, format: int64, nullable: true }
+        created_at: { type: string }
+    VendorOrderList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/VendorOrderSummary' } }
+    VendorOrderLine:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        quantity: { type: string }
+        unit: { type: string }
+        unit_price: { type: string }
+        row_total: { type: string }
+    VendorOrderDetail:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        order_public_id: { type: string }
+        status: { type: string }
+        currency: { type: string }
+        gross_total: { type: string }
+        commission_rate: { type: string }
+        commission_total: { type: string }
+        net_total: { type: string }
+        items: { type: array, items: { $ref: '#/components/schemas/VendorOrderLine' } }
+    VendorOrderStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [accepted, shipped, delivered, cancelled] }
+    VendorDashboard:
+      type: object
+      properties:
+        order_count: { type: integer, format: int64 }
+        gross_total: { type: string }
+        commission_total: { type: string }
+        net_total: { type: string }
+    VendorProduct:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string }
+        approval_status: { type: string, enum: [draft, pending, approved, rejected] }
+        created_at: { type: string }
+    VendorProductList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/VendorProduct' } }
+    VendorProductInput:
+      type: object
+      required: [sku, name]
+      properties:
+        sku: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        description: { type: string, nullable: true }
+        status: { type: string }
+        unit: { type: string }
+        attributes: { type: object, additionalProperties: true }
+    PendingProduct:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        vendor_id: { type: integer, format: int64, nullable: true }
+        created_at: { type: string }
+    PendingProductList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/PendingProduct' } }
 
   responses:
     ErrorResponse:
@@ -4737,3 +4896,225 @@ paths:
       responses:
         '200': { description: Token issued (format=json) }
         '302': { description: Redirect to the app with a token }
+
+  # ===== Marketplace (operator / admin) ====================================
+  /admin/vendors:
+    get:
+      tags: [Marketplace]
+      operationId: adminListVendors
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorList' } } } }
+    post:
+      tags: [Marketplace]
+      operationId: adminCreateVendor
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Vendor' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/vendors/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Marketplace]
+      operationId: adminGetVendor
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Vendor' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Marketplace]
+      operationId: adminUpdateVendor
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorInput' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Vendor' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Marketplace]
+      operationId: adminDeleteVendor
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: No Content }
+  /admin/vendors/{id}/users:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Marketplace]
+      operationId: adminListVendorUsers
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorUserList' } } } }
+    post:
+      tags: [Marketplace]
+      operationId: adminCreateVendorUser
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorUserInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/VendorUser' } } } }
+  /admin/vendors/{id}/payouts:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Marketplace]
+      operationId: adminListVendorPayouts
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorPayoutList' } } } }
+    post:
+      tags: [Marketplace]
+      operationId: adminGenerateVendorPayout
+      security: [{ adminAuth: [] }]
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/VendorPayout' } } } }
+        '422': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/payouts/{id}/pay:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Marketplace]
+      operationId: adminMarkPayoutPaid
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/PayoutPayInput' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorPayout' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/products/pending:
+    get:
+      tags: [Marketplace]
+      operationId: adminListPendingProducts
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PendingProductList' } } } }
+  /admin/products/{id}/approve:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Marketplace]
+      operationId: adminApproveProduct
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/products/{id}/reject:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Marketplace]
+      operationId: adminRejectProduct
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  # ===== Vendor self-service portal (audience 'vendor') ====================
+  /vendor/auth/login:
+    post:
+      tags: [VendorPortal]
+      operationId: vendorLogin
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthToken' } } } }
+        '401': { $ref: '#/components/responses/ErrorResponse' }
+  /vendor/me:
+    get:
+      tags: [VendorPortal]
+      operationId: vendorMe
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Vendor' } } } }
+  /vendor/dashboard:
+    get:
+      tags: [VendorPortal]
+      operationId: vendorDashboard
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorDashboard' } } } }
+  /vendor/products:
+    get:
+      tags: [VendorPortal]
+      operationId: vendorListProducts
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorProductList' } } } }
+    post:
+      tags: [VendorPortal]
+      operationId: vendorCreateProduct
+      security: [{ vendorAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorProductInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/VendorProduct' } } } }
+  /vendor/products/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    put:
+      tags: [VendorPortal]
+      operationId: vendorUpdateProduct
+      security: [{ vendorAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorProductInput' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorProduct' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /vendor/products/{id}/submit:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [VendorPortal]
+      operationId: vendorSubmitProduct
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /vendor/orders:
+    get:
+      tags: [VendorPortal]
+      operationId: vendorListOrders
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorOrderList' } } } }
+  /vendor/orders/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [VendorPortal]
+      operationId: vendorGetOrder
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorOrderDetail' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /vendor/orders/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    patch:
+      tags: [VendorPortal]
+      operationId: vendorSetOrderStatus
+      security: [{ vendorAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VendorOrderStatusInput' } } }
+      responses:
+        '200': { description: OK }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /vendor/payouts:
+    get:
+      tags: [VendorPortal]
+      operationId: vendorListPayouts
+      security: [{ vendorAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/VendorPayoutList' } } } }
