@@ -36,6 +36,10 @@ type Querier interface {
 	AdjustInventoryLevel(ctx context.Context, arg AdjustInventoryLevelParams) (InventoryLevel, error)
 	AssignAttributeToFamily(ctx context.Context, arg AssignAttributeToFamilyParams) error
 	AssignProductToCategory(ctx context.Context, arg AssignProductToCategoryParams) error
+	// AttachOrdersToPayout settles every delivered, not-yet-paid vendor_order of a
+	// vendor into a payout (same predicate used to total the payout, run in the same
+	// tx so the set is consistent). Returns the number of orders attached.
+	AttachOrdersToPayout(ctx context.Context, arg AttachOrdersToPayoutParams) (int64, error)
 	// AvailableToPromise sums available across warehouses for a set of products (§12.4).
 	AvailableToPromise(ctx context.Context, dollar_1 []int64) ([]AvailableToPromiseRow, error)
 	// CategoryDescendantIDs returns the category and all of its descendants
@@ -157,6 +161,14 @@ type Querier interface {
 	CreateTradingPartner(ctx context.Context, arg CreateTradingPartnerParams) (TradingPartner, error)
 	// CreateUser provisions a seller-side user (used by SSO JIT provisioning).
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	// Marketplace: vendors, vendor portal logins, per-vendor order splitting,
+	// commission ledger and payouts. (migration 0041)
+	CreateVendor(ctx context.Context, arg CreateVendorParams) (Vendor, error)
+	CreateVendorOrder(ctx context.Context, arg CreateVendorOrderParams) (VendorOrder, error)
+	CreateVendorPayout(ctx context.Context, arg CreateVendorPayoutParams) (VendorPayout, error)
+	// ---- vendor catalog ownership + operator moderation ---------------------
+	CreateVendorProduct(ctx context.Context, arg CreateVendorProductParams) (CreateVendorProductRow, error)
+	CreateVendorUser(ctx context.Context, arg CreateVendorUserParams) (CreateVendorUserRow, error)
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
@@ -212,6 +224,10 @@ type Querier interface {
 	// ===== Activity get/update (writable on device) ============================
 	GetActivity(ctx context.Context, arg GetActivityParams) (Activity, error)
 	GetAutomationRule(ctx context.Context, arg GetAutomationRuleParams) (AutomationRule, error)
+	// GetBuyableProductIDByPublicID resolves a product id only when the product is
+	// buyable from the storefront: approved (operator products default approved;
+	// unapproved vendor listings cannot be added to a cart) and not deleted.
+	GetBuyableProductIDByPublicID(ctx context.Context, arg GetBuyableProductIDByPublicIDParams) (int64, error)
 	GetCartByID(ctx context.Context, id int64) (Cart, error)
 	GetCartItem(ctx context.Context, arg GetCartItemParams) (CartItem, error)
 	GetCategory(ctx context.Context, arg GetCategoryParams) (Category, error)
@@ -295,6 +311,8 @@ type Querier interface {
 	// Punchout + EDI integration (Pack 3 §3).
 	// ===== Product lookup (EDI 850 / punchout mapping) =========================
 	GetProductBySKU(ctx context.Context, arg GetProductBySKUParams) (Product, error)
+	// GetProductBySlug is a storefront read: only approved products are visible
+	// (operator products default to 'approved'; unapproved vendor listings are hidden).
 	GetProductBySlug(ctx context.Context, arg GetProductBySlugParams) (GetProductBySlugRow, error)
 	GetProductConfig(ctx context.Context, productID int64) (ProductConfig, error)
 	GetProductIDByPublicID(ctx context.Context, arg GetProductIDByPublicIDParams) (int64, error)
@@ -303,6 +321,9 @@ type Querier interface {
 	GetProductIDByPublicIDGlobal(ctx context.Context, publicID uuid.UUID) (int64, error)
 	// GetProductTaxClasses returns the tax class for a set of products (order tax).
 	GetProductTaxClasses(ctx context.Context, arg GetProductTaxClassesParams) ([]GetProductTaxClassesRow, error)
+	// GetProductVendorBySlug returns the marketplace vendor name for a product, when
+	// it is vendor-owned (no row for operator/house products). Storefront "sold by".
+	GetProductVendorBySlug(ctx context.Context, arg GetProductVendorBySlugParams) (string, error)
 	// GetPublishedPage resolves a published page by website + locale + slug (the
 	// storefront read path).
 	GetPublishedPage(ctx context.Context, arg GetPublishedPageParams) (ContentPage, error)
@@ -342,6 +363,12 @@ type Querier interface {
 	GetTransitionToState(ctx context.Context, arg GetTransitionToStateParams) (WorkflowTransition, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
+	GetVendor(ctx context.Context, arg GetVendorParams) (Vendor, error)
+	GetVendorOrderForVendor(ctx context.Context, arg GetVendorOrderForVendorParams) (GetVendorOrderForVendorRow, error)
+	GetVendorProduct(ctx context.Context, arg GetVendorProductParams) (GetVendorProductRow, error)
+	// GetVendorUserForLogin resolves a vendor-user by email within an org for vendor
+	// portal authentication (email is citext, so case-insensitive).
+	GetVendorUserForLogin(ctx context.Context, arg GetVendorUserForLoginParams) (GetVendorUserForLoginRow, error)
 	GetWarehouse(ctx context.Context, arg GetWarehouseParams) (Warehouse, error)
 	GetWebsite(ctx context.Context, arg GetWebsiteParams) (Website, error)
 	// Multi-org / multi-website tenancy queries — PRD §4.
@@ -436,6 +463,11 @@ type Querier interface {
 	// stable rendering.
 	ListOptionsForProduct(ctx context.Context, productID int64) ([]ProductOption, error)
 	ListOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error)
+	// ---- order splitting & commission ledger --------------------------------
+	// ListOrderItemsWithVendor returns each line of an order with the owning vendor
+	// of its product (NULL = operator-owned), for fanning an order into per-vendor
+	// sub-orders at placement time.
+	ListOrderItemsWithVendor(ctx context.Context, orderID int64) ([]ListOrderItemsWithVendorRow, error)
 	ListOrderStatusHistory(ctx context.Context, orderID int64) ([]ListOrderStatusHistoryRow, error)
 	ListOrdersAdmin(ctx context.Context, arg ListOrdersAdminParams) ([]Order, error)
 	ListOrdersForCustomer(ctx context.Context, customerID int64) ([]Order, error)
@@ -445,6 +477,7 @@ type Querier interface {
 	// ListPagesAdmin lists all pages for the org's websites.
 	ListPagesAdmin(ctx context.Context, organizationID int64) ([]ContentPage, error)
 	ListPaymentsForInvoice(ctx context.Context, invoiceID *int64) ([]Payment, error)
+	ListPendingProducts(ctx context.Context, organizationID int64) ([]ListPendingProductsRow, error)
 	ListPipelineStages(ctx context.Context, pipelineID int64) ([]PipelineStage, error)
 	// ===== Presets =============================================================
 	ListPresets(ctx context.Context, organizationID int64) ([]TransformationPreset, error)
@@ -453,6 +486,8 @@ type Querier interface {
 	ListPricesForList(ctx context.Context, priceListID int64) ([]Price, error)
 	ListProductCategoryIDs(ctx context.Context, productID int64) ([]int64, error)
 	ListProductsAdmin(ctx context.Context, arg ListProductsAdminParams) ([]Product, error)
+	// ---- vendor portal (audience 'vendor') ----------------------------------
+	ListProductsByVendor(ctx context.Context, vendorID *int64) ([]ListProductsByVendorRow, error)
 	ListQuoteItems(ctx context.Context, quoteID int64) ([]ListQuoteItemsRow, error)
 	ListQuoteRevisions(ctx context.Context, quoteID int64) ([]ListQuoteRevisionsRow, error)
 	ListQuotesAdmin(ctx context.Context, arg ListQuotesAdminParams) ([]Quote, error)
@@ -472,6 +507,10 @@ type Querier interface {
 	ListReturnsAdmin(ctx context.Context, arg ListReturnsAdminParams) ([]Return, error)
 	ListReturnsForCustomer(ctx context.Context, customerID int64) ([]Return, error)
 	ListReturnsForOrder(ctx context.Context, orderID int64) ([]Return, error)
+	// ---- payouts -------------------------------------------------------------
+	// ListSettledUnpaidVendorOrders returns delivered vendor_orders not yet attached
+	// to a payout, for batching a vendor disbursement.
+	ListSettledUnpaidVendorOrders(ctx context.Context, vendorID int64) ([]VendorOrder, error)
 	// ListShipmentItemProducts resolves a shipment's lines to product + quantity
 	// (for converting reservations to fulfilment on ship).
 	ListShipmentItemProducts(ctx context.Context, shipmentID int64) ([]ListShipmentItemProductsRow, error)
@@ -487,6 +526,13 @@ type Querier interface {
 	// ListTaxRatesByCountry feeds the local VAT provider for a destination.
 	ListTaxRatesByCountry(ctx context.Context, arg ListTaxRatesByCountryParams) ([]ListTaxRatesByCountryRow, error)
 	ListTradingPartners(ctx context.Context, organizationID int64) ([]TradingPartner, error)
+	ListVendorOrderItems(ctx context.Context, arg ListVendorOrderItemsParams) ([]ListVendorOrderItemsRow, error)
+	ListVendorOrdersForOrder(ctx context.Context, orderID int64) ([]VendorOrder, error)
+	ListVendorOrdersForVendor(ctx context.Context, vendorID int64) ([]ListVendorOrdersForVendorRow, error)
+	ListVendorPayouts(ctx context.Context, arg ListVendorPayoutsParams) ([]VendorPayout, error)
+	ListVendorPayoutsForVendor(ctx context.Context, vendorID int64) ([]VendorPayout, error)
+	ListVendorUsers(ctx context.Context, vendorID int64) ([]ListVendorUsersRow, error)
+	ListVendors(ctx context.Context, organizationID int64) ([]Vendor, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
 	ListWebsites(ctx context.Context, organizationID int64) ([]Website, error)
 	ListWorkflowDefinitions(ctx context.Context, organizationID int64) ([]WorkflowDefinition, error)
@@ -505,6 +551,7 @@ type Querier interface {
 	// across all orgs — driven by the scheduled mark_overdue automation action.
 	MarkOverdueInvoicesGlobal(ctx context.Context) ([]MarkOverdueInvoicesGlobalRow, error)
 	MarkQuoteFollowedUp(ctx context.Context, id int64) error
+	MarkVendorPayoutPaid(ctx context.Context, arg MarkVendorPayoutPaidParams) (VendorPayout, error)
 	// MaxScopedCursor is the current high-water mark for the rep's scope (used when
 	// a pull returns no rows so the client still advances its cursor).
 	MaxScopedCursor(ctx context.Context, arg MaxScopedCursorParams) (int64, error)
@@ -577,9 +624,11 @@ type Querier interface {
 	SetMediaStatus(ctx context.Context, arg SetMediaStatusParams) error
 	SetOpportunityStage(ctx context.Context, arg SetOpportunityStageParams) (Opportunity, error)
 	SetOrderCostCenter(ctx context.Context, arg SetOrderCostCenterParams) error
+	SetOrderItemVendor(ctx context.Context, arg SetOrderItemVendorParams) error
 	SetOrderStatus(ctx context.Context, arg SetOrderStatusParams) (Order, error)
 	SetPageStatus(ctx context.Context, arg SetPageStatusParams) (ContentPage, error)
 	SetPaymentStatus(ctx context.Context, arg SetPaymentStatusParams) (Payment, error)
+	SetProductApproval(ctx context.Context, arg SetProductApprovalParams) (SetProductApprovalRow, error)
 	SetPunchoutCart(ctx context.Context, arg SetPunchoutCartParams) error
 	SetPunchoutStatus(ctx context.Context, arg SetPunchoutStatusParams) error
 	SetQuoteStatus(ctx context.Context, arg SetQuoteStatusParams) (Quote, error)
@@ -589,15 +638,19 @@ type Querier interface {
 	SetReturnStatus(ctx context.Context, arg SetReturnStatusParams) (Return, error)
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
 	SetShipmentTracking(ctx context.Context, arg SetShipmentTrackingParams) (Shipment, error)
+	SetVendorOrderStatus(ctx context.Context, arg SetVendorOrderStatusParams) (VendorOrder, error)
 	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
 	// ShippedQtyForOrderItem returns the total already shipped for an order line,
 	// used to cap new shipment quantities (§7 AC).
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
+	SoftDeleteVendor(ctx context.Context, arg SoftDeleteVendorParams) error
 	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
 	// cost center since the period start. $3 = period start timestamp.
 	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
+	// SubmitVendorProduct re-submits a draft/rejected vendor product for moderation.
+	SubmitVendorProduct(ctx context.Context, arg SubmitVendorProductParams) (SubmitVendorProductRow, error)
 	// SumCapturedForInvoice totals captured payments against an invoice.
 	SumCapturedForInvoice(ctx context.Context, invoiceID *int64) (string, error)
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to
@@ -625,6 +678,8 @@ type Querier interface {
 	UpdateReportDefinition(ctx context.Context, arg UpdateReportDefinitionParams) (ReportDefinition, error)
 	UpdateShoppingListItem(ctx context.Context, arg UpdateShoppingListItemParams) (ShoppingListItem, error)
 	UpdateTradingPartner(ctx context.Context, arg UpdateTradingPartnerParams) (TradingPartner, error)
+	UpdateVendor(ctx context.Context, arg UpdateVendorParams) (Vendor, error)
+	UpdateVendorProduct(ctx context.Context, arg UpdateVendorProductParams) (UpdateVendorProductRow, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).
@@ -655,6 +710,9 @@ type Querier interface {
 	UpsertShoppingListItem(ctx context.Context, arg UpsertShoppingListItemParams) (ShoppingListItem, error)
 	// Tax/VAT adapter (Pack 2 §4.4): rate config + product tax-class lookup.
 	UpsertTaxRate(ctx context.Context, arg UpsertTaxRateParams) (TaxRate, error)
+	// VendorSalesSummary aggregates lifetime gross/commission/net for a vendor's
+	// dashboard.
+	VendorSalesSummary(ctx context.Context, vendorID int64) (VendorSalesSummaryRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -31,7 +31,10 @@ interface NavGroup {
 const groups: NavGroup[] = [
   {
     label: '',
-    items: [{ label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' }],
+    items: [
+      { label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' },
+      { label: 'Assistant', icon: 'pi pi-sparkles', routeName: 'assistant' },
+    ],
   },
   {
     label: 'Catalog',
@@ -74,6 +77,14 @@ const groups: NavGroup[] = [
       { label: 'Pipeline', icon: 'pi pi-chart-bar', routeName: 'pipeline', permission: 'crm.view' },
       { label: 'Opportunities', icon: 'pi pi-briefcase', routeName: 'opportunities', permission: 'crm.view' },
       { label: 'Account health', icon: 'pi pi-heart', routeName: 'account-health', permission: 'crm.view' },
+    ],
+  },
+  {
+    label: 'Marketplace',
+    icon: 'pi pi-shop',
+    items: [
+      { label: 'Vendors', icon: 'pi pi-shop', routeName: 'vendors', permission: 'vendor.view' },
+      { label: 'Catalog moderation', icon: 'pi pi-check-square', routeName: 'moderation', permission: 'vendor.view' },
     ],
   },
   {

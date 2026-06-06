@@ -91,6 +91,7 @@ useSeoMeta({
       <div class="info">
         <span class="sku">{{ product.sku }}</span>
         <h1>{{ product.name }}</h1>
+        <p v-if="product.sold_by" class="soldby">Sold by <strong>{{ product.sold_by }}</strong></p>
         <Tag :value="product.status" severity="secondary" />
         <p v-if="product.description" class="desc">{{ product.description }}</p>
 
@@ -153,6 +154,11 @@ useSeoMeta({
 }
 .sku {
   font-size: 0.85rem;
+  color: var(--p-text-muted-color, #64748b);
+}
+.soldby {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
   color: var(--p-text-muted-color, #64748b);
 }
 .info h1 {

@@ -408,7 +408,7 @@ func (q *Queries) GetInvoiceForRender(ctx context.Context, id int64) (GetInvoice
 }
 
 const getOrderItem = `-- name: GetOrderItem :one
-SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration FROM order_items WHERE id = $1 AND order_id = $2
+SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration, vendor_id FROM order_items WHERE id = $1 AND order_id = $2
 `
 
 type GetOrderItemParams struct {
@@ -431,6 +431,7 @@ func (q *Queries) GetOrderItem(ctx context.Context, arg GetOrderItemParams) (Ord
 		&i.TaxAmount,
 		&i.RowTotal,
 		&i.Configuration,
+		&i.VendorID,
 	)
 	return i, err
 }
