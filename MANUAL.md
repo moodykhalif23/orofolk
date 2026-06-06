@@ -81,6 +81,9 @@ The layer that protects cash and revenue:
 ### 12. Reporting
 A safe report builder (pick entities, dimensions, measures, filters), scheduled CSV exports, and dashboard metrics.
 
+### 13. Multi‑vendor marketplace
+Run the platform as a **marketplace**, not just a single seller. Vendors are first‑class: each has a profile, a commission rate, payout terms, and **its own self‑service portal** (a third login audience alongside admin and buyer). Vendors **list their own products**, which the operator **moderates** before they go live — unapproved listings never appear in catalog, search, or cart. A single buyer order **splits automatically into per‑vendor sub‑orders**, each with a frozen **commission snapshot** (gross → operator commission → net payable); vendors advance their own fulfilment (accept → ship → deliver). The operator **batches delivered sub‑orders into payouts** and marks them paid; vendors track their dashboard (orders, gross, commission, net) and payout history. Buyers see **"Sold by ‹vendor›"** on the product page. Operator‑owned ("house") products coexist untouched, so it's a marketplace and a first‑party store at once.
+
 ---
 
 ## Two experiences, one platform
@@ -103,11 +106,25 @@ A safe report builder (pick entities, dimensions, measures, filters), scheduled 
 
 ## Status & roadmap
 
-**Built and tested today:** everything above — the full buyer‑self‑service experience, the data‑model depth (catalog visibility, multi‑warehouse, rule‑based pricing, hierarchical config), the integration surfaces (EDI, punchout, ERP webhook, OIDC+SAML, DAM, field sync), and the revenue‑ops layer (AR/dunning, replenishment, quote/cart recovery, returns, account health, budgets).
+**Built and tested today:** everything above — the full buyer‑self‑service experience, the data‑model depth (catalog visibility, multi‑warehouse, rule‑based pricing, hierarchical config), the integration surfaces (EDI, punchout, ERP webhook, OIDC+SAML, DAM, field sync), the revenue‑ops layer (AR/dunning, replenishment, quote/cart recovery, returns, account health, budgets), and the **full multi‑vendor marketplace** (vendor portal, order splitting, commission ledger, payouts, catalog moderation).
 
 **Adapter seams ready, real provider pending credentials:** external tax (Avalara/TaxJar), carriers (FedEx/UPS/DHL), and bespoke ERPs ship as tested sandbox/mock adapters behind stable interfaces — wire a live account and they slot in.
 
-**Deliberately deferred:** a **real payment processor adapter** (Stripe / M‑Pesa Daraja — the `gateway.Gateway` interface and a deterministic mock exist) and a **marketplace / multi‑vendor** mode.
+**Deliberately deferred:** a **real payment processor adapter** (Stripe / M‑Pesa Daraja — the `gateway.Gateway` interface and a deterministic mock exist).
+
+---
+
+## Demo credentials (development seed)
+
+On a freshly migrated database the seed data provisions one working login per surface:
+
+| Surface | App | Email | Password |
+|---|---|---|---|
+| Admin back‑office | `web/admin` | `admin@demo.test` | `admin1234` |
+| Buyer storefront | `web/storefront` | `buyer@demo.test` | `buyer1234` |
+| Vendor portal | `web/vendor` | `vendor@demo.test` | `vendor1234` |
+
+All belong to org `1`. Change or remove these seeds for production.
 
 ---
 

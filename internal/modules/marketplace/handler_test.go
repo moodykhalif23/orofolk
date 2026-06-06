@@ -104,8 +104,14 @@ func TestVendorCRUD(t *testing.T) {
 		} `json:"items"`
 	}
 	_ = json.Unmarshal(rr.Body.Bytes(), &list)
-	if len(list.Items) != 1 || list.Items[0].ID != v.ID {
-		t.Errorf("list: want 1 vendor %d, got %+v", v.ID, list.Items)
+	found := false
+	for _, it := range list.Items {
+		if it.ID == v.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("list: created vendor %d not present, got %+v", v.ID, list.Items)
 	}
 
 	// Update: suspend + change commission.
