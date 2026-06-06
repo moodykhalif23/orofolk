@@ -127,6 +127,11 @@ await load()
 .sku { font-size: 0.8rem; color: var(--p-text-muted-color, #64748b); }
 .qty { width: 9rem; }
 .rowtotal { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .line { grid-template-columns: 1fr auto; gap: 0.5rem 1rem; }
+  .qty { width: auto; }
+  .rowtotal { grid-column: 1 / -1; text-align: left; font-weight: 600; }
+}
 .summary {
   display: flex;
   align-items: center;

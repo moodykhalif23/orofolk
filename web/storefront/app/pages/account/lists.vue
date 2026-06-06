@@ -222,6 +222,7 @@ await loadLists()
 .title { margin: 0 0 1rem; }
 .mb { margin-bottom: 1rem; }
 .grid { display: grid; grid-template-columns: 18rem 1fr; gap: 1.5rem; align-items: start; }
+@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 .create { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 .create :deep(input) { flex: 1; }
 .lists { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }

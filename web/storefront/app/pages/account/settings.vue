@@ -65,6 +65,7 @@ const canApprove = computed(() => profile.value?.me.role === 'admin' || profile.
 .title { margin: 0 0 1.25rem; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 .dl { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem 1rem; margin: 0; }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
 .dl dt { color: var(--p-text-muted-color, #64748b); font-size: 0.85rem; }
 .dl dd { margin: 0; }
 .admin { margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; }

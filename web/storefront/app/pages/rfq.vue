@@ -122,6 +122,10 @@ async function submit() {
 .lines { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
 .lhead, .line { display: grid; grid-template-columns: 1fr 7rem 1fr auto; gap: 0.75rem; align-items: center; }
 .lhead { font-size: 0.78rem; color: var(--p-text-muted-color, #64748b); }
+@media (max-width: 640px) {
+  .lhead { display: none; }
+  .line { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+}
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
 .field label { font-size: 0.85rem; font-weight: 600; }
 .actions { margin-top: 1.25rem; }

@@ -81,4 +81,5 @@ async function submit() {
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
 .field label { font-size: 0.85rem; font-weight: 600; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
 </style>

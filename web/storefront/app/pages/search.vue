@@ -139,4 +139,8 @@ function isSelected(attr: string, value: string) {
 .facet-value.on { background: var(--p-primary-100, #e0f2fe); font-weight: 600; }
 .facet-value .n { color: var(--p-text-muted-color, #64748b); }
 .results .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+@media (max-width: 720px) {
+  .layout { grid-template-columns: 1fr; }
+  .results .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+}
 </style>

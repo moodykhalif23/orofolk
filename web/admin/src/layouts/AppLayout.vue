@@ -12,6 +12,10 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 
+// Mobile sidebar drawer (small screens only). Closes on navigation.
+const mobileOpen = ref(false)
+watch(() => route.fullPath, () => { mobileOpen.value = false })
+
 // Each leaf declares the permission it needs; leaves the user can't access are
 // filtered out (deny-by-default mirrors the backend RBAC). Leaves are grouped
 // into a handful of related, collapsible sections so the sidebar reads as ~9
@@ -199,7 +203,8 @@ function logout() {
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'drawer-open': mobileOpen }">
+    <div class="scrim" @click="mobileOpen = false" />
     <aside class="sidebar">
       <div class="brand">
         <i class="pi pi-bolt" />
@@ -212,6 +217,9 @@ function logout() {
 
     <div class="main">
       <header class="topbar">
+        <button type="button" class="hamburger" aria-label="Menu" @click="mobileOpen = !mobileOpen">
+          <i class="pi pi-bars" />
+        </button>
         <span class="spacer" />
         <button type="button" class="account-trigger" @click="toggleAccount" aria-label="Account">
           <Avatar :label="auth.initials" shape="square" class="account-avatar" />
@@ -477,5 +485,48 @@ function logout() {
   min-height: 0;
   overflow-y: auto;
   background: var(--p-content-background, #f8fafc);
+}
+
+/* Hamburger + scrim are desktop-hidden; the breakpoint turns the fixed sidebar
+   into an off-canvas drawer. */
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  color: var(--p-text-color, #1e293b);
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.25rem;
+}
+.scrim {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .hamburger {
+    display: inline-flex;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+  }
+  .drawer-open .sidebar {
+    transform: translateX(0);
+  }
+  .drawer-open .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(15, 23, 42, 0.45);
+  }
 }
 </style>

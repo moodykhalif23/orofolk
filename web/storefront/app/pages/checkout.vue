@@ -266,6 +266,11 @@ await load()
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .small { font-size: 0.8rem; }
 .summary { position: sticky; top: 1rem; }
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr; }
+  .row { grid-template-columns: 1fr; }
+  .summary { position: static; }
+}
 .sumline { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; font-size: 0.9rem; }
 .sn { min-width: 0; }
 .sr { white-space: nowrap; font-variant-numeric: tabular-nums; }

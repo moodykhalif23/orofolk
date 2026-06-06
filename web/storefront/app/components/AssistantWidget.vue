@@ -71,9 +71,13 @@ async function scroll() {
 .fab { position: fixed; right: 1.5rem; bottom: 1.5rem; width: 3.5rem; height: 3.5rem; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
 .panel {
   position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50;
-  width: 22rem; height: 30rem; max-height: 75vh;
+  width: min(22rem, calc(100vw - 2rem)); height: 30rem; max-height: 75vh;
   display: flex; flex-direction: column; background: #fff;
   border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.2); overflow: hidden;
+}
+@media (max-width: 480px) {
+  .panel { right: 0.75rem; left: 0.75rem; bottom: 0.75rem; width: auto; height: 70vh; }
+  .fab { right: 1rem; bottom: 1rem; }
 }
 .phead { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.85rem; background: #0f172a; color: #fff; font-weight: 600; }
 .pbody { flex: 1; overflow-y: auto; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }

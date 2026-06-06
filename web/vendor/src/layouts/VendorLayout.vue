@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { RouterView, useRouter } from 'vue-router'
+import { ref, watch } from 'vue'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import { auth } from '@/lib/auth'
 
 const router = useRouter()
+const route = useRoute()
+
+// Mobile sidebar drawer (small screens only). Closes on navigation.
+const mobileOpen = ref(false)
+watch(() => route.fullPath, () => { mobileOpen.value = false })
 
 const nav = [
   { label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' },
@@ -19,7 +25,8 @@ function logout() {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'drawer-open': mobileOpen }">
+    <div class="scrim" @click="mobileOpen = false" />
     <aside class="sidebar">
       <div class="brand"><i class="pi pi-shop" /> Vendor Portal</div>
       <nav class="nav">
@@ -39,6 +46,10 @@ function logout() {
       </div>
     </aside>
     <main class="content">
+      <header class="mtop">
+        <button class="hamburger" aria-label="Menu" @click="mobileOpen = !mobileOpen"><i class="pi pi-bars" /></button>
+        <span class="mtop-brand"><i class="pi pi-shop" /> Vendor Portal</span>
+      </header>
       <RouterView />
     </main>
   </div>
@@ -61,4 +72,32 @@ function logout() {
 .foot { border-top: 1px solid #1e293b; padding-top: 0.75rem; }
 .email { font-size: 0.8rem; color: #94a3b8; padding: 0 0.75rem 0.35rem; overflow: hidden; text-overflow: ellipsis; }
 .content { padding: 1.75rem 2rem; overflow: auto; }
+
+/* Mobile topbar (hamburger) is desktop-hidden; the breakpoint turns the sidebar
+   into an off-canvas drawer. */
+.mtop { display: none; }
+.scrim { display: none; }
+.hamburger {
+  background: none; border: none; cursor: pointer; font-size: 1.3rem;
+  color: #0f172a; padding: 0.25rem 0.5rem;
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; width: var(--teggo-sidebar-width);
+    z-index: 60; transform: translateX(-100%); transition: transform 0.2s ease;
+    box-shadow: 0 0 40px rgba(0,0,0,0.35);
+  }
+  .drawer-open .sidebar { transform: translateX(0); }
+  .drawer-open .scrim {
+    display: block; position: fixed; inset: 0; z-index: 55; background: rgba(15,23,42,0.45);
+  }
+  .mtop {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin: -1.75rem -2rem 1rem; padding: 0.6rem 1rem;
+    border-bottom: 1px solid #e2e8f0; background: #fff;
+  }
+  .mtop-brand { font-weight: 700; display: flex; align-items: center; gap: 0.4rem; }
+  .content { padding: 1.25rem 1rem; }
+}
 </style>
