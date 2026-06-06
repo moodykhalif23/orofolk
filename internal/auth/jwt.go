@@ -11,14 +11,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Claims is the JWT payload for both admin and storefront contexts.
+// Claims is the JWT payload for admin, storefront and vendor contexts.
 type Claims struct {
 	OrgID       int64    `json:"org_id"`
-	Audience    string   `json:"aud"` // "admin" or "storefront"
+	Audience    string   `json:"aud"` // "admin", "storefront" or "vendor"
 	Permissions []string `json:"perms,omitempty"`
 	// CustomerID is set for storefront tokens: the buying company the
 	// authenticated customer-user belongs to. Subject holds the customer_user id.
 	CustomerID int64 `json:"cust_id,omitempty"`
+	// VendorID is set for vendor tokens: the selling vendor the authenticated
+	// vendor-user belongs to. Subject holds the vendor_user id.
+	VendorID int64 `json:"vendor_id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -59,6 +62,24 @@ func (i *Issuer) IssueStorefront(customerUserID, orgID, customerID int64) (strin
 		CustomerID: customerID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   strconv.FormatInt(customerUserID, 10),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(i.ttl)),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return tok.SignedString(i.secret)
+}
+
+// IssueVendor mints a vendor-portal token for a vendor-user. Subject is the
+// vendor_user id; VendorID carries the selling vendor.
+func (i *Issuer) IssueVendor(vendorUserID, orgID, vendorID int64) (string, error) {
+	now := time.Now()
+	claims := Claims{
+		OrgID:    orgID,
+		Audience: "vendor",
+		VendorID: vendorID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   strconv.FormatInt(vendorUserID, 10),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(i.ttl)),
 		},

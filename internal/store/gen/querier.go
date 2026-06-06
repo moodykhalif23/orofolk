@@ -157,6 +157,10 @@ type Querier interface {
 	CreateTradingPartner(ctx context.Context, arg CreateTradingPartnerParams) (TradingPartner, error)
 	// CreateUser provisions a seller-side user (used by SSO JIT provisioning).
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
+	// Marketplace: vendors, vendor portal logins, per-vendor order splitting,
+	// commission ledger and payouts. (migration 0041)
+	CreateVendor(ctx context.Context, arg CreateVendorParams) (Vendor, error)
+	CreateVendorUser(ctx context.Context, arg CreateVendorUserParams) (CreateVendorUserRow, error)
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
@@ -342,6 +346,10 @@ type Querier interface {
 	GetTransitionToState(ctx context.Context, arg GetTransitionToStateParams) (WorkflowTransition, error)
 	GetUserByEmail(ctx context.Context, arg GetUserByEmailParams) (GetUserByEmailRow, error)
 	GetUserPermissions(ctx context.Context, userID int64) ([]string, error)
+	GetVendor(ctx context.Context, arg GetVendorParams) (Vendor, error)
+	// GetVendorUserForLogin resolves a vendor-user by email within an org for vendor
+	// portal authentication (email is citext, so case-insensitive).
+	GetVendorUserForLogin(ctx context.Context, arg GetVendorUserForLoginParams) (GetVendorUserForLoginRow, error)
 	GetWarehouse(ctx context.Context, arg GetWarehouseParams) (Warehouse, error)
 	GetWebsite(ctx context.Context, arg GetWebsiteParams) (Website, error)
 	// Multi-org / multi-website tenancy queries — PRD §4.
@@ -487,6 +495,8 @@ type Querier interface {
 	// ListTaxRatesByCountry feeds the local VAT provider for a destination.
 	ListTaxRatesByCountry(ctx context.Context, arg ListTaxRatesByCountryParams) ([]ListTaxRatesByCountryRow, error)
 	ListTradingPartners(ctx context.Context, organizationID int64) ([]TradingPartner, error)
+	ListVendorUsers(ctx context.Context, vendorID int64) ([]ListVendorUsersRow, error)
+	ListVendors(ctx context.Context, organizationID int64) ([]Vendor, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
 	ListWebsites(ctx context.Context, organizationID int64) ([]Website, error)
 	ListWorkflowDefinitions(ctx context.Context, organizationID int64) ([]WorkflowDefinition, error)
@@ -595,6 +605,7 @@ type Querier interface {
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
+	SoftDeleteVendor(ctx context.Context, arg SoftDeleteVendorParams) error
 	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
 	// cost center since the period start. $3 = period start timestamp.
 	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
@@ -625,6 +636,7 @@ type Querier interface {
 	UpdateReportDefinition(ctx context.Context, arg UpdateReportDefinitionParams) (ReportDefinition, error)
 	UpdateShoppingListItem(ctx context.Context, arg UpdateShoppingListItemParams) (ShoppingListItem, error)
 	UpdateTradingPartner(ctx context.Context, arg UpdateTradingPartnerParams) (TradingPartner, error)
+	UpdateVendor(ctx context.Context, arg UpdateVendorParams) (Vendor, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).

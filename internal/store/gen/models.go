@@ -541,6 +541,7 @@ type OrderItem struct {
 	TaxAmount     string `json:"tax_amount"`
 	RowTotal      string `json:"row_total"`
 	Configuration []byte `json:"configuration"`
+	VendorID      *int64 `json:"vendor_id"`
 }
 
 type OrderStatusHistory struct {
@@ -662,6 +663,8 @@ type Product struct {
 	AttributeFamilyID *int64             `json:"attribute_family_id"`
 	SearchVector      string             `json:"search_vector"`
 	TaxClass          string             `json:"tax_class"`
+	VendorID          *int64             `json:"vendor_id"`
+	ApprovalStatus    string             `json:"approval_status"`
 }
 
 type ProductCategory struct {
@@ -1008,6 +1011,63 @@ type User struct {
 type UserRole struct {
 	UserID int64 `json:"user_id"`
 	RoleID int64 `json:"role_id"`
+}
+
+type Vendor struct {
+	ID              int64              `json:"id"`
+	PublicID        uuid.UUID          `json:"public_id"`
+	OrganizationID  int64              `json:"organization_id"`
+	Name            string             `json:"name"`
+	Slug            string             `json:"slug"`
+	ContactEmail    *string            `json:"contact_email"`
+	Status          string             `json:"status"`
+	CommissionRate  string             `json:"commission_rate"`
+	PayoutTermsDays int32              `json:"payout_terms_days"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type VendorOrder struct {
+	ID              int64     `json:"id"`
+	PublicID        uuid.UUID `json:"public_id"`
+	OrganizationID  int64     `json:"organization_id"`
+	OrderID         int64     `json:"order_id"`
+	VendorID        int64     `json:"vendor_id"`
+	Status          string    `json:"status"`
+	Currency        string    `json:"currency"`
+	GrossTotal      string    `json:"gross_total"`
+	CommissionRate  string    `json:"commission_rate"`
+	CommissionTotal string    `json:"commission_total"`
+	NetTotal        string    `json:"net_total"`
+	PayoutID        *int64    `json:"payout_id"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type VendorPayout struct {
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	OrganizationID int64              `json:"organization_id"`
+	VendorID       int64              `json:"vendor_id"`
+	Status         string             `json:"status"`
+	Currency       string             `json:"currency"`
+	Amount         string             `json:"amount"`
+	Reference      *string            `json:"reference"`
+	CreatedAt      time.Time          `json:"created_at"`
+	PaidAt         pgtype.Timestamptz `json:"paid_at"`
+}
+
+type VendorUser struct {
+	ID           int64     `json:"id"`
+	VendorID     int64     `json:"vendor_id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+	FullName     string    `json:"full_name"`
+	Role         string    `json:"role"`
+	IsActive     bool      `json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type Warehouse struct {

@@ -27,6 +27,7 @@ func New(s *store.Store, issuer *auth.Issuer) *Handler {
 func (h *Handler) Routes(r chi.Router, limiter func(http.Handler) http.Handler) {
 	r.With(limiter).Post("/admin/auth/login", h.login)
 	r.With(limiter).Post("/storefront/auth/login", h.storefrontLogin)
+	r.With(limiter).Post("/vendor/auth/login", h.vendorLogin)
 }
 
 type loginRequest struct {
@@ -91,6 +92,35 @@ func (h *Handler) storefrontLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token, err := h.issuer.IssueStorefront(cu.ID, cu.OrganizationID, cu.CustomerID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not issue token")
+		return
+	}
+	response.JSON(w, http.StatusOK, loginResponse{Token: token})
+}
+
+// vendorLogin authenticates a vendor-user and issues a vendor-portal token
+// carrying their org and selling vendor (vendor_id).
+func (h *Handler) vendorLogin(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	if req.OrgID == 0 {
+		req.OrgID = 1 // demo convenience; resolve from host in production
+	}
+
+	vu, err := h.store.Queries().GetVendorUserForLogin(r.Context(), gen.GetVendorUserForLoginParams{
+		OrganizationID: req.OrgID,
+		Email:          req.Email,
+	})
+	if err != nil || !auth.CheckPassword(vu.PasswordHash, req.Password) {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "invalid credentials")
+		return
+	}
+
+	token, err := h.issuer.IssueVendor(vu.ID, vu.OrganizationID, vu.VendorID)
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not issue token")
 		return

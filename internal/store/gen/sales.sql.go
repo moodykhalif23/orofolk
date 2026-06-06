@@ -16,7 +16,7 @@ import (
 const addOrderItem = `-- name: AddOrderItem :one
 INSERT INTO order_items (order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration
+RETURNING id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration, vendor_id
 `
 
 type AddOrderItemParams struct {
@@ -56,6 +56,7 @@ func (q *Queries) AddOrderItem(ctx context.Context, arg AddOrderItemParams) (Ord
 		&i.TaxAmount,
 		&i.RowTotal,
 		&i.Configuration,
+		&i.VendorID,
 	)
 	return i, err
 }
@@ -585,7 +586,7 @@ func (q *Queries) GetRFQByPublicID(ctx context.Context, arg GetRFQByPublicIDPara
 }
 
 const listOrderItems = `-- name: ListOrderItems :many
-SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration FROM order_items WHERE order_id = $1 ORDER BY id
+SELECT id, order_id, product_id, sku, name, quantity, unit, unit_price, tax_amount, row_total, configuration, vendor_id FROM order_items WHERE order_id = $1 ORDER BY id
 `
 
 func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderItem, error) {
@@ -609,6 +610,7 @@ func (q *Queries) ListOrderItems(ctx context.Context, orderID int64) ([]OrderIte
 			&i.TaxAmount,
 			&i.RowTotal,
 			&i.Configuration,
+			&i.VendorID,
 		); err != nil {
 			return nil, err
 		}
