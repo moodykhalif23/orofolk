@@ -27,6 +27,7 @@ import (
 	"b2bcommerce/internal/modules/field"
 	"b2bcommerce/internal/modules/health"
 	"b2bcommerce/internal/modules/integration"
+	"b2bcommerce/internal/modules/marketplace"
 	"b2bcommerce/internal/modules/otc"
 	"b2bcommerce/internal/modules/pricing"
 	"b2bcommerce/internal/modules/reporting"
@@ -160,6 +161,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	catalog.New(st.Queries()).RoutesWithOptionalAuth(r, authMW, mw.OptionalAuthenticator(issuer))
 	customers.New(st.Queries()).Routes(r, authMW)
 	account.New(st.Queries()).Routes(r, authMW)
+	marketplace.New(st.Queries()).Routes(r, authMW)
 	settings.New(st.Pool()).RoutesWithOptionalAuth(r, authMW, mw.OptionalAuthenticator(issuer))
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
 	cart.New(st.Queries()).Routes(r, authMW)

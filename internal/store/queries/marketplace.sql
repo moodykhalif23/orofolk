@@ -3,7 +3,7 @@
 
 -- name: CreateVendor :one
 INSERT INTO vendors (organization_id, name, slug, contact_email, status, commission_rate, payout_terms_days)
-VALUES ($1, $2, $3, $4, COALESCE(sqlc.narg('status'), 'active'), $5, COALESCE(sqlc.narg('payout_terms_days'), 30))
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdateVendor :one
@@ -27,7 +27,7 @@ WHERE id = $1 AND organization_id = $2;
 
 -- name: CreateVendorUser :one
 INSERT INTO vendor_users (vendor_id, email, password_hash, full_name, role)
-VALUES ($1, $2, $3, $4, COALESCE(sqlc.narg('role'), 'member'))
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, vendor_id, email, full_name, role, is_active, created_at, updated_at;
 
 -- name: ListVendorUsers :many

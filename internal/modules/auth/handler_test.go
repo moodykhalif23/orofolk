@@ -49,14 +49,14 @@ func seedVendor(t *testing.T, pool *pgxpool.Pool, name, slug, email, password st
 	q := gen.New(pool)
 	ctx := context.Background()
 	v, err := q.CreateVendor(ctx, gen.CreateVendorParams{
-		OrganizationID: 1, Name: name, Slug: slug, CommissionRate: "10",
+		OrganizationID: 1, Name: name, Slug: slug, Status: "active", CommissionRate: "10", PayoutTermsDays: 30,
 	})
 	if err != nil {
 		t.Fatalf("create vendor: %v", err)
 	}
 	hash, _ := auth.HashPassword(password)
 	if _, err := q.CreateVendorUser(ctx, gen.CreateVendorUserParams{
-		VendorID: v.ID, Email: email, PasswordHash: hash, FullName: name + " Owner",
+		VendorID: v.ID, Email: email, PasswordHash: hash, FullName: name + " Owner", Role: "admin",
 	}); err != nil {
 		t.Fatalf("create vendor user: %v", err)
 	}

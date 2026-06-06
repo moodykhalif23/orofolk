@@ -13,18 +13,18 @@ import (
 const createVendor = `-- name: CreateVendor :one
 
 INSERT INTO vendors (organization_id, name, slug, contact_email, status, commission_rate, payout_terms_days)
-VALUES ($1, $2, $3, $4, COALESCE($6, 'active'), $5, COALESCE($7, 30))
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, public_id, organization_id, name, slug, contact_email, status, commission_rate, payout_terms_days, created_at, updated_at, deleted_at
 `
 
 type CreateVendorParams struct {
-	OrganizationID  int64       `json:"organization_id"`
-	Name            string      `json:"name"`
-	Slug            string      `json:"slug"`
-	ContactEmail    *string     `json:"contact_email"`
-	CommissionRate  string      `json:"commission_rate"`
-	Status          interface{} `json:"status"`
-	PayoutTermsDays interface{} `json:"payout_terms_days"`
+	OrganizationID  int64   `json:"organization_id"`
+	Name            string  `json:"name"`
+	Slug            string  `json:"slug"`
+	ContactEmail    *string `json:"contact_email"`
+	Status          string  `json:"status"`
+	CommissionRate  string  `json:"commission_rate"`
+	PayoutTermsDays int32   `json:"payout_terms_days"`
 }
 
 // Marketplace: vendors, vendor portal logins, per-vendor order splitting,
@@ -35,8 +35,8 @@ func (q *Queries) CreateVendor(ctx context.Context, arg CreateVendorParams) (Ven
 		arg.Name,
 		arg.Slug,
 		arg.ContactEmail,
-		arg.CommissionRate,
 		arg.Status,
+		arg.CommissionRate,
 		arg.PayoutTermsDays,
 	)
 	var i Vendor
@@ -59,16 +59,16 @@ func (q *Queries) CreateVendor(ctx context.Context, arg CreateVendorParams) (Ven
 
 const createVendorUser = `-- name: CreateVendorUser :one
 INSERT INTO vendor_users (vendor_id, email, password_hash, full_name, role)
-VALUES ($1, $2, $3, $4, COALESCE($5, 'member'))
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, vendor_id, email, full_name, role, is_active, created_at, updated_at
 `
 
 type CreateVendorUserParams struct {
-	VendorID     int64       `json:"vendor_id"`
-	Email        string      `json:"email"`
-	PasswordHash string      `json:"password_hash"`
-	FullName     string      `json:"full_name"`
-	Role         interface{} `json:"role"`
+	VendorID     int64  `json:"vendor_id"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	FullName     string `json:"full_name"`
+	Role         string `json:"role"`
 }
 
 type CreateVendorUserRow struct {
