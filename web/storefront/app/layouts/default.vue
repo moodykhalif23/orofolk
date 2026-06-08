@@ -26,10 +26,32 @@ function signOut() {
 <template>
   <div class="shell">
     <header class="header">
-      <NuxtLink to="/" class="brand"><i class="pi pi-shopping-bag" /> Teggo Store</NuxtLink>
-      <button class="hamburger" :aria-expanded="mobileOpen" aria-label="Menu" @click="mobileOpen = !mobileOpen">
-        <i :class="mobileOpen ? 'pi pi-times' : 'pi pi-bars'" />
-      </button>
+      <!-- Top tier: brand + search + cart/auth. Stays on one line. -->
+      <div class="bar">
+        <NuxtLink to="/" class="brand"><i class="pi pi-shopping-bag" /> Teggo Store</NuxtLink>
+        <button class="hamburger" :aria-expanded="mobileOpen" aria-label="Menu" @click="mobileOpen = !mobileOpen">
+          <i :class="mobileOpen ? 'pi pi-times' : 'pi pi-bars'" />
+        </button>
+        <span class="spacer" />
+        <span class="search">
+          <i class="pi pi-search" />
+          <InputText
+            v-model="term"
+            placeholder="Search products…"
+            class="search-input"
+            @keyup.enter="search"
+          />
+        </span>
+        <NuxtLink to="/cart" class="cart-link">
+          <Button icon="pi pi-shopping-cart" label="Cart" severity="secondary" outlined />
+        </NuxtLink>
+        <NuxtLink v-if="!isAuthenticated" to="/login" class="auth-link">
+          <Button icon="pi pi-user" label="Sign in" text />
+        </NuxtLink>
+        <Button v-else class="auth-link" icon="pi pi-sign-out" label="Sign out" text @click="signOut" />
+      </div>
+
+      <!-- Bottom tier: primary navigation as pill-buttons (desktop only). -->
       <nav class="nav">
         <NuxtLink to="/">Home</NuxtLink>
         <NuxtLink to="/c/all">Catalog</NuxtLink>
@@ -45,23 +67,6 @@ function signOut() {
         <NuxtLink v-if="isAuthenticated" to="/account/budgets">Budgets</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/account/settings">Account</NuxtLink>
       </nav>
-      <span class="spacer" />
-      <span class="search">
-        <i class="pi pi-search" />
-        <InputText
-          v-model="term"
-          placeholder="Search products…"
-          class="search-input"
-          @keyup.enter="search"
-        />
-      </span>
-      <NuxtLink to="/cart" class="cart-link">
-        <Button icon="pi pi-shopping-cart" label="Cart" severity="secondary" outlined />
-      </NuxtLink>
-      <NuxtLink v-if="!isAuthenticated" to="/login" class="auth-link">
-        <Button icon="pi pi-user" label="Sign in" text />
-      </NuxtLink>
-      <Button v-else class="auth-link" icon="pi pi-sign-out" label="Sign out" text @click="signOut" />
     </header>
 
     <!-- Mobile navigation drawer: shown only on small screens via the hamburger. -->
@@ -108,12 +113,15 @@ function signOut() {
   flex-direction: column;
 }
 .header {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 0.9rem 1.5rem;
   border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
   background: var(--p-surface-0, #fff);
+}
+/* Top tier: brand on the left, search + cart/auth pushed to the right. */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.9rem 1.5rem;
 }
 .brand {
   font-weight: 700;
@@ -123,21 +131,45 @@ function signOut() {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  white-space: nowrap;
 }
+/* Bottom tier: navigation as a wrapping row of pill-buttons. */
 .nav {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0 1.5rem 0.85rem;
 }
 .nav a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
   text-decoration: none;
-  color: var(--p-text-muted-color, #64748b);
+  white-space: nowrap;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  color: var(--p-text-muted-color, #475569);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.nav a:hover {
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-text-color, #0f172a);
 }
 .nav a.router-link-active {
-  color: var(--p-primary-color, #0ea5e9);
+  background: var(--p-primary-50, #ecfdf5);
+  border-color: var(--p-primary-200, #a7f3d0);
+  color: var(--p-primary-700, #047857);
   font-weight: 600;
 }
 .spacer {
   flex: 1;
+}
+/* Keep header button labels from breaking mid-word on tight widths. */
+.cart-link :deep(.p-button-label),
+.auth-link :deep(.p-button-label) {
+  white-space: nowrap;
 }
 .search {
   display: flex;
@@ -180,13 +212,13 @@ function signOut() {
 }
 
 @media (max-width: 860px) {
-  .header {
+  .bar {
     gap: 0.75rem;
     padding: 0.75rem 1rem;
   }
   /* Collapse the desktop nav, inline search and auth button into the drawer. */
   .nav,
-  .header .search,
+  .bar .search,
   .auth-link {
     display: none;
   }
