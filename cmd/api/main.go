@@ -104,6 +104,7 @@ func main() {
 		server.WithRendition(enq),
 		server.WithIntegration(cfg.PunchoutStorefrontURL, cfg.EDISenderID, cfg.PunchoutTTL),
 		server.WithAIProvider(aiProvider),
+		server.WithAllowedOrigins(cfg.CORSAllowedOrigins),
 	)
 
 	srv := &http.Server{

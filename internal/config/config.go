@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -54,6 +55,12 @@ type Config struct {
 	AIProvider      string
 	AnthropicAPIKey string
 	AIModel         string
+
+	// CORSAllowedOrigins lists browser origins permitted to call the API
+	// cross-origin (the SSR storefront's client-side calls). Comma-separated in
+	// CORS_ALLOWED_ORIGINS; defaults to the local dev frontends. Set to "*" to
+	// allow any origin (not recommended in production).
+	CORSAllowedOrigins []string
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -84,6 +91,9 @@ func Load() (Config, error) {
 		AIProvider:      getenv("AI_PROVIDER", "deterministic"),
 		AnthropicAPIKey: getenv("ANTHROPIC_API_KEY", ""),
 		AIModel:         getenv("AI_MODEL", "claude-opus-4-8"),
+
+		CORSAllowedOrigins: splitList(getenv("CORS_ALLOWED_ORIGINS",
+			"http://localhost:3000,http://localhost:5173,http://localhost:5174")),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))
@@ -118,6 +128,18 @@ func getenv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// splitList parses a comma-separated env value into a trimmed, non-empty slice.
+func splitList(v string) []string {
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // getenvInt reads an integer env var, falling back to def when unset or

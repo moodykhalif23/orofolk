@@ -16,6 +16,7 @@ import (
 	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/inventory"
 	"b2bcommerce/internal/modules/account"
+	"b2bcommerce/internal/modules/assistant"
 	authmod "b2bcommerce/internal/modules/auth"
 	"b2bcommerce/internal/modules/cart"
 	"b2bcommerce/internal/modules/catalog"
@@ -27,7 +28,6 @@ import (
 	erpmod "b2bcommerce/internal/modules/erp"
 	"b2bcommerce/internal/modules/field"
 	"b2bcommerce/internal/modules/health"
-	"b2bcommerce/internal/modules/assistant"
 	"b2bcommerce/internal/modules/integration"
 	"b2bcommerce/internal/modules/marketplace"
 	"b2bcommerce/internal/modules/otc"
@@ -53,20 +53,21 @@ type notifier interface {
 
 // options holds optional dependencies wired in by the caller.
 type options struct {
-	recompute    pricing.Enqueuer
-	pdf          otc.PDFEnqueuer
-	notifier     notifier
-	gateway      gateway.Gateway
-	logger       *slog.Logger
-	maxBodyBytes int64
-	blobStore    blob.Store
-	imageProc    imageproc.Processor
-	rendition    dam.RenditionEnqueuer
-	punchoutURL  string
-	ediSenderID  string
-	punchoutTTL  time.Duration
-	shipProvider shippingeng.Adapter
-	aiProvider   ai.Provider
+	recompute      pricing.Enqueuer
+	pdf            otc.PDFEnqueuer
+	notifier       notifier
+	gateway        gateway.Gateway
+	logger         *slog.Logger
+	maxBodyBytes   int64
+	blobStore      blob.Store
+	imageProc      imageproc.Processor
+	rendition      dam.RenditionEnqueuer
+	punchoutURL    string
+	ediSenderID    string
+	punchoutTTL    time.Duration
+	shipProvider   shippingeng.Adapter
+	aiProvider     ai.Provider
+	allowedOrigins []string
 }
 
 // Option configures optional server dependencies.
@@ -134,6 +135,13 @@ func WithAIProvider(p ai.Provider) Option {
 	return func(o *options) { o.aiProvider = p }
 }
 
+// WithAllowedOrigins sets the browser origins permitted to make cross-origin
+// requests (CORS). Needed for the SSR storefront's client-side calls. Empty
+// disables CORS (the admin/vendor SPAs use a same-origin dev proxy instead).
+func WithAllowedOrigins(origins []string) Option {
+	return func(o *options) { o.allowedOrigins = origins }
+}
+
 // New builds the fully-wired HTTP handler.
 func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	var o options
@@ -158,6 +166,8 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	r.Use(chimw.RequestID)
 	r.Use(chimw.RealIP)
 	r.Use(mw.SecureHeaders)
+	// CORS runs early so preflight OPTIONS short-circuit before auth/rate-limit.
+	r.Use(mw.CORS(o.allowedOrigins))
 	r.Use(mw.RequestLogger(o.logger))
 	r.Use(chimw.Recoverer)
 	r.Use(mw.MaxBytes(o.maxBodyBytes))
