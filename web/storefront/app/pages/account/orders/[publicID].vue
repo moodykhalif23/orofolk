@@ -118,6 +118,19 @@ async function submitReturn() {
         <Column field="row_total" header="Row total" />
       </DataTable>
 
+      <!-- Cost breakdown so the VAT-inclusive total is transparent (subtotal is
+           pre-tax; VAT is added at order creation). -->
+      <div class="summary">
+        <div class="srow"><span>Subtotal</span><span>{{ order.subtotal }} {{ order.currency }}</span></div>
+        <div v-if="Number(order.tax_total) > 0" class="srow">
+          <span>VAT</span><span>{{ order.tax_total }} {{ order.currency }}</span>
+        </div>
+        <div v-if="Number(order.shipping_total) > 0" class="srow">
+          <span>Shipping</span><span>{{ order.shipping_total }} {{ order.currency }}</span>
+        </div>
+        <div class="srow grand"><span>Total</span><span>{{ order.grand_total }} {{ order.currency }}</span></div>
+      </div>
+
       <Dialog v-model:visible="returnOpen" modal header="Request a return" :style="{ width: '34rem' }">
         <p class="muted small">Choose how many of each item to return.</p>
         <div v-for="it in order.items" :key="it.id" class="rrow">
@@ -144,6 +157,9 @@ async function submitReturn() {
 .actions { display: flex; align-items: center; gap: 1.25rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }
 .total { font-size: 1.3rem; font-weight: 700; }
+.summary { max-width: 22rem; margin-left: auto; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.srow { display: flex; justify-content: space-between; font-size: 0.95rem; color: var(--p-text-color, #334155); }
+.srow.grand { border-top: 1px solid var(--p-surface-200, #e2e8f0); padding-top: 0.5rem; margin-top: 0.25rem; font-size: 1.1rem; font-weight: 700; }
 .mb { margin-bottom: 1rem; }
 .small { font-size: 0.85rem; }
 .rrow { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.5rem; }

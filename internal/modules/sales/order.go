@@ -660,14 +660,16 @@ func (h *Handler) renderOrder(w http.ResponseWriter, r *http.Request, order gen.
 		items = []gen.OrderItem{}
 	}
 	response.JSON(w, http.StatusOK, map[string]any{
-		"id":          order.ID,
-		"public_id":   order.PublicID.String(),
-		"status":      order.Status,
-		"currency":    order.Currency,
-		"subtotal":    order.Subtotal,
-		"grand_total": order.GrandTotal,
-		"quote_id":    order.QuoteID,
-		"items":       items,
+		"id":             order.ID,
+		"public_id":      order.PublicID.String(),
+		"status":         order.Status,
+		"currency":       order.Currency,
+		"subtotal":       order.Subtotal,
+		"tax_total":      order.TaxTotal,
+		"shipping_total": order.ShippingTotal,
+		"grand_total":    order.GrandTotal,
+		"quote_id":       order.QuoteID,
+		"items":          items,
 	})
 }
 

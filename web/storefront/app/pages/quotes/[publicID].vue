@@ -81,6 +81,7 @@ await load()
 
       <div class="summary">
         <div class="subtotal"><span>Subtotal</span><strong>{{ quote.subtotal }} {{ quote.currency }}</strong></div>
+        <p class="taxnote">Applicable VAT is added when you accept and the order is created.</p>
         <div v-if="open" class="cta">
           <Button label="Decline" severity="secondary" outlined :loading="busy" @click="decline" />
           <Button label="Accept &amp; create order" icon="pi pi-check" :loading="busy" @click="accept" />
@@ -99,5 +100,6 @@ await load()
 .mb { margin-bottom: 1rem; }
 .summary { display: flex; align-items: center; justify-content: space-between; margin-top: 1.25rem; gap: 1rem; flex-wrap: wrap; }
 .subtotal { display: flex; gap: 0.6rem; align-items: baseline; font-size: 1.2rem; }
+.taxnote { width: 100%; margin: 0.25rem 0 0; font-size: 0.82rem; color: var(--p-text-muted-color, #64748b); }
 .cta { display: flex; gap: 0.75rem; }
 </style>

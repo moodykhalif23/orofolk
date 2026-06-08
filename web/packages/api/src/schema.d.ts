@@ -4239,6 +4239,8 @@ export interface components {
             status: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "closed" | "on_hold" | "cancelled";
             currency: string;
             subtotal: string;
+            tax_total?: string;
+            shipping_total?: string;
             grand_total: string;
             /** Format: int64 */
             quote_id?: number | null;
