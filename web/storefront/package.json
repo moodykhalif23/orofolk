@@ -12,13 +12,14 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@primevue/nuxt-module": "^4.5.5",
     "@primeuix/themes": "^2.0.0",
+    "@primevue/nuxt-module": "^4.5.5",
+    "@teggo/api": "workspace:*",
     "nuxt": "^4.0.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.5",
-    "vue": "^3.5.0",
-    "@teggo/api": "workspace:*"
+    "pusher-js": "^8.5.0",
+    "vue": "^3.5.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

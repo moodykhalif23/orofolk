@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import PanelMenu from 'primevue/panelmenu'
 import Avatar from 'primevue/avatar'
 import Popover from 'primevue/popover'
 import Button from 'primevue/button'
+import NotificationBell from '@/components/NotificationBell.vue'
 import type { MenuItem } from 'primevue/menuitem'
 
 const auth = useAuthStore()
+const notifications = useNotificationsStore()
+
+// The layout only renders for an authenticated session, so start the feed on
+// mount and tear it down on sign-out.
+onMounted(() => notifications.start())
+onBeforeUnmount(() => notifications.stop())
 const router = useRouter()
 const route = useRoute()
 
@@ -221,6 +229,7 @@ function logout() {
           <i class="pi pi-bars" />
         </button>
         <span class="spacer" />
+        <NotificationBell class="topbar-bell" />
         <button type="button" class="account-trigger" @click="toggleAccount" aria-label="Account">
           <Avatar :label="auth.initials" shape="square" class="account-avatar" />
         </button>
@@ -425,6 +434,9 @@ function logout() {
 }
 .spacer {
   flex: 1;
+}
+.topbar-bell {
+  margin-right: 0.75rem;
 }
 .account-trigger {
   border: none;

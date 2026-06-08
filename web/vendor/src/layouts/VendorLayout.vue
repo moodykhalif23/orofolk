@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
 import { auth } from '@/lib/auth'
+import { notifications } from '@/lib/notifications'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -10,6 +12,10 @@ const route = useRoute()
 // Mobile sidebar drawer (small screens only). Closes on navigation.
 const mobileOpen = ref(false)
 watch(() => route.fullPath, () => { mobileOpen.value = false })
+
+// The layout only renders for an authenticated vendor session.
+onMounted(() => notifications.start())
+onBeforeUnmount(() => notifications.stop())
 
 const nav = [
   { label: 'Dashboard', icon: 'pi pi-home', routeName: 'dashboard' },
@@ -28,7 +34,10 @@ function logout() {
   <div class="shell" :class="{ 'drawer-open': mobileOpen }">
     <div class="scrim" @click="mobileOpen = false" />
     <aside class="sidebar">
-      <div class="brand"><i class="pi pi-shop" /> Vendor Portal</div>
+      <div class="brand">
+        <span class="brand-name"><i class="pi pi-shop" /> Vendor Portal</span>
+        <NotificationBell />
+      </div>
       <nav class="nav">
         <RouterLink
           v-for="n in nav"
@@ -49,6 +58,8 @@ function logout() {
       <header class="mtop">
         <button class="hamburger" aria-label="Menu" @click="mobileOpen = !mobileOpen"><i class="pi pi-bars" /></button>
         <span class="mtop-brand"><i class="pi pi-shop" /> Vendor Portal</span>
+        <span class="mtop-spacer" />
+        <NotificationBell />
       </header>
       <RouterView />
     </main>
@@ -61,7 +72,8 @@ function logout() {
   background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column;
   padding: 1rem 0.75rem;
 }
-.brand { font-weight: 700; font-size: 1.05rem; padding: 0.5rem 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; }
+.brand { font-weight: 700; font-size: 1.05rem; padding: 0.5rem 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; }
+.brand-name { display: flex; gap: 0.5rem; align-items: center; }
 .nav { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
 .navitem {
   display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem;
@@ -98,6 +110,7 @@ function logout() {
     border-bottom: 1px solid #e2e8f0; background: #fff;
   }
   .mtop-brand { font-weight: 700; display: flex; align-items: center; gap: 0.4rem; }
+  .mtop-spacer { flex: 1; }
   .content { padding: 1.25rem 1rem; }
 }
 </style>

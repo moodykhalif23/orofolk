@@ -76,7 +76,7 @@ func (s *Service) FromEvent(ctx context.Context, event string, payload map[strin
 			Type:     event,
 			Title:    "New request for quote " + pstr(payload, "reference"),
 			Body:     "A buyer is awaiting pricing.",
-			Link:     "/sales/rfqs",
+			Link:     "/rfqs",
 			Severity: "info",
 			Data:     payload,
 		})
@@ -85,7 +85,7 @@ func (s *Service) FromEvent(ctx context.Context, event string, payload map[strin
 		s.NotifyAdmins(ctx, orgID, Template{
 			Type:     event,
 			Title:    "Return requested " + pstr(payload, "rma_number"),
-			Link:     "/sales/returns",
+			Link:     "/returns",
 			Severity: "warning",
 			Data:     payload,
 		})
@@ -155,8 +155,9 @@ func money(m map[string]any) string {
 }
 
 func adminOrderLink(m map[string]any) string {
-	if id := pstr(m, "order_public_id"); id != "" {
-		return "/orders/" + id
+	// The admin order-detail route is keyed by the numeric order id.
+	if id, ok := pint(m, "order_id"); ok {
+		return fmt.Sprintf("/orders/%d", id)
 	}
 	return "/orders"
 }
