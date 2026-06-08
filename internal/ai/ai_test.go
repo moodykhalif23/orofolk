@@ -15,10 +15,10 @@ type fakeTool struct {
 }
 
 func (f fakeTool) Name() string        { return f.name }
-func (f fakeTool) Description() string  { return f.desc }
-func (f fakeTool) Audience() string     { return f.audience }
-func (f fakeTool) Permission() string   { return f.perm }
-func (f fakeTool) Params() []ParamSpec  { return nil }
+func (f fakeTool) Description() string { return f.desc }
+func (f fakeTool) Audience() string    { return f.audience }
+func (f fakeTool) Permission() string  { return f.perm }
+func (f fakeTool) Params() []ParamSpec { return nil }
 func (f fakeTool) Match(msg string) (map[string]any, bool) {
 	if strings.Contains(strings.ToLower(msg), f.trigger) {
 		return map[string]any{}, true

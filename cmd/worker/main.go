@@ -13,6 +13,7 @@ import (
 	"b2bcommerce/internal/email"
 	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/logging"
+	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue"
 	"b2bcommerce/internal/telemetry"
@@ -72,7 +73,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, err := queue.NewWorkerClient(pool, renderer, sender, mediaStore, imageproc.GoProcessor{})
+	// Real-time notification publisher. Pusher when configured; otherwise a
+	// no-op so notifications still persist (poll-only delivery).
+	var rtPub notify.Publisher = notify.NoopPublisher{}
+	if pp, ok := notify.NewPusherPublisher(cfg.PusherAppID, cfg.PusherKey, cfg.PusherSecret, cfg.PusherCluster); ok {
+		rtPub = pp
+		logger.Info("worker realtime notifications enabled (pusher)")
+	}
+	notifier := notify.New(pool, rtPub, logger)
+
+	client, err := queue.NewWorkerClient(pool, renderer, sender, mediaStore, imageproc.GoProcessor{}, notifier)
 	if err != nil {
 		logger.Error("queue init failed", "err", err)
 		os.Exit(1)

@@ -30,6 +30,7 @@ import (
 	"b2bcommerce/internal/modules/health"
 	"b2bcommerce/internal/modules/integration"
 	"b2bcommerce/internal/modules/marketplace"
+	"b2bcommerce/internal/modules/notifications"
 	"b2bcommerce/internal/modules/otc"
 	"b2bcommerce/internal/modules/pricing"
 	"b2bcommerce/internal/modules/reporting"
@@ -40,6 +41,7 @@ import (
 	taxmod "b2bcommerce/internal/modules/tax"
 	"b2bcommerce/internal/modules/tenancy"
 	"b2bcommerce/internal/modules/wfadmin"
+	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/payments/gateway"
 	mw "b2bcommerce/internal/server/middleware"
 	shippingeng "b2bcommerce/internal/shipping"
@@ -68,6 +70,9 @@ type options struct {
 	shipProvider   shippingeng.Adapter
 	aiProvider     ai.Provider
 	allowedOrigins []string
+	rtAuthorizer   notify.Authorizer
+	rtKey          string
+	rtCluster      string
 }
 
 // Option configures optional server dependencies.
@@ -142,6 +147,13 @@ func WithAllowedOrigins(origins []string) Option {
 	return func(o *options) { o.allowedOrigins = origins }
 }
 
+// WithRealtime wires the Pusher authorizer (for private-channel auth) and the
+// public key/cluster handed to the browser. A nil authorizer leaves real-time
+// off; notifications still persist and are served (poll-only).
+func WithRealtime(authz notify.Authorizer, key, cluster string) Option {
+	return func(o *options) { o.rtAuthorizer = authz; o.rtKey = key; o.rtCluster = cluster }
+}
+
 // New builds the fully-wired HTTP handler.
 func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	var o options
@@ -212,6 +224,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	shippingmod.NewWithProvider(st.Pool(), o.shipProvider).Routes(r, authMW)
 	erpmod.New(st.Pool()).Routes(r, authMW)
 	ssomod.New(st.Pool(), issuer).Routes(r, authMW)
+	notifications.New(st.Pool(), o.rtAuthorizer, o.rtKey, o.rtCluster).Routes(r, authMW)
 
 	// Wrap the router so HTTP server metrics (request count, duration) flow to
 	// the configured OpenTelemetry MeterProvider. No-op when telemetry is off.

@@ -54,6 +54,7 @@ type Querier interface {
 	CountRenditions(ctx context.Context, mediaAssetID int64) (int64, error)
 	CountSearchProductsAdmin(ctx context.Context, arg CountSearchProductsAdminParams) (int64, error)
 	CountTransitionLog(ctx context.Context, instanceID int64) (int64, error)
+	CountUnreadNotifications(ctx context.Context, arg CountUnreadNotificationsParams) (int64, error)
 	// ===== Activities ==========================================================
 	CreateActivity(ctx context.Context, arg CreateActivityParams) (Activity, error)
 	CreateApprovalRoutingRule(ctx context.Context, arg CreateApprovalRoutingRuleParams) (ApprovalRoutingRule, error)
@@ -101,6 +102,7 @@ type Querier interface {
 	CreateMediaAsset(ctx context.Context, arg CreateMediaAssetParams) (MediaAsset, error)
 	// ===== Menus ===============================================================
 	CreateMenu(ctx context.Context, arg CreateMenuParams) (Menu, error)
+	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	// ===== Opportunities =======================================================
 	CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error)
 	CreateOption(ctx context.Context, arg CreateOptionParams) (ProductOption, error)
@@ -391,6 +393,11 @@ type Querier interface {
 	// ListAbandonedCarts returns active carts with items that have gone idle past
 	// the cutoff and weren't reminded since their last change. $1 = idle cutoff.
 	ListAbandonedCarts(ctx context.Context, updatedAt time.Time) ([]ListAbandonedCartsRow, error)
+	// Recipient fan-out helpers. Used by the worker to expand a domain event into
+	// one notification row per recipient user.
+	ListActiveAdminUserIDs(ctx context.Context, organizationID int64) ([]int64, error)
+	ListActiveCustomerApproverIDs(ctx context.Context, customerID int64) ([]int64, error)
+	ListActiveCustomerUserIDs(ctx context.Context, customerID int64) ([]int64, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
 	// Price adjustment rules (migration 0035).
@@ -399,6 +406,7 @@ type Querier interface {
 	// ListActiveProductsInCategory returns active products in a category's whole
 	// subtree (storefront browse, §12.3). $1 org, $2 root category, $3 limit, $4 offset.
 	ListActiveProductsInCategory(ctx context.Context, arg ListActiveProductsInCategoryParams) ([]ListActiveProductsInCategoryRow, error)
+	ListActiveVendorUserIDs(ctx context.Context, vendorID int64) ([]int64, error)
 	// Approval routing rules (migration 0033).
 	ListApprovalRoutingRules(ctx context.Context, organizationID int64) ([]ApprovalRoutingRule, error)
 	ListAssignmentsForList(ctx context.Context, priceListID int64) ([]PriceListAssignment, error)
@@ -454,6 +462,7 @@ type Querier interface {
 	ListMediaTags(ctx context.Context, mediaAssetID int64) ([]string, error)
 	ListMenuItems(ctx context.Context, menuID int64) ([]MenuItem, error)
 	ListMenusForWebsite(ctx context.Context, websiteID int64) ([]Menu, error)
+	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
 	// ListOpenInvoicesForOrg returns the org's unpaid (issued/overdue) invoices for
 	// the AR-aging report.
 	ListOpenInvoicesForOrg(ctx context.Context, organizationID int64) ([]ListOpenInvoicesForOrgRow, error)
@@ -538,11 +547,13 @@ type Querier interface {
 	ListWorkflowDefinitions(ctx context.Context, organizationID int64) ([]WorkflowDefinition, error)
 	ListWorkflowStates(ctx context.Context, definitionID int64) ([]WorkflowState, error)
 	ListWorkflowTransitions(ctx context.Context, definitionID int64) ([]WorkflowTransition, error)
+	MarkAllNotificationsRead(ctx context.Context, arg MarkAllNotificationsReadParams) error
 	MarkCartConverted(ctx context.Context, id int64) error
 	MarkCartReminded(ctx context.Context, id int64) error
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
 	MarkLeadConverted(ctx context.Context, arg MarkLeadConvertedParams) (Lead, error)
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) (Notification, error)
 	// MarkOverdueInvoicesForOrg is the org-scoped variant used by the admin
 	// manual "run sweep" action.
 	MarkOverdueInvoicesForOrg(ctx context.Context, organizationID int64) ([]MarkOverdueInvoicesForOrgRow, error)

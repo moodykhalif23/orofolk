@@ -61,6 +61,15 @@ type Config struct {
 	// CORS_ALLOWED_ORIGINS; defaults to the local dev frontends. Set to "*" to
 	// allow any origin (not recommended in production).
 	CORSAllowedOrigins []string
+
+	// Pusher Channels powers real-time in-app notifications. When any of these is
+	// empty the system runs in poll-only mode (notifications still persist and
+	// are served over HTTP; dashboards refresh on a timer instead of instantly).
+	// Key + Cluster are public (handed to the browser); Secret + AppID are not.
+	PusherAppID   string
+	PusherKey     string
+	PusherSecret  string
+	PusherCluster string
 }
 
 // Load reads configuration from environment variables, applying defaults and
@@ -94,6 +103,11 @@ func Load() (Config, error) {
 
 		CORSAllowedOrigins: splitList(getenv("CORS_ALLOWED_ORIGINS",
 			"http://localhost:3000,http://localhost:5173,http://localhost:5174")),
+
+		PusherAppID:   getenv("PUSHER_APP_ID", ""),
+		PusherKey:     getenv("PUSHER_KEY", ""),
+		PusherSecret:  getenv("PUSHER_SECRET", ""),
+		PusherCluster: getenv("PUSHER_CLUSTER", ""),
 	}
 
 	ttl, err := time.ParseDuration(getenv("JWT_TTL", "24h"))

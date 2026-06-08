@@ -161,7 +161,7 @@ func TestReportBuilderFlow(t *testing.T) {
 	{
 		var detail struct {
 			Items []struct {
-				Trigger string `json:"trigger"`
+				Trigger string  `json:"trigger"`
 				FileURL *string `json:"file_url"`
 			} `json:"items"`
 		}

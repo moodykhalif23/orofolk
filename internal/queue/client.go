@@ -14,6 +14,7 @@ import (
 	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/email"
 	"b2bcommerce/internal/imageproc"
+	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
 )
@@ -24,7 +25,7 @@ import (
 // It also wires the automation engine: registered actions (e.g. expire_quotes)
 // run via run_automation_action, and an hourly periodic job emits
 // schedule.hourly into the dispatcher (driving quote-expiry, overdue sweeps).
-func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender, store blob.Store, proc imageproc.Processor) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender, store blob.Store, proc imageproc.Processor, notifier *notify.Service) (*river.Client[pgx.Tx], error) {
 	enq, err := NewEnqueuer(pool)
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool, Renderer: renderer})
 	river.AddWorker(workers, &jobs.AutomationActionWorker{Registry: reg})
 	river.AddWorker(workers, &jobs.ScheduledEmitWorker{Dispatcher: dispatcher})
-	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher})
+	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher, Notify: notifier})
 	river.AddWorker(workers, &jobs.RefreshReportingWorker{Pool: pool})
 	river.AddWorker(workers, &jobs.GenerateRenditionWorker{Pool: pool, Store: store, Proc: proc})
 	river.AddWorker(workers, &jobs.RunReportSchedulesWorker{Pool: pool, Mailer: enq})

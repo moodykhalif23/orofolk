@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	maxUploadBytes = 25 << 20   // per-upload cap for multipart media
+	maxUploadBytes = 25 << 20           // per-upload cap for multipart media
 	transformTTL   = 7 * 24 * time.Hour // signed transform URL lifetime
 )
 

@@ -52,8 +52,8 @@ func TestOrderSplitByVendor(t *testing.T) {
 	ctx := context.Background()
 	q := gen.New(pool)
 
-	vendorA := mkVendor(t, pool, "Vendor A", "vendor-a", "10")   // 10%
-	vendorB := mkVendor(t, pool, "Vendor B", "vendor-b", "20")   // 20%
+	vendorA := mkVendor(t, pool, "Vendor A", "vendor-a", "10") // 10%
+	vendorB := mkVendor(t, pool, "Vendor B", "vendor-b", "20") // 20%
 	pA := mkProduct(t, pool, "AAA-1", "A widget", vendorA.ID)
 	pB := mkProduct(t, pool, "BBB-1", "B widget", vendorB.ID)
 	pHouse := mkProduct(t, pool, "HOUSE-1", "House item", 0) // operator-owned

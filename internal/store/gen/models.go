@@ -478,6 +478,24 @@ type MvTopProduct struct {
 	Revenue        string      `json:"revenue"`
 }
 
+type Notification struct {
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	OrganizationID int64              `json:"organization_id"`
+	Audience       string             `json:"audience"`
+	RecipientID    int64              `json:"recipient_id"`
+	CustomerID     *int64             `json:"customer_id"`
+	VendorID       *int64             `json:"vendor_id"`
+	Type           string             `json:"type"`
+	Title          string             `json:"title"`
+	Body           *string            `json:"body"`
+	Link           *string            `json:"link"`
+	Severity       string             `json:"severity"`
+	Data           []byte             `json:"data"`
+	ReadAt         pgtype.Timestamptz `json:"read_at"`
+	CreatedAt      time.Time          `json:"created_at"`
+}
+
 type Opportunity struct {
 	ID             int64              `json:"id"`
 	PublicID       uuid.UUID          `json:"public_id"`

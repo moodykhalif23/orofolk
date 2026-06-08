@@ -17,6 +17,7 @@ import (
 	"b2bcommerce/internal/db"
 	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/logging"
+	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/payments/gateway"
 	"b2bcommerce/internal/queue"
 	"b2bcommerce/internal/server"
@@ -94,6 +95,18 @@ func main() {
 		}
 	}
 
+	// Real-time notifications. With Pusher credentials we sign private-channel
+	// subscriptions and publish; without them the system runs poll-only.
+	var rtAuthorizer notify.Authorizer = notify.NoopPublisher{}
+	var rtKey, rtCluster string
+	if pp, ok := notify.NewPusherPublisher(cfg.PusherAppID, cfg.PusherKey, cfg.PusherSecret, cfg.PusherCluster); ok {
+		rtAuthorizer = pp
+		rtKey, rtCluster = pp.Key(), pp.Cluster()
+		logger.Info("realtime notifications enabled (pusher)", "cluster", rtCluster)
+	} else {
+		logger.Info("realtime notifications poll-only (pusher not configured)")
+	}
+
 	handler := server.New(st, issuer,
 		server.WithRecompute(enq),
 		server.WithInvoicePDF(enq),
@@ -105,6 +118,7 @@ func main() {
 		server.WithIntegration(cfg.PunchoutStorefrontURL, cfg.EDISenderID, cfg.PunchoutTTL),
 		server.WithAIProvider(aiProvider),
 		server.WithAllowedOrigins(cfg.CORSAllowedOrigins),
+		server.WithRealtime(rtAuthorizer, rtKey, rtCluster),
 	)
 
 	srv := &http.Server{

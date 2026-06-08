@@ -48,7 +48,9 @@ func runOneSchedule(ctx context.Context, q *gen.Queries, pool *pgxpool.Pool, mai
 	}
 	// Always stamp last_run_at so a permanently-failing schedule doesn't run
 	// every tick.
-	defer func() { _ = q.SetReportScheduleLastRun(ctx, gen.SetReportScheduleLastRunParams{ID: s.ScheduleID, LastRunAt: tsz(now)}) }()
+	defer func() {
+		_ = q.SetReportScheduleLastRun(ctx, gen.SetReportScheduleLastRunParams{ID: s.ScheduleID, LastRunAt: tsz(now)})
+	}()
 
 	cols, rows, err := Run(ctx, pool, s.OrganizationID, def)
 	if err != nil {

@@ -11,11 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	taxeng "b2bcommerce/internal/tax"
 	"b2bcommerce/internal/money"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	taxeng "b2bcommerce/internal/tax"
 )
 
 type Handler struct {

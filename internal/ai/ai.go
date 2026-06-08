@@ -111,8 +111,8 @@ type Turn struct {
 // Decision is a provider's choice: run Tool with Args, or answer with Reply when
 // Tool is empty.
 type Decision struct {
-	Tool string
-	Args map[string]any
+	Tool  string
+	Args  map[string]any
 	Reply string
 }
 

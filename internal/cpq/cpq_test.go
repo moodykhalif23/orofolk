@@ -53,7 +53,7 @@ func TestConfigureUnknownOption(t *testing.T) {
 func TestConfigureRequiresRule(t *testing.T) {
 	d := def()
 	d.Rules = []Rule{{Kind: "requires", OptionID: 3, RelatedOptionID: 2}} // ext requires blue
-	if r := Configure(d, []int64{1, 3}); r.Valid { // red + ext, but ext needs blue
+	if r := Configure(d, []int64{1, 3}); r.Valid {                        // red + ext, but ext needs blue
 		t.Fatal("expected invalid (ext requires blue)")
 	}
 	if r := Configure(d, []int64{2, 3}); !r.Valid { // blue + ext satisfies

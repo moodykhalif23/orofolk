@@ -7,6 +7,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"b2bcommerce/internal/automation"
+	"b2bcommerce/internal/notify"
 )
 
 // ---- automation action ----------------------------------------------------
@@ -52,12 +53,20 @@ func (DispatchEventArgs) Kind() string { return "dispatch_event" }
 type DispatchEventWorker struct {
 	river.WorkerDefaults[DispatchEventArgs]
 	Dispatcher *automation.Dispatcher
+	// Notify fans the same event into in-app notifications. Optional — nil skips
+	// notification creation (automation still runs).
+	Notify *notify.Service
 }
 
 func (w *DispatchEventWorker) Work(ctx context.Context, job *river.Job[DispatchEventArgs]) error {
 	var payload map[string]any
 	if len(job.Args.Payload) > 0 {
 		_ = json.Unmarshal(job.Args.Payload, &payload)
+	}
+	// In-app notifications first (best-effort, never fails the job), then the
+	// automation rules. Notification mapping is decoupled from rule evaluation.
+	if w.Notify != nil {
+		w.Notify.FromEvent(ctx, job.Args.Event, payload)
 	}
 	return w.Dispatcher.Emit(ctx, job.Args.Event, payload)
 }

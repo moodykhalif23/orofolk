@@ -31,10 +31,12 @@ func All() []ai.Tool {
 
 type orderStatusTool struct{}
 
-func (orderStatusTool) Name() string         { return "order_status" }
-func (orderStatusTool) Description() string   { return "Check the status of one of your orders (give the order id)." }
-func (orderStatusTool) Audience() string      { return "storefront" }
-func (orderStatusTool) Permission() string    { return "" }
+func (orderStatusTool) Name() string { return "order_status" }
+func (orderStatusTool) Description() string {
+	return "Check the status of one of your orders (give the order id)."
+}
+func (orderStatusTool) Audience() string   { return "storefront" }
+func (orderStatusTool) Permission() string { return "" }
 func (orderStatusTool) Params() []ai.ParamSpec {
 	return []ai.ParamSpec{{Name: "order_id", Type: "string", Description: "Order public id or its short prefix", Required: true}}
 }
@@ -64,7 +66,7 @@ func (orderStatusTool) Run(ctx context.Context, tc ai.ToolContext, args map[stri
 
 type listOrdersTool struct{}
 
-func (listOrdersTool) Name() string          { return "list_orders" }
+func (listOrdersTool) Name() string           { return "list_orders" }
 func (listOrdersTool) Description() string    { return "List your most recent orders." }
 func (listOrdersTool) Audience() string       { return "storefront" }
 func (listOrdersTool) Permission() string     { return "" }
@@ -102,8 +104,10 @@ func (listOrdersTool) Run(ctx context.Context, tc ai.ToolContext, _ map[string]a
 
 type outstandingInvoicesTool struct{}
 
-func (outstandingInvoicesTool) Name() string          { return "outstanding_invoices" }
-func (outstandingInvoicesTool) Description() string    { return "See what your company currently owes (unpaid invoices)." }
+func (outstandingInvoicesTool) Name() string { return "outstanding_invoices" }
+func (outstandingInvoicesTool) Description() string {
+	return "See what your company currently owes (unpaid invoices)."
+}
 func (outstandingInvoicesTool) Audience() string       { return "storefront" }
 func (outstandingInvoicesTool) Permission() string     { return "" }
 func (outstandingInvoicesTool) Params() []ai.ParamSpec { return nil }
@@ -140,8 +144,10 @@ func (outstandingInvoicesTool) Run(ctx context.Context, tc ai.ToolContext, _ map
 
 type reorderDueTool struct{}
 
-func (reorderDueTool) Name() string          { return "reorder_due" }
-func (reorderDueTool) Description() string    { return "Find items it may be time to reorder based on your buying cadence." }
+func (reorderDueTool) Name() string { return "reorder_due" }
+func (reorderDueTool) Description() string {
+	return "Find items it may be time to reorder based on your buying cadence."
+}
 func (reorderDueTool) Audience() string       { return "storefront" }
 func (reorderDueTool) Permission() string     { return "" }
 func (reorderDueTool) Params() []ai.ParamSpec { return nil }
@@ -184,8 +190,10 @@ func (reorderDueTool) Run(ctx context.Context, tc ai.ToolContext, _ map[string]a
 
 type budgetStatusTool struct{}
 
-func (budgetStatusTool) Name() string          { return "budget_status" }
-func (budgetStatusTool) Description() string    { return "Check your procurement budgets and how much is left this period." }
+func (budgetStatusTool) Name() string { return "budget_status" }
+func (budgetStatusTool) Description() string {
+	return "Check your procurement budgets and how much is left this period."
+}
 func (budgetStatusTool) Audience() string       { return "storefront" }
 func (budgetStatusTool) Permission() string     { return "" }
 func (budgetStatusTool) Params() []ai.ParamSpec { return nil }
@@ -230,8 +238,10 @@ func (budgetStatusTool) Run(ctx context.Context, tc ai.ToolContext, _ map[string
 
 type arAgingTool struct{}
 
-func (arAgingTool) Name() string          { return "ar_aging" }
-func (arAgingTool) Description() string    { return "Summarise accounts-receivable aging (open invoices by age bucket)." }
+func (arAgingTool) Name() string { return "ar_aging" }
+func (arAgingTool) Description() string {
+	return "Summarise accounts-receivable aging (open invoices by age bucket)."
+}
 func (arAgingTool) Audience() string       { return "admin" }
 func (arAgingTool) Permission() string     { return "invoice.view" }
 func (arAgingTool) Params() []ai.ParamSpec { return nil }
@@ -266,8 +276,10 @@ func (arAgingTool) Run(ctx context.Context, tc ai.ToolContext, _ map[string]any)
 
 type atRiskAccountsTool struct{}
 
-func (atRiskAccountsTool) Name() string          { return "at_risk_accounts" }
-func (atRiskAccountsTool) Description() string    { return "List accounts at churn risk (overdue to reorder or ordering less than before)." }
+func (atRiskAccountsTool) Name() string { return "at_risk_accounts" }
+func (atRiskAccountsTool) Description() string {
+	return "List accounts at churn risk (overdue to reorder or ordering less than before)."
+}
 func (atRiskAccountsTool) Audience() string       { return "admin" }
 func (atRiskAccountsTool) Permission() string     { return "crm.view" }
 func (atRiskAccountsTool) Params() []ai.ParamSpec { return nil }
@@ -320,10 +332,12 @@ func (atRiskAccountsTool) Run(ctx context.Context, tc ai.ToolContext, _ map[stri
 
 type orderLookupTool struct{}
 
-func (orderLookupTool) Name() string         { return "order_lookup" }
-func (orderLookupTool) Description() string   { return "Look up any order by its id (status, customer, total)." }
-func (orderLookupTool) Audience() string      { return "admin" }
-func (orderLookupTool) Permission() string    { return "order.view" }
+func (orderLookupTool) Name() string { return "order_lookup" }
+func (orderLookupTool) Description() string {
+	return "Look up any order by its id (status, customer, total)."
+}
+func (orderLookupTool) Audience() string   { return "admin" }
+func (orderLookupTool) Permission() string { return "order.view" }
 func (orderLookupTool) Params() []ai.ParamSpec {
 	return []ai.ParamSpec{{Name: "order_id", Type: "string", Description: "Order public id or short prefix", Required: true}}
 }

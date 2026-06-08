@@ -288,6 +288,28 @@ func (h *Handler) placeOrderFromCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.emailOrderConfirmation(r.Context(), order)
+	// Emit order.placed so the worker notifies the operator's admins (and any
+	// vendors with items on this order). Fire-and-forget; never blocks checkout.
+	if h.notify != nil {
+		vendorIDs := []int64{}
+		if subs, e := h.q.ListVendorOrdersForOrder(r.Context(), order.ID); e == nil {
+			for _, so := range subs {
+				vendorIDs = append(vendorIDs, so.VendorID)
+			}
+		}
+		if e := h.notify.EmitEvent(r.Context(), "order.placed", map[string]any{
+			"order_id":        order.ID,
+			"order_public_id": order.PublicID.String(),
+			"org_id":          cc.orgID,
+			"customer_id":     order.CustomerID,
+			"order_number":    "ORD-" + order.PublicID.String()[:8],
+			"grand_total":     order.GrandTotal,
+			"currency":        order.Currency,
+			"vendor_ids":      vendorIDs,
+		}); e != nil {
+			slog.WarnContext(r.Context(), "emit domain event failed", "event", "order.placed", "order_id", order.ID, "err", e)
+		}
+	}
 	h.renderOrder(w, r, order)
 }
 
@@ -507,13 +529,15 @@ func (h *Handler) patchOrderStatus(w http.ResponseWriter, r *http.Request) {
 	// (e.g. notify the customer). Fire-and-forget; never blocks the response.
 	if h.notify != nil {
 		if err := h.notify.EmitEvent(r.Context(), "order.status_changed", map[string]any{
-			"order_id":     updated.ID,
-			"customer_id":  updated.CustomerID,
-			"from":         order.Status,
-			"to":           updated.Status,
-			"status":       updated.Status,
-			"order_number": "ORD-" + updated.PublicID.String()[:8],
-			"grand_total":  updated.GrandTotal,
+			"order_id":        updated.ID,
+			"order_public_id": updated.PublicID.String(),
+			"org_id":          a.orgID,
+			"customer_id":     updated.CustomerID,
+			"from":            order.Status,
+			"to":              updated.Status,
+			"status":          updated.Status,
+			"order_number":    "ORD-" + updated.PublicID.String()[:8],
+			"grand_total":     updated.GrandTotal,
 		}); err != nil {
 			slog.WarnContext(r.Context(), "emit domain event failed", "event", "order.status_changed", "order_id", updated.ID, "err", err)
 		}
