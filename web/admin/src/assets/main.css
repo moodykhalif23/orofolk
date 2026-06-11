@@ -49,6 +49,7 @@ body {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.005em;
+  color: var(--p-primary-color, #16a34a);
 }
 .p-card .p-card-subtitle {
   font-size: 0.8rem;

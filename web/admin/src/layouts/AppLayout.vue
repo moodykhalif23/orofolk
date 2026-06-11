@@ -331,9 +331,9 @@ function logout() {
   align-items: center;
   width: 100%;
   padding: 0.4rem 1.25rem 0.3rem;
-  color: var(--p-text-muted-color, #94a3b8);
+  color: var(--p-primary-color, #16a34a);
   font-size: 0.68rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -347,7 +347,7 @@ function logout() {
   opacity: 0.6;
 }
 .nav :deep(.p-panelmenu-header-content:hover) .p-panelmenu-header-link {
-  color: var(--p-text-color, #475569);
+  color: var(--p-primary-700, #15803d);
 }
 
 /* Leaf items — inset rounded pills with a soft hover. */
