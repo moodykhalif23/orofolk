@@ -219,9 +219,9 @@ onMounted(load)
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-bottom: 0.9rem; }
 .map { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 0.6rem; }
 .edge { border: 1px solid var(--p-surface-200, #e2e8f0); border-radius: 8px; padding: 0.6rem 0.7rem; }
-.edge-main { display: flex; align-items: center; gap: 0.45rem; }
+.edge-main { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.45rem; }
 .arrow { color: var(--p-text-muted-color, #64748b); }
-.tcode { margin-left: auto; font-size: 0.78rem; color: var(--p-text-muted-color, #64748b); font-family: ui-monospace, monospace; }
+.tcode { margin-left: auto; font-size: 0.78rem; color: var(--p-text-muted-color, #64748b); font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
 .edge-meta { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.5rem; flex-wrap: wrap; }
 .gtag { font-size: 0.7rem; }
 .builder { border-top: 1px solid var(--p-surface-200, #e2e8f0); padding-top: 0.8rem; }
