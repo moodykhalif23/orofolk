@@ -62,7 +62,8 @@ async function submit() {
     <Card v-else-if="invite" class="card">
       <template #title>Join {{ invite.company_name }}</template>
       <template #subtitle>
-        You've been invited to order on behalf of {{ invite.company_name }} as a {{ invite.role }}.
+        You've been invited to order on behalf of {{ invite.company_name }}
+        as {{ invite.role === 'buyer' ? 'a' : 'an' }} {{ invite.role }}.
         Create your account to get started.
       </template>
       <template #content>
@@ -78,7 +79,7 @@ async function submit() {
           </div>
           <div class="field">
             <label for="pwd">Password</label>
-            <Password id="pwd" v-model="password" toggleMask autocomplete="new-password" fluid />
+            <Password id="pwd" v-model="password" :feedback="false" toggleMask autocomplete="new-password" fluid />
           </div>
           <Button type="submit" label="Create account" :loading="loading" fluid />
           <p class="muted">
