@@ -11,7 +11,7 @@ frontends are pure API consumers.
 | Layer | Choice |
 |---|---|
 | API | **Go** — `chi` router · `sqlc` (type-safe SQL) · `river` (Postgres-backed job queue) |
-| Database | **PostgreSQL 16** — also carries the job queue (river) and search (FTS, planned) |
+| Database | **PostgreSQL 16** — also carries the job queue (river) and search (FTS) |
 | Admin UI | **Vue 3** SPA (Vite · Pinia · Vue Router · **PrimeVue**) — login-gated back office |
 | Storefront | **Nuxt** SSR (**PrimeVue**) — crawlable, customer-facing |
 | Frontend ↔ API | **OpenAPI 3.1** contract → generated **TypeScript client** (`openapi-typescript` + `openapi-fetch`) |
