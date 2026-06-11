@@ -4,6 +4,7 @@ import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
 
 type Turn = components['schemas']['AssistantTurn']
 
@@ -13,9 +14,9 @@ const busy = ref(false)
 const scroller = ref<HTMLElement | null>(null)
 
 const suggestions = [
-  'Show me the receivables aging',
-  'Which accounts are at risk of churn?',
-  'Look up order …',
+  { icon: 'pi pi-chart-line', text: 'Show me the receivables aging' },
+  { icon: 'pi pi-heart', text: 'Which accounts are at risk of churn?' },
+  { icon: 'pi pi-search', text: 'Look up a recent order' },
 ]
 
 async function send(text?: string) {
@@ -34,6 +35,10 @@ async function send(text?: string) {
   await scroll()
 }
 
+function clearChat() {
+  messages.value = []
+}
+
 async function scroll() {
   await nextTick()
   if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
@@ -41,41 +46,278 @@ async function scroll() {
 </script>
 
 <template>
-  <div class="page">
-    <p class="muted">Ask about orders, receivables and accounts. The assistant only runs permission-gated tools on your behalf — it never invents data.</p>
+  <div class="page assistant">
+    <PageHeader title="Assistant" meta="AI">
+      <template #actions>
+        <Button
+          v-if="messages.length"
+          icon="pi pi-eraser"
+          label="Clear chat"
+          size="small"
+          severity="secondary"
+          text
+          @click="clearChat"
+        />
+      </template>
+    </PageHeader>
+
+    <p class="disclaimer">
+      <i class="pi pi-shield" />
+      Ask about orders, receivables and accounts. The assistant only runs permission-gated tools
+      on your behalf — it never invents data.
+    </p>
 
     <div ref="scroller" class="thread">
-      <div v-if="!messages.length" class="empty">
-        <p class="muted">Try one of these:</p>
+      <!-- Welcome / empty state -->
+      <div v-if="!messages.length" class="welcome">
+        <span class="welcome-badge"><i class="pi pi-sparkles" /></span>
+        <h2>How can I help?</h2>
+        <p class="muted">Pick a starting point, or ask anything about your workspace.</p>
         <div class="chips">
-          <Button v-for="s in suggestions" :key="s" :label="s" size="small" outlined @click="send(s)" />
+          <button v-for="s in suggestions" :key="s.text" type="button" class="chip" @click="send(s.text)">
+            <i :class="s.icon" />
+            <span>{{ s.text }}</span>
+            <i class="pi pi-arrow-right chip-go" />
+          </button>
         </div>
       </div>
+
+      <!-- Conversation -->
       <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+        <span v-if="m.role === 'assistant'" class="avatar"><i class="pi pi-sparkles" /></span>
         <div class="bubble">{{ m.text }}</div>
       </div>
-      <div v-if="busy" class="msg assistant"><div class="bubble muted">…</div></div>
+
+      <!-- Typing indicator -->
+      <div v-if="busy" class="msg assistant">
+        <span class="avatar"><i class="pi pi-sparkles" /></span>
+        <div class="bubble typing">
+          <span class="dots"><span></span><span></span><span></span></span>
+        </div>
+      </div>
     </div>
 
     <form class="composer" @submit.prevent="send()">
-      <Textarea v-model="input" rows="1" autoResize placeholder="Ask the assistant…" @keydown.enter.exact.prevent="send()" />
-      <Button type="submit" icon="pi pi-send" :loading="busy" :disabled="!input.trim()" />
+      <Textarea
+        v-model="input"
+        rows="1"
+        autoResize
+        placeholder="Ask the assistant…"
+        @keydown.enter.exact.prevent="send()"
+      />
+      <Button type="submit" icon="pi pi-send" rounded :loading="busy" :disabled="!input.trim()" aria-label="Send" />
     </form>
+    <p class="hint">Press <kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</p>
   </div>
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; height: calc(100vh - 6rem); }
-.page h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); }
-.thread { flex: 1; overflow-y: auto; padding: 1rem 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.empty { margin-top: 1rem; }
-.chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-.msg { display: flex; }
-.msg.user { justify-content: flex-end; }
-.bubble { max-width: 70%; padding: 0.6rem 0.85rem; border-radius: 12px; white-space: pre-wrap; line-height: 1.4; }
-.msg.user .bubble { background: #1d4ed8; color: #fff; border-bottom-right-radius: 4px; }
-.msg.assistant .bubble { background: var(--p-surface-100, #f1f5f9); border-bottom-left-radius: 4px; }
-.composer { display: flex; gap: 0.5rem; align-items: flex-end; padding-top: 0.5rem; border-top: 1px solid var(--p-surface-200, #e2e8f0); }
-.composer :deep(textarea) { flex: 1; resize: none; }
+.assistant {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 5rem);
+}
+.disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--p-text-muted-color, #64748b);
+}
+.disclaimer .pi {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+.muted {
+  color: var(--p-text-muted-color, #64748b);
+}
+
+/* Thread */
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Welcome */
+.welcome {
+  margin: auto;
+  text-align: center;
+  max-width: 30rem;
+  padding: 1rem;
+}
+.welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--p-primary-color, #16a34a) 14%, transparent);
+  color: var(--p-primary-color, #16a34a);
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+.welcome h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--teggo-border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--teggo-surface, #fff);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--p-text-color, #334155);
+  transition: border-color 0.15s, background 0.15s;
+}
+.chip:hover {
+  border-color: var(--p-primary-color, #16a34a);
+  background: var(--p-surface-50, #f8fafc);
+}
+.chip > span {
+  flex: 1;
+}
+.chip > .pi:first-child {
+  color: var(--p-primary-color, #16a34a);
+}
+.chip-go {
+  color: var(--p-text-muted-color, #94a3b8);
+  font-size: 0.8rem;
+}
+
+/* Messages — each bubble hugs its own side (WhatsApp-style): the assistant on
+   the left, the user on the right. align-self lets the row shrink to content
+   instead of stretching across the full width. */
+.msg {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  max-width: 82%;
+}
+.msg.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+.msg.assistant {
+  align-self: flex-start;
+}
+.avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--p-primary-color, #16a34a) 14%, transparent);
+  color: var(--p-primary-color, #16a34a);
+  font-size: 0.9rem;
+}
+.bubble {
+  max-width: 100%;
+  padding: 0.65rem 0.9rem;
+  border-radius: 14px;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+.msg.user .bubble {
+  background: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-contrast-color, #fff);
+  border-bottom-right-radius: 4px;
+}
+.msg.assistant .bubble {
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-text-color, #1e293b);
+  border-bottom-left-radius: 4px;
+}
+
+/* Typing dots */
+.typing {
+  padding: 0.7rem 0.95rem;
+}
+.dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--p-text-muted-color, #94a3b8);
+  animation: blink 1.4s infinite both;
+}
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Composer */
+.composer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  padding: 0.75rem;
+  border: 1px solid var(--teggo-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--teggo-surface, #fff);
+  margin-top: 0.5rem;
+}
+.composer :deep(textarea) {
+  flex: 1;
+  resize: none;
+  border: none;
+  box-shadow: none;
+  padding: 0.35rem 0.4rem;
+  background: transparent;
+  max-height: 9rem;
+}
+.composer :deep(textarea:focus) {
+  outline: none;
+}
+.hint {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--p-text-muted-color, #94a3b8);
+}
+.hint kbd {
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--teggo-border, #e2e8f0);
+  border-radius: 4px;
+  background: var(--p-surface-50, #f8fafc);
+}
 </style>
