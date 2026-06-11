@@ -13,6 +13,8 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Setting = components['schemas']['ConfigSetting']
 
@@ -113,19 +115,22 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Configuration <span class="muted">({{ settings.length }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Configuration" :meta="settings.length">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New setting" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Settings cascade: a key can be set at org, website, customer-group or customer scope. The most specific value wins (customer &gt; group &gt; website &gt; org).</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="settings" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>No settings yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-cog" title="No settings yet" message="Add a configuration key to override a platform default for this organization.">
+          <Button icon="pi pi-plus" label="New setting" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="key" header="Key" />
       <Column header="Scope"><template #body="{ data }"><Tag :value="data.scope" /></template></Column>
       <Column field="scope_id" header="Scope id"><template #body="{ data }">{{ data.scope_id ?? '—' }}</template></Column>
@@ -164,9 +169,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

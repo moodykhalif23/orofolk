@@ -10,6 +10,8 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Website = components['schemas']['Website']
 
@@ -77,19 +79,22 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Websites <span class="muted">{{ orgName }}</span></h1>
-      <div class="actions">
+    <PageHeader title="Websites" :meta="orgName">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New website" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Each website serves a distinct domain, currency, and locale. The storefront resolves the active website from the request host.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="websites" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>No websites yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-globe" title="No websites yet" message="Add a website to run multiple storefronts — each with its own domain, catalog, and branding.">
+          <Button icon="pi pi-plus" label="New website" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" />
       <Column field="domain" header="Domain" />
       <Column field="default_currency" header="Currency" />
@@ -119,9 +124,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }

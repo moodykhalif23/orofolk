@@ -7,6 +7,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Rfq = components['schemas']['RfqSummary']
 
@@ -36,7 +38,7 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <h1>RFQs</h1>
+    <PageHeader title="RFQs" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
     <DataTable
       :value="rows"
@@ -48,7 +50,9 @@ onMounted(load)
       @rowClick="router.push({ name: 'rfq-detail', params: { id: $event.data.id } })"
       class="clickable"
     >
-      <template #empty>No RFQs yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-inbox" title="No RFQs yet" message="Requests for quote submitted by customers land here, ready for you to turn into quotes." />
+      </template>
       <Column field="id" header="ID" style="width: 5rem" />
       <Column header="Reference">
         <template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template>

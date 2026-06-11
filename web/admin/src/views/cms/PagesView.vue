@@ -17,6 +17,8 @@ import BlockPalette from './blocks/BlockPalette.vue'
 import BlockCanvas from './blocks/BlockCanvas.vue'
 import BlockInspector from './blocks/BlockInspector.vue'
 import { makeBlock, newBlockId } from './blocks/fields'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Page = components['schemas']['ContentPage']
 
@@ -205,19 +207,22 @@ onMounted(load)
   <div class="page">
     <!-- ───────────────── LIST ───────────────── -->
     <template v-if="mode === 'list'">
-      <div class="header">
-        <h1>Content pages <span class="muted">({{ pages.length }})</span></h1>
-        <div class="actions">
+      <PageHeader title="Content pages" :meta="pages.length">
+        <template #actions>
           <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
           <Button icon="pi pi-plus" label="New page" @click="openCreate" />
-        </div>
-      </div>
+        </template>
+      </PageHeader>
       <p class="muted">Block-based pages served to the storefront. Publish to make a page public.</p>
 
       <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
       <DataTable :value="pages" :loading="loading" dataKey="id" stripedRows>
-        <template #empty>No pages yet.</template>
+        <template #empty>
+          <EmptyState icon="pi pi-file" title="No content pages yet" message="Build landing pages, category pages, and more from blocks — then publish them to your storefront.">
+            <Button icon="pi pi-plus" label="New page" @click="openCreate" />
+          </EmptyState>
+        </template>
         <Column field="title" header="Title" />
         <Column field="slug" header="Slug" />
         <Column field="locale" header="Locale" />

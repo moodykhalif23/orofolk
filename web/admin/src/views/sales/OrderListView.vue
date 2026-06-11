@@ -13,6 +13,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions, useProductOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Order = components['schemas']['OrderSummary']
 
@@ -82,10 +84,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Orders</h1>
-      <Button icon="pi pi-plus" label="New order (on behalf)" @click="openCreate" />
-    </div>
+    <PageHeader title="Orders">
+      <template #actions>
+        <Button icon="pi pi-plus" label="New order (on behalf)" @click="openCreate" />
+      </template>
+    </PageHeader>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
     <DataTable
       :value="rows"
@@ -97,7 +100,11 @@ onMounted(load)
       @rowClick="router.push({ name: 'order-detail', params: { id: $event.data.id } })"
       class="clickable"
     >
-      <template #empty>No orders yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-shopping-cart" title="No orders yet" message="Orders placed by customers appear here. You can also create one on a customer's behalf.">
+          <Button icon="pi pi-plus" label="New order (on behalf)" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="id" header="ID" style="width: 5rem" />
       <Column header="Reference"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
@@ -154,8 +161,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }
 .form { display: flex; flex-direction: column; gap: 0.9rem; }

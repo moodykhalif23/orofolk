@@ -7,6 +7,8 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type PendingProduct = components['schemas']['PendingProduct']
 
@@ -46,16 +48,19 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Catalog moderation <span class="muted">({{ items.length }})</span></h1>
-      <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
-    </div>
+    <PageHeader title="Catalog moderation" :meta="items.length">
+      <template #actions>
+        <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
+      </template>
+    </PageHeader>
     <p class="muted">Vendor-submitted listings awaiting approval. Approved products become visible and buyable on the storefront; rejected ones stay hidden.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="items" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>Nothing awaiting moderation. 🎉</template>
+      <template #empty>
+        <EmptyState icon="pi pi-check-circle" title="All caught up" message="No vendor listings are waiting for moderation right now." />
+      </template>
       <Column field="sku" header="SKU" />
       <Column field="name" header="Name" />
       <Column field="vendor_id" header="Vendor" />
@@ -72,9 +77,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .rowact { display: flex; gap: 0.5rem; }
 </style>

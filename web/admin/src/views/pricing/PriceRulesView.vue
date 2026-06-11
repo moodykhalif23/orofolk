@@ -12,6 +12,8 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Rule = components['schemas']['PriceAdjustmentRule']
 
@@ -116,19 +118,22 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Price rules <span class="muted">({{ rules.length }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Price rules" :meta="rules.length">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New rule" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Adjustment rules tweak the resolved price by a percent or fixed amount, scoped by customer group and/or a product attribute. The highest-priority matching rule applies; with none, prices are unchanged.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="rules" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>No price rules — prices follow the price lists as-is.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-sliders-h" title="No price rules" message="Without rules, prices follow your price lists as-is. Add a rule for volume breaks or customer-specific discounts.">
+          <Button icon="pi pi-plus" label="New rule" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" />
       <Column header="Applies to"><template #body="{ data }">{{ groupName(data.customer_group_id) }}</template></Column>
       <Column header="When"><template #body="{ data }">{{ scope(data) }}</template></Column>
@@ -164,10 +169,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }

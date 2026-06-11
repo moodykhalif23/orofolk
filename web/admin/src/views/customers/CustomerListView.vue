@@ -11,6 +11,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
 import CustomerFormDialog from './CustomerFormDialog.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Customer = components['schemas']['Customer']
 
@@ -81,13 +83,12 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Customers <span class="muted">({{ total }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Customers" :meta="total">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New customer" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -103,7 +104,11 @@ onMounted(load)
       @rowClick="openDetail($event.data)"
       class="clickable"
     >
-      <template #empty>No customers yet — create one.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-building" title="No customers yet" message="Add your first customer organization to start quoting and selling.">
+          <Button icon="pi pi-plus" label="New customer" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" sortable />
       <Column field="tax_id" header="Tax ID" />
       <Column header="Terms">
@@ -130,10 +135,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }
 .mb { margin-bottom: 1rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }
 </style>

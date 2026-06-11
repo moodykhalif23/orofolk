@@ -12,6 +12,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Provider = components['schemas']['IdentityProvider']
 
@@ -101,18 +103,21 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Identity providers <span class="muted">SSO (OIDC)</span></h1>
-      <div class="actions">
+    <PageHeader title="Identity providers" meta="SSO (OIDC)">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New provider" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">OpenID Connect single sign-on. Admin-audience providers sign in seller-side staff; storefront-audience providers sign in a buying company's users (JIT-provisioned). Point your IdP's redirect URI at the provider's callback.</p>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="providers" dataKey="id" stripedRows>
-      <template #empty>No identity providers yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-id-card" title="No identity providers yet" message="Add an OIDC provider to let customers sign in with their corporate accounts.">
+          <Button icon="pi pi-plus" label="New provider" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" />
       <Column field="type" header="Type" />
       <Column field="audience" header="Audience" />
@@ -164,9 +169,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }

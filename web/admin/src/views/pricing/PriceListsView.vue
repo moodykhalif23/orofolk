@@ -13,6 +13,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
 import PricingTools from './PricingTools.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type PriceList = components['schemas']['PriceList']
 
@@ -72,10 +74,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Price lists</h1>
-      <Button icon="pi pi-plus" label="New price list" @click="openCreate" />
-    </div>
+    <PageHeader title="Price lists">
+      <template #actions>
+        <Button icon="pi pi-plus" label="New price list" @click="openCreate" />
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -87,7 +90,11 @@ onMounted(load)
       @rowClick="router.push({ name: 'price-list-detail', params: { id: $event.data.id } })"
       class="clickable"
     >
-      <template #empty>No price lists yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-dollar" title="No price lists yet" message="Create a price list to set per-customer or per-group pricing for your catalog.">
+          <Button icon="pi pi-plus" label="New price list" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" sortable />
       <Column field="currency" header="Currency" />
       <Column header="Default"><template #body="{ data }"><Tag v-if="data.is_default" value="default" severity="info" /></template></Column>
@@ -117,8 +124,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .tools { margin-top: 1.5rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }

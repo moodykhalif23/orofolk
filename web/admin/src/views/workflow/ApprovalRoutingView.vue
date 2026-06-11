@@ -12,6 +12,8 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Rule = components['schemas']['ApprovalRoutingRule']
 
@@ -87,13 +89,12 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Approval routing <span class="muted">({{ rules.length }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Approval routing" :meta="rules.length">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="Add tier" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">
       When a held order is approved by a buyer's company, the order amount must fall to an approver whose role
       meets the tier below. With no tiers, any approver or admin may release a held order.
@@ -102,7 +103,11 @@ onMounted(load)
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="rules" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>No approval tiers — any approver/admin can release held orders.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-check-circle" title="No approval tiers" message="Without tiers, any approver or admin can release held orders. Add a tier to require sign-off above a threshold.">
+          <Button icon="pi pi-plus" label="Add tier" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column header="Amount band"><template #body="{ data }">{{ band(data) }}</template></Column>
       <Column header="Requires">
         <template #body="{ data }"><Tag :value="data.required_role" :severity="data.required_role === 'admin' ? 'warn' : 'info'" /></template>
@@ -132,9 +137,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }

@@ -141,3 +141,16 @@ body {
   margin: 1.75rem 0 0.75rem;
   color: var(--p-text-color, #0f172a);
 }
+
+/* ---------------------------------------------------------------------------
+   Shared utilities — promoted from per-view scoped CSS so every view reads the
+   same. `.muted` for secondary text, `.mb` for a one-rem bottom gap. Page
+   headers now use the <PageHeader> component; empty states use <EmptyState>.
+   --------------------------------------------------------------------------- */
+.muted {
+  color: var(--p-text-muted-color, #64748b);
+  font-weight: 400;
+}
+.mb {
+  margin-bottom: 1rem;
+}

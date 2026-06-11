@@ -13,6 +13,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions, useProductOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Quote = components['schemas']['QuoteSummary']
 
@@ -84,10 +86,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Quotes</h1>
-      <Button icon="pi pi-plus" label="New quote" @click="openCreate" />
-    </div>
+    <PageHeader title="Quotes">
+      <template #actions>
+        <Button icon="pi pi-plus" label="New quote" @click="openCreate" />
+      </template>
+    </PageHeader>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
     <DataTable
       :value="rows"
@@ -99,7 +102,11 @@ onMounted(load)
       @rowClick="router.push({ name: 'quote-editor', params: { id: $event.data.id } })"
       class="clickable"
     >
-      <template #empty>No quotes yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-file-edit" title="No quotes yet" message="Quotes you draft — or that come from a buyer's RFQ — show up here to negotiate and send.">
+          <Button icon="pi pi-plus" label="New quote" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="id" header="ID" style="width: 5rem" />
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column field="currency" header="Ccy" />
@@ -157,8 +164,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }
 .form { display: flex; flex-direction: column; gap: 0.9rem; }

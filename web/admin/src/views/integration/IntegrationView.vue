@@ -13,6 +13,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type TradingPartner = components['schemas']['TradingPartner']
 type EDIDocument = components['schemas']['EDIDocument']
@@ -106,20 +108,23 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Integrations <span class="muted">Punchout &amp; EDI</span></h1>
-      <div class="actions">
+    <PageHeader title="Integrations" meta="Punchout & EDI">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New partner" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Trading partners connect procurement systems via cXML/OCI punchout or X12 EDI. Inbound 850s become orders (with an 855 ack); 810/856 are emitted back.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <h3>Trading partners</h3>
     <DataTable :value="partners" dataKey="id" stripedRows class="mb">
-      <template #empty>No trading partners yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-sync" title="No trading partners yet" message="Add a partner to exchange orders and invoices via cXML punchout or EDI.">
+          <Button icon="pi pi-plus" label="New partner" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" />
       <Column field="protocol" header="Protocol" />
       <Column field="transport" header="Transport" />
@@ -181,9 +186,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 h3 { margin: 1.25rem 0 0.5rem; }

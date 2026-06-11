@@ -9,6 +9,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Report = components['schemas']['ARAgingReport']
 
@@ -61,13 +63,12 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>AR aging</h1>
-      <div class="actions">
+    <PageHeader title="AR aging">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button label="Run overdue sweep" icon="pi pi-flag" :loading="sweeping" @click="sweep" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Open (issued + overdue) invoices bucketed by days past due. The sweep flips past-due invoices to overdue and queues a dunning notice to each customer.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
@@ -84,7 +85,9 @@ onMounted(() => {
     </div>
 
     <DataTable :value="report?.items ?? []" :loading="loading" dataKey="public_id" stripedRows class="mt">
-      <template #empty>No open invoices.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-check-circle" title="No open invoices" message="Nothing is outstanding — every issued invoice has been paid. Nice." />
+      </template>
       <Column header="Invoice"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Customer"><template #body="{ data }">{{ custName(data.customer_id) }}</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="data.status === 'overdue' ? 'danger' : 'info'" /></template></Column>
@@ -96,10 +99,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .mt { margin-top: 1rem; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; margin: 1rem 0; }

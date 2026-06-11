@@ -11,6 +11,8 @@ import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
 import ProductFormDialog from './ProductFormDialog.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type AdminProduct = components['schemas']['AdminProduct']
 
@@ -86,9 +88,8 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Products <span class="muted">({{ total }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Products" :meta="total">
+      <template #actions>
         <span class="p-input-icon-left search">
           <InputText
             v-model="term"
@@ -98,8 +99,8 @@ onMounted(load)
           <Button icon="pi pi-search" severity="secondary" text @click="load" />
         </span>
         <Button icon="pi pi-plus" label="New product" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -113,7 +114,11 @@ onMounted(load)
       stripedRows
       removableSort
     >
-      <template #empty>No products yet — create one.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-box" title="No products yet" message="Add a product to your catalog, or import them from your ERP.">
+          <Button icon="pi pi-plus" label="New product" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="sku" header="SKU" sortable />
       <Column field="name" header="Name" sortable />
       <Column field="type" header="Type" sortable />
@@ -136,24 +141,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.header h1 {
-  margin: 0;
-}
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.muted {
-  color: var(--p-text-muted-color, #64748b);
-  font-weight: 400;
-  font-size: 1rem;
-}
 .mb {
   margin-bottom: 1rem;
 }

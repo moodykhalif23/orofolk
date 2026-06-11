@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
 
 // ECharts lazy-loaded (own chunk) per the established pattern.
 const LineChart = defineAsyncComponent(() => import('@/components/LineChart.vue'))
@@ -63,10 +64,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Analytics <span class="muted">last 30 days</span></h1>
-      <Button icon="pi pi-sync" label="Refresh data" :loading="refreshing" severity="secondary" outlined @click="refresh" />
-    </div>
+    <PageHeader title="Analytics" meta="last 30 days">
+      <template #actions>
+        <Button icon="pi pi-sync" label="Refresh data" :loading="refreshing" severity="secondary" outlined @click="refresh" />
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -104,9 +106,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }
 .mb { margin-bottom: 1rem; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
 .kpi-value { font-size: 1.7rem; font-weight: 700; }

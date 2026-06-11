@@ -13,6 +13,7 @@ import Column from 'primevue/column'
 import { api, errMessage } from '@/lib/client'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
 
 type MediaAsset = components['schemas']['MediaAsset']
 type Preset = components['schemas']['TransformationPreset']
@@ -149,16 +150,15 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Media library</h1>
-      <div class="actions">
+    <PageHeader title="Media library">
+      <template #actions>
         <InputText v-model="uploadTags" placeholder="tags (comma-sep)" class="tags-in" />
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onFile" />
         <Button icon="pi pi-upload" label="Upload" :loading="uploading" @click="pickFile" />
         <Button icon="pi pi-sliders-h" label="Presets" severity="secondary" @click="presetOpen = true" />
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Upload once; responsive renditions ({{ presets.map((p) => p.name).join(', ') || 'no presets' }}) are derived asynchronously. Re-uploading identical files dedupes.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
@@ -232,9 +232,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; align-items: center; }
 .tags-in { width: 12rem; }
 .muted { color: var(--p-text-muted-color, #64748b); }
 .mb { margin-bottom: 1rem; }

@@ -11,6 +11,8 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Lead = components['schemas']['Lead']
 type LeadInput = components['schemas']['LeadInput']
@@ -73,18 +75,21 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Leads <span class="muted">({{ leads.length }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Leads" :meta="leads.length">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New lead" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="leads" :loading="loading" paginator :rows="10" dataKey="id" stripedRows>
-      <template #empty>No leads yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-filter" title="No leads yet" message="Capture inbound interest or add a lead manually to start building your pipeline.">
+          <Button icon="pi pi-plus" label="New lead" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="company_name" header="Company" />
       <Column field="contact_name" header="Contact" />
       <Column field="email" header="Email" />
@@ -120,10 +125,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }
 .mb { margin-bottom: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
 .field label { font-size: 0.85rem; font-weight: 600; }

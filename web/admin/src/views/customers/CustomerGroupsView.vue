@@ -12,6 +12,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useAuthStore } from '@/stores/auth'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type CustomerGroup = components['schemas']['CustomerGroup']
 interface GroupCustomer {
@@ -104,10 +106,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Customer groups</h1>
-      <Button icon="pi pi-plus" label="New group" @click="openCreate" />
-    </div>
+    <PageHeader title="Customer groups">
+      <template #actions>
+        <Button icon="pi pi-plus" label="New group" @click="openCreate" />
+      </template>
+    </PageHeader>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
     <p class="hint">Select a group to view the customers assigned to it.</p>
     <DataTable
@@ -119,7 +122,11 @@ onMounted(load)
       selectionMode="single"
       @row-click="openMembers($event.data)"
     >
-      <template #empty>No groups yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-users" title="No customer groups yet" message="Group customers to assign shared price lists, catalogs, and terms in one place.">
+          <Button icon="pi pi-plus" label="New group" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="id" header="ID" style="width: 5rem" />
       <Column field="name" header="Name" sortable />
       <Column header="" style="width: 8rem">
@@ -173,8 +180,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .hint { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--p-text-muted-color, #64748b); }
 .field { display: flex; flex-direction: column; gap: 0.3rem; }

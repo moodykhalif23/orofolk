@@ -11,6 +11,7 @@ import Textarea from 'primevue/textarea'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
 
 type Workflow = components['schemas']['WorkflowDefinition']
 type Transition = components['schemas']['WfTransition']
@@ -132,10 +133,11 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Workflows</h1>
-      <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
-    </div>
+    <PageHeader title="Workflows">
+      <template #actions>
+        <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
+      </template>
+    </PageHeader>
     <p class="muted">Entity lifecycles are config-driven. The map shows each state and the transitions between them; edit a transition to change its guards/actions without a deploy.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
@@ -210,9 +212,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .small { font-size: 0.8rem; }
 .mb { margin-bottom: 1rem; }
 .wf { margin: 1rem 0; }

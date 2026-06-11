@@ -8,6 +8,8 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Account = components['schemas']['AccountHealth']
 
@@ -37,19 +39,20 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Account health <span class="muted">({{ atRiskCount }} at risk)</span></h1>
-      <div class="actions">
+    <PageHeader title="Account health" :meta="`(${atRiskCount} at risk)`">
+      <template #actions>
         <span class="filter"><ToggleSwitch v-model="atRiskOnly" @update:modelValue="load" inputId="ar" /><label for="ar">At-risk only</label></span>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Accounts slipping below their own ordering pattern — overdue to reorder or buying less than the prior quarter.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="accounts" :loading="loading" dataKey="customer_id" stripedRows>
-      <template #empty>No accounts with order history yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-heart" title="No accounts to score yet" message="Account health appears once customers have order history to analyze." />
+      </template>
       <Column field="name" header="Account" />
       <Column header="Health">
         <template #body="{ data }">
@@ -67,10 +70,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; align-items: center; gap: 1rem; }
 .filter { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 </style>

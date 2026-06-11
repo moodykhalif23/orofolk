@@ -4,6 +4,7 @@ import Card from 'primevue/card'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
 
 type BoardStage = components['schemas']['PipelineBoardStage']
 
@@ -43,13 +44,14 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Pipeline <span class="muted">{{ pipelineName }}</span></h1>
-      <div class="forecast">
-        <div class="f-val">{{ weightedTotal }}</div>
-        <div class="f-lbl">weighted forecast · {{ openTotal }} open</div>
-      </div>
-    </div>
+    <PageHeader title="Pipeline" :meta="pipelineName">
+      <template #actions>
+        <div class="forecast">
+          <div class="f-val">{{ weightedTotal }}</div>
+          <div class="f-lbl">weighted forecast · {{ openTotal }} open</div>
+        </div>
+      </template>
+    </PageHeader>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -72,9 +74,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 1.25rem; }
-.header h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .forecast { text-align: right; }
 .f-val { font-size: 1.8rem; font-weight: 800; line-height: 1; color: var(--p-primary-color, #0ea5e9); }
 .f-lbl { font-size: 0.8rem; color: var(--p-text-muted-color, #64748b); }

@@ -9,6 +9,8 @@ import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type ReturnSummary = components['schemas']['ReturnSummary']
 type ReturnDetail = components['schemas']['ReturnDetail']
@@ -64,16 +66,19 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Returns <span class="muted">({{ returns.length }})</span></h1>
-      <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
-    </div>
+    <PageHeader title="Returns" :meta="returns.length">
+      <template #actions>
+        <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
+      </template>
+    </PageHeader>
     <p class="muted">Return requests move requested → approved → received (restock + credit note), or rejected.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="returns" :loading="loading" dataKey="id" stripedRows @rowClick="open($event.data)" class="clickable">
-      <template #empty>No returns.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-replay" title="No returns" message="Return requests (RMAs) appear here as they move from requested through to credited." />
+      </template>
       <Column header="RMA"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column field="order_id" header="Order" />
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
@@ -109,9 +114,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }
 .status { margin-bottom: 0.75rem; }

@@ -12,6 +12,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Attribute = components['schemas']['Attribute']
 type AttributeInput = components['schemas']['AttributeInput']
@@ -69,13 +71,18 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Attributes</h1>
-      <Button icon="pi pi-plus" label="New attribute" @click="openCreate" />
-    </div>
+    <PageHeader title="Attributes">
+      <template #actions>
+        <Button icon="pi pi-plus" label="New attribute" @click="openCreate" />
+      </template>
+    </PageHeader>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
     <DataTable :value="rows" :loading="loading" dataKey="id" stripedRows>
-      <template #empty>No attributes yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-tags" title="No attributes yet" message="Attributes (color, size, material…) describe your products and power faceted search.">
+          <Button icon="pi pi-plus" label="New attribute" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="code" header="Code" sortable />
       <Column field="label" header="Label" sortable />
       <Column field="data_type" header="Type" />
@@ -104,8 +111,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.header h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .form { display: flex; flex-direction: column; gap: 0.9rem; }
 .field { display: flex; flex-direction: column; gap: 0.3rem; }

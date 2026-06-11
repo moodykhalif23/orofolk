@@ -12,6 +12,8 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Vendor = components['schemas']['Vendor']
 type VendorUser = components['schemas']['VendorUser']
@@ -171,19 +173,22 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>Vendors <span class="muted">({{ vendors.length }})</span></h1>
-      <div class="actions">
+    <PageHeader title="Vendors" :meta="vendors.length">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button label="Add vendor" icon="pi pi-plus" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Marketplace sellers. Commission is the operator's take; orders split per vendor and settle into payouts.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable :value="vendors" :loading="loading" dataKey="id" stripedRows @rowClick="open($event.data)" class="clickable">
-      <template #empty>No vendors yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-shop" title="No vendors yet" message="Add a vendor to let third parties list and sell products on your marketplace.">
+          <Button label="Add vendor" icon="pi pi-plus" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="name" header="Name" />
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column header="Commission"><template #body="{ data }">{{ data.commission_rate }}%</template></Column>
@@ -259,10 +264,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; align-items: center; }
-.muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }
 .clickable :deep(tbody tr) { cursor: pointer; }
 .block { margin-bottom: 1.5rem; }

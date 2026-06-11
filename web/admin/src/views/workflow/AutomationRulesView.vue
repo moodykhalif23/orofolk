@@ -18,6 +18,8 @@ import type { components } from '@teggo/api/schema'
 import TriggerNode from './flow/TriggerNode.vue'
 import ConditionsNode from './flow/ConditionsNode.vue'
 import ActionNode from './flow/ActionNode.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import {
   TRIGGER_EVENTS, ACTION_CATALOG, fieldsFor, coerce, uid,
   type Cond, type Act,
@@ -190,19 +192,22 @@ onMounted(load)
   <div class="page">
     <!-- ───────────── LIST ───────────── -->
     <template v-if="mode === 'list'">
-      <div class="header">
-        <h1>Automation rules <span class="muted">({{ rules.length }})</span></h1>
-        <div class="actions">
+      <PageHeader title="Automation rules" :meta="rules.length">
+        <template #actions>
           <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
           <Button icon="pi pi-plus" label="New rule" @click="openCreate" />
-        </div>
-      </div>
+        </template>
+      </PageHeader>
       <p class="muted">When an event fires and all conditions match, the actions run as background jobs.</p>
 
       <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
       <DataTable :value="rules" :loading="loading" dataKey="id" stripedRows>
-        <template #empty>No automation rules yet.</template>
+        <template #empty>
+          <EmptyState icon="pi pi-bolt" title="No automation rules yet" message="Create a rule to run actions automatically — e.g. notify a rep when a high-value RFQ arrives.">
+            <Button icon="pi pi-plus" label="New rule" @click="openCreate" />
+          </EmptyState>
+        </template>
         <Column field="name" header="Name" />
         <Column field="trigger_event" header="Trigger" />
         <Column header="When"><template #body="{ data }"><span class="muted">{{ condSummary(data.conditions) }}</span></template></Column>

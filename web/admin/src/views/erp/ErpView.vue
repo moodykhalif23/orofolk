@@ -11,6 +11,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 type Connection = components['schemas']['IntegrationConnection']
 type SyncLog = components['schemas']['SyncLog']
@@ -88,19 +90,22 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="header">
-      <h1>ERP / accounting sync</h1>
-      <div class="actions">
+    <PageHeader title="ERP / accounting sync">
+      <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text @click="load" />
         <Button icon="pi pi-plus" label="New connection" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
     <p class="muted">Outbound: confirmed orders + issued invoices are pushed (HMAC-signed) to the connection endpoint, idempotently. Inbound: the ERP posts master data (e.g. inventory) to <code>/webhooks/erp/{id}</code>.</p>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <h3>Connections</h3>
     <DataTable :value="connections" dataKey="id" stripedRows class="mb">
-      <template #empty>No connections yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-server" title="No connections yet" message="Connect QuickBooks, Xero, or another ERP to sync invoices, payments, and inventory.">
+          <Button icon="pi pi-plus" label="New connection" @click="openCreate" />
+        </EmptyState>
+      </template>
       <Column field="provider" header="Provider" />
       <Column field="kind" header="Kind" />
       <Column field="endpoint" header="Endpoint" />
@@ -141,9 +146,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.header { display: flex; align-items: center; justify-content: space-between; }
-.header h1 { margin: 0; }
-.actions { display: flex; gap: 0.5rem; }
 .muted { color: var(--p-text-muted-color, #64748b); }
 .mb { margin-bottom: 1rem; }
 h3 { margin: 1.25rem 0 0.5rem; }
