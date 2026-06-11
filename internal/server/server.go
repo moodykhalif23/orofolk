@@ -39,6 +39,7 @@ import (
 	"b2bcommerce/internal/modules/settings"
 	shippingmod "b2bcommerce/internal/modules/shipping"
 	ssomod "b2bcommerce/internal/modules/sso"
+	"b2bcommerce/internal/modules/subscription"
 	taxmod "b2bcommerce/internal/modules/tax"
 	"b2bcommerce/internal/modules/tenancy"
 	"b2bcommerce/internal/modules/wfadmin"
@@ -213,6 +214,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	settings.New(st.Pool()).RoutesWithOptionalAuth(r, authMW, mw.OptionalAuthenticator(issuer))
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
 	promo.New(st.Queries()).Routes(r, authMW)
+	subscription.New(st.Pool()).Routes(r, authMW)
 	cart.New(st.Queries()).Routes(r, authMW)
 	sales.New(st.Pool(), o.notifier).Routes(r, authMW)
 	otc.New(st.Pool(), o.pdf, o.notifier, o.gateway, issuer).Routes(r, authMW)

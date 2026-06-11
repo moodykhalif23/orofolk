@@ -997,6 +997,43 @@ type SsoState struct {
 	ExpiresAt  time.Time `json:"expires_at"`
 }
 
+type Subscription struct {
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	OrganizationID int64              `json:"organization_id"`
+	WebsiteID      int64              `json:"website_id"`
+	CustomerID     int64              `json:"customer_id"`
+	CustomerUserID *int64             `json:"customer_user_id"`
+	Name           *string            `json:"name"`
+	Currency       string             `json:"currency"`
+	Cadence        string             `json:"cadence"`
+	NextRunDate    pgtype.Date        `json:"next_run_date"`
+	Status         string             `json:"status"`
+	PoNumber       *string            `json:"po_number"`
+	CreatedBy      *string            `json:"created_by"`
+	LastRunAt      pgtype.Timestamptz `json:"last_run_at"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+}
+
+type SubscriptionItem struct {
+	ID             int64  `json:"id"`
+	SubscriptionID int64  `json:"subscription_id"`
+	ProductID      int64  `json:"product_id"`
+	Quantity       string `json:"quantity"`
+	Unit           string `json:"unit"`
+}
+
+type SubscriptionRun struct {
+	ID             int64       `json:"id"`
+	SubscriptionID int64       `json:"subscription_id"`
+	OrderID        *int64      `json:"order_id"`
+	RunDate        pgtype.Date `json:"run_date"`
+	Status         string      `json:"status"`
+	Note           *string     `json:"note"`
+	CreatedAt      time.Time   `json:"created_at"`
+}
+
 type SyncLog struct {
 	ID             int64     `json:"id"`
 	OrganizationID int64     `json:"organization_id"`

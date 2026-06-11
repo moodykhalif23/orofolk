@@ -786,6 +786,81 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/Promotion' } }
 
+    SubscriptionItem:
+      type: object
+      required: [id, product_id, sku, name, quantity, unit]
+      properties:
+        id: { type: integer, format: int64 }
+        product_id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        quantity: { type: string }
+        unit: { type: string }
+
+    SubscriptionRun:
+      type: object
+      required: [id, run_date, status, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        order_id: { type: integer, format: int64, nullable: true }
+        run_date: { type: string }
+        status: { type: string, enum: [success, skipped, failed] }
+        note: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Subscription:
+      type: object
+      required: [id, public_id, customer_id, currency, cadence, next_run_date, status]
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string, format: uuid }
+        customer_id: { type: integer, format: int64 }
+        name: { type: string, nullable: true }
+        currency: { type: string }
+        cadence: { type: string, enum: [weekly, biweekly, monthly, quarterly] }
+        next_run_date: { type: string, description: 'YYYY-MM-DD' }
+        status: { type: string, enum: [active, paused, cancelled] }
+        po_number: { type: string, nullable: true }
+        last_run_at: { type: string, format: date-time, nullable: true }
+        items: { type: array, items: { $ref: '#/components/schemas/SubscriptionItem' } }
+        runs: { type: array, items: { $ref: '#/components/schemas/SubscriptionRun' } }
+
+    SubscriptionList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Subscription' } }
+
+    SubscriptionInput:
+      type: object
+      required: [cadence, items]
+      properties:
+        name: { type: string, nullable: true }
+        cadence: { type: string, enum: [weekly, biweekly, monthly, quarterly] }
+        start_date: { type: string, description: 'YYYY-MM-DD; defaults to one cadence from today' }
+        po_number: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            type: object
+            required: [product_id]
+            properties:
+              product_id: { type: integer, format: int64 }
+              quantity: { type: string }
+              unit: { type: string }
+
+    SubscriptionStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, paused, cancelled] }
+
+    SubscriptionRunResult:
+      type: object
+      required: [order_created]
+      properties:
+        order_created: { type: boolean }
+
     RevalidateResult:
       type: object
       properties:
@@ -3651,6 +3726,97 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '204': { description: No Content }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/subscriptions:
+    get:
+      tags: [Subscriptions]
+      operationId: adminListSubscriptions
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionList' } } } }
+  /admin/subscriptions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Subscriptions]
+      operationId: adminGetSubscription
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/subscriptions/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Subscriptions]
+      operationId: adminSetSubscriptionStatus
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionStatusInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/subscriptions/{id}/run:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Subscriptions]
+      operationId: adminRunSubscription
+      summary: Materialize this subscription into an order now.
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionRunResult' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /storefront/subscriptions:
+    get:
+      tags: [Subscriptions]
+      operationId: storefrontListSubscriptions
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionList' } } } }
+    post:
+      tags: [Subscriptions]
+      operationId: storefrontCreateSubscription
+      summary: Set up a recurring order (e.g. from a past order or a list).
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/subscriptions/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Subscriptions]
+      operationId: storefrontGetSubscription
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/subscriptions/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Subscriptions]
+      operationId: storefrontSetSubscriptionStatus
+      summary: Pause, resume, or cancel a subscription.
+      security: [{ storefrontAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/SubscriptionStatusInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/subscriptions/{id}/skip:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Subscriptions]
+      operationId: storefrontSkipSubscription
+      summary: Skip the next delivery (advance one cadence).
+      security: [{ storefrontAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } } }
         '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /storefront/account/reorder-suggestions:

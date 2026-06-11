@@ -34,6 +34,8 @@ type Querier interface {
 	AddWorkflowTransitionLog(ctx context.Context, arg AddWorkflowTransitionLogParams) error
 	// AdjustInventoryLevel applies signed deltas to on-hand and reserved.
 	AdjustInventoryLevel(ctx context.Context, arg AdjustInventoryLevelParams) (InventoryLevel, error)
+	// AdvanceSubscription records a completed run: new next date + last_run_at stamp.
+	AdvanceSubscription(ctx context.Context, arg AdvanceSubscriptionParams) error
 	AssignAttributeToFamily(ctx context.Context, arg AssignAttributeToFamilyParams) error
 	AssignProductToCategory(ctx context.Context, arg AssignProductToCategoryParams) error
 	// AttachOrdersToPayout settles every delivered, not-yet-paid vendor_order of a
@@ -170,6 +172,10 @@ type Querier interface {
 	CreateShipment(ctx context.Context, arg CreateShipmentParams) (Shipment, error)
 	// ===== Shopping lists ======================================================
 	CreateShoppingList(ctx context.Context, arg CreateShoppingListParams) (ShoppingList, error)
+	// Subscriptions / recurring orders (Roadmap Tier 2 #4).
+	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error)
+	CreateSubscriptionItem(ctx context.Context, arg CreateSubscriptionItemParams) (SubscriptionItem, error)
+	CreateSubscriptionRun(ctx context.Context, arg CreateSubscriptionRunParams) (SubscriptionRun, error)
 	CreateSyncLog(ctx context.Context, arg CreateSyncLogParams) (int64, error)
 	// ===== Trading partners ====================================================
 	CreateTradingPartner(ctx context.Context, arg CreateTradingPartnerParams) (TradingPartner, error)
@@ -376,6 +382,8 @@ type Querier interface {
 	GetShipmentWithOrg(ctx context.Context, arg GetShipmentWithOrgParams) (GetShipmentWithOrgRow, error)
 	GetShoppingList(ctx context.Context, arg GetShoppingListParams) (ShoppingList, error)
 	GetStage(ctx context.Context, id int64) (PipelineStage, error)
+	GetSubscription(ctx context.Context, arg GetSubscriptionParams) (Subscription, error)
+	GetSubscriptionForCustomer(ctx context.Context, arg GetSubscriptionForCustomerParams) (Subscription, error)
 	GetTradingPartner(ctx context.Context, arg GetTradingPartnerParams) (TradingPartner, error)
 	// GetTradingPartnerByID resolves a partner without org context (inbound EDI
 	// arrives on a partner-scoped endpoint; the org is derived from the partner).
@@ -471,6 +479,8 @@ type Querier interface {
 	// elapsed since last_run_at (or that have never run), joined to their definition
 	// so the job can compile + run without a second query.
 	ListDueReportSchedules(ctx context.Context) ([]ListDueReportSchedulesRow, error)
+	// ListDueSubscriptions feeds the daily materialization job (all orgs).
+	ListDueSubscriptions(ctx context.Context, nextRunDate pgtype.Date) ([]Subscription, error)
 	ListEDIDocuments(ctx context.Context, organizationID int64) ([]ListEDIDocumentsRow, error)
 	// ListExpirableQuotes returns open quotes (sent/revised) whose validity has
 	// passed — the quote-expiry sweep's working set.
@@ -569,6 +579,10 @@ type Querier interface {
 	ListShippingRatesByCountry(ctx context.Context, arg ListShippingRatesByCountryParams) ([]ShippingRate, error)
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
+	ListSubscriptionItems(ctx context.Context, subscriptionID int64) ([]ListSubscriptionItemsRow, error)
+	ListSubscriptionRuns(ctx context.Context, subscriptionID int64) ([]SubscriptionRun, error)
+	ListSubscriptionsAdmin(ctx context.Context, organizationID int64) ([]Subscription, error)
+	ListSubscriptionsForCustomer(ctx context.Context, customerID int64) ([]Subscription, error)
 	ListSyncLogs(ctx context.Context, organizationID int64) ([]ListSyncLogsRow, error)
 	ListTaxRates(ctx context.Context, organizationID int64) ([]TaxRate, error)
 	// ListTaxRatesByCountry feeds the local VAT provider for a destination.
@@ -694,6 +708,10 @@ type Querier interface {
 	SetReturnStatus(ctx context.Context, arg SetReturnStatusParams) (Return, error)
 	SetShipmentStatus(ctx context.Context, arg SetShipmentStatusParams) (Shipment, error)
 	SetShipmentTracking(ctx context.Context, arg SetShipmentTrackingParams) (Shipment, error)
+	// SetSubscriptionNextRun moves the next run date (used by "skip" and the job's advance).
+	SetSubscriptionNextRun(ctx context.Context, arg SetSubscriptionNextRunParams) error
+	SetSubscriptionStatus(ctx context.Context, arg SetSubscriptionStatusParams) (Subscription, error)
+	SetSubscriptionStatusForCustomer(ctx context.Context, arg SetSubscriptionStatusForCustomerParams) (Subscription, error)
 	SetVendorOrderStatus(ctx context.Context, arg SetVendorOrderStatusParams) (VendorOrder, error)
 	SetWorkflowInstanceState(ctx context.Context, arg SetWorkflowInstanceStateParams) error
 	// ShippedQtyForOrderItem returns the total already shipped for an order line,

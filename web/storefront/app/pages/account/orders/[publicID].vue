@@ -6,6 +6,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import Message from 'primevue/message'
 import type { components } from '@teggo/api/schema'
 
@@ -76,6 +77,34 @@ async function reorder() {
   }
 }
 
+// ---- set up recurring (subscription) ----
+const subscribeOpen = ref(false)
+const subscribing = ref(false)
+const subscribeCadence = ref<'weekly' | 'biweekly' | 'monthly' | 'quarterly'>('monthly')
+const subscribeNotice = ref('')
+const cadenceOptions = [
+  { label: 'Every week', value: 'weekly' },
+  { label: 'Every 2 weeks', value: 'biweekly' },
+  { label: 'Every month', value: 'monthly' },
+  { label: 'Every quarter', value: 'quarterly' },
+]
+async function submitSubscribe() {
+  if (!order.value) return
+  subscribing.value = true
+  subscribeNotice.value = ''
+  const items = order.value.items.map((it) => ({ product_id: it.product_id, quantity: it.quantity, unit: it.unit }))
+  const { error: err } = await client.POST('/storefront/subscriptions', {
+    body: { name: `Reorder of ${order.value.public_id.slice(0, 8)}`, cadence: subscribeCadence.value, items },
+  })
+  subscribing.value = false
+  if (err) {
+    subscribeNotice.value = 'Could not set up the recurring order.'
+    return
+  }
+  subscribeOpen.value = false
+  router.push('/account/subscriptions')
+}
+
 function sev(s?: string) {
   if (s === 'cancelled') return 'danger'
   if (s === 'delivered' || s === 'closed') return 'success'
@@ -130,6 +159,7 @@ async function submitReturn() {
         <h1>Order <span class="muted">{{ order.public_id.slice(0, 8) }}…</span> <Tag :value="order.status" :severity="sev(order.status)" /></h1>
         <div class="actions">
           <Button label="Request return" icon="pi pi-undo" outlined severity="secondary" @click="openReturn" />
+          <Button label="Set up recurring" icon="pi pi-sync" outlined severity="secondary" @click="subscribeOpen = true" />
           <Button label="Reorder" icon="pi pi-replay" outlined :loading="reordering" @click="reorder" />
           <Button v-if="canPay" label="Pay now" icon="pi pi-credit-card" :loading="paying" @click="payNow" />
           <Tag v-else-if="order.paid" value="Paid" severity="success" icon="pi pi-check" />
@@ -179,6 +209,19 @@ async function submitReturn() {
         <template #footer>
           <Button label="Cancel" text :disabled="returning" @click="returnOpen = false" />
           <Button label="Submit request" :loading="returning" @click="submitReturn" />
+        </template>
+      </Dialog>
+
+      <Dialog v-model:visible="subscribeOpen" modal header="Set up a recurring order" :style="{ width: '30rem' }">
+        <p class="muted small">We’ll reorder these {{ order.items.length }} item(s) automatically at current prices. Pause, skip, or cancel anytime.</p>
+        <div class="field">
+          <label>How often?</label>
+          <Select v-model="subscribeCadence" :options="cadenceOptions" optionLabel="label" optionValue="value" fluid />
+        </div>
+        <Message v-if="subscribeNotice" severity="error" :closable="false" class="mb">{{ subscribeNotice }}</Message>
+        <template #footer>
+          <Button label="Cancel" text :disabled="subscribing" @click="subscribeOpen = false" />
+          <Button label="Start subscription" :loading="subscribing" @click="submitSubscribe" />
         </template>
       </Dialog>
     </template>

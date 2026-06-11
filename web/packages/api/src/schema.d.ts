@@ -979,6 +979,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListSubscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetSubscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/subscriptions/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminSetSubscriptionStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/subscriptions/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Materialize this subscription into an order now. */
+        post: operations["adminRunSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["storefrontListSubscriptions"];
+        put?: never;
+        /** Set up a recurring order (e.g. from a past order or a list). */
+        post: operations["storefrontCreateSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["storefrontGetSubscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/subscriptions/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause, resume, or cancel a subscription. */
+        post: operations["storefrontSetSubscriptionStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/subscriptions/{id}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Skip the next delivery (advance one cadence). */
+        post: operations["storefrontSkipSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/storefront/account/reorder-suggestions": {
         parameters: {
             query?: never;
@@ -4409,6 +4553,73 @@ export interface components {
         };
         PromotionList: {
             items: components["schemas"]["Promotion"][];
+        };
+        SubscriptionItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            product_id: number;
+            sku: string;
+            name: string;
+            quantity: string;
+            unit: string;
+        };
+        SubscriptionRun: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            order_id?: number | null;
+            run_date: string;
+            /** @enum {string} */
+            status: "success" | "skipped" | "failed";
+            note?: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        Subscription: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            public_id: string;
+            /** Format: int64 */
+            customer_id: number;
+            name?: string | null;
+            currency: string;
+            /** @enum {string} */
+            cadence: "weekly" | "biweekly" | "monthly" | "quarterly";
+            /** @description YYYY-MM-DD */
+            next_run_date: string;
+            /** @enum {string} */
+            status: "active" | "paused" | "cancelled";
+            po_number?: string | null;
+            /** Format: date-time */
+            last_run_at?: string | null;
+            items?: components["schemas"]["SubscriptionItem"][];
+            runs?: components["schemas"]["SubscriptionRun"][];
+        };
+        SubscriptionList: {
+            items: components["schemas"]["Subscription"][];
+        };
+        SubscriptionInput: {
+            name?: string | null;
+            /** @enum {string} */
+            cadence: "weekly" | "biweekly" | "monthly" | "quarterly";
+            /** @description YYYY-MM-DD; defaults to one cadence from today */
+            start_date?: string;
+            po_number?: string | null;
+            items: {
+                /** Format: int64 */
+                product_id: number;
+                quantity?: string;
+                unit?: string;
+            }[];
+        };
+        SubscriptionStatusInput: {
+            /** @enum {string} */
+            status: "active" | "paused" | "cancelled";
+        };
+        SubscriptionRunResult: {
+            order_created: boolean;
         };
         RevalidateResult: {
             changed?: {
@@ -8151,6 +8362,218 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionList"];
+                };
+            };
+        };
+    };
+    adminGetSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminSetSubscriptionStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionStatusInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminRunSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionRunResult"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontListSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionList"];
+                };
+            };
+        };
+    };
+    storefrontCreateSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontGetSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontSetSubscriptionStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionStatusInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontSkipSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
             };
             404: components["responses"]["ErrorResponse"];
         };
