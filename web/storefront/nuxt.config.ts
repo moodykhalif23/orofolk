@@ -7,8 +7,8 @@ export default defineNuxtConfig({
 
   modules: ['@primevue/nuxt-module'],
 
-  // @teggo/api ships as TypeScript source (workspace package) — transpile it.
-  build: { transpile: ['@teggo/api'] },
+  // @teggo/api and @teggo/blocks ship as source (workspace packages) — transpile them.
+  build: { transpile: ['@teggo/api', '@teggo/blocks'] },
 
   primevue: {
     options: {

@@ -10,6 +10,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // @teggo/blocks ships .vue source — exclude it from dep pre-bundling so
+  // @vitejs/plugin-vue compiles it instead of esbuild trying to.
+  optimizeDeps: {
+    exclude: ['@teggo/blocks'],
+  },
   server: {
     port: 5173,
     proxy: {

@@ -15,6 +15,7 @@
     "@primeuix/themes": "^2.0.0",
     "@primevue/nuxt-module": "^4.5.5",
     "@teggo/api": "workspace:*",
+    "@teggo/blocks": "workspace:*",
     "nuxt": "^4.0.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.5",

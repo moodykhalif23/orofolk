@@ -1,0 +1,27 @@
+{
+  "name": "@teggo/blocks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared storefront block renderers + a block registry, consumed by both the Nuxt storefront and the Vue admin page builder so the two never drift.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@teggo/api": "workspace:*"
+  },
+  "peerDependencies": {
+    "primeicons": "^7.0.0",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vue-tsc": "^2.1.0"
+  }
+}
