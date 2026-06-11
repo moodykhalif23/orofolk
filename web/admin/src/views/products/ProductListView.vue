@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
@@ -16,6 +17,7 @@ import EmptyState from '@/components/EmptyState.vue'
 
 type AdminProduct = components['schemas']['AdminProduct']
 
+const route = useRoute()
 const products = ref<AdminProduct[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -84,6 +86,8 @@ function statusSeverity(s: string) {
 }
 
 onMounted(load)
+// Opened from the dashboard "New product" quick action.
+onMounted(() => { if (route.query.new) openCreate() })
 </script>
 
 <template>

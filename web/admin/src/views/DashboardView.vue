@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
+import Button from 'primevue/button'
 import SelectButton from 'primevue/selectbutton'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useAuthStore } from '@/stores/auth'
@@ -17,15 +18,20 @@ type OrderSummary = components['schemas']['OrderSummary']
 type SalesSummary = components['schemas']['SalesSummary']
 type DailyPoint = components['schemas']['DailySalesPoint']
 type TopProduct = components['schemas']['TopProduct']
+type AccountHealth = components['schemas']['AccountHealth']
 
 const auth = useAuthStore()
 const router = useRouter()
 
 const loading = ref(true)
+const refreshing = ref(false)
 const orgName = ref<string>('')
 
-// Period selector — drives the summary KPIs and the revenue trend.
-const period = ref(30)
+// Period selector — drives the summary KPIs, deltas and the revenue trend.
+// Persisted across sessions.
+const PERIOD_KEY = 'teggo.dashboard.period'
+const stored = Number(localStorage.getItem(PERIOD_KEY))
+const period = ref([7, 30, 90].includes(stored) ? stored : 30)
 const periodOptions = [
   { label: '7d', value: 7 },
   { label: '30d', value: 30 },
@@ -36,6 +42,8 @@ const canReport = computed(() => auth.can('report.view'))
 // Period-dependent (refetched on toggle).
 const summary = ref<SalesSummary | null>(null)
 const salesItems = ref<DailyPoint[]>([])
+const prevRevenue = ref<number | null>(null)
+const prevOrders = ref<number | null>(null)
 
 // Loaded once.
 const arOpen = ref<string | null>(null)
@@ -46,6 +54,10 @@ const top = ref<TopProduct[]>([])
 const statusLabels = ref<string[]>([])
 const statusValues = ref<number[]>([])
 const recentOrders = ref<OrderSummary[]>([])
+const atRisk = ref<AccountHealth[]>([])
+const pipelineValue = ref<number | null>(null)
+const pipelineCount = ref(0)
+const pipelineCurrency = ref('')
 
 interface Kpi {
   key: string
@@ -54,13 +66,21 @@ interface Kpi {
   icon: string
   value: number | string
   route: string
+  delta?: number | null
 }
+
+const pct = (curr: number, prev: number | null) =>
+  prev && prev > 0 ? Math.round(((curr - prev) / prev) * 100) : null
+
 const kpis = computed<Kpi[]>(() => {
   const k: Kpi[] = []
   if (summary.value) {
-    k.push({ key: 'rev', label: 'Revenue', sub: `last ${period.value} days`, icon: 'pi pi-chart-line', value: summary.value.revenue, route: 'analytics' })
-    k.push({ key: 'ord', label: 'Orders', sub: `last ${period.value} days`, icon: 'pi pi-shopping-cart', value: summary.value.order_count, route: 'orders' })
-    k.push({ key: 'aov', label: 'Avg order value', sub: `last ${period.value} days`, icon: 'pi pi-receipt', value: summary.value.avg_order_value, route: 'analytics' })
+    const curRev = Number(summary.value.revenue)
+    const curAov = Number(summary.value.avg_order_value)
+    const prevAov = prevOrders.value && prevOrders.value > 0 ? (prevRevenue.value ?? 0) / prevOrders.value : null
+    k.push({ key: 'rev', label: 'Revenue', sub: `last ${period.value} days`, icon: 'pi pi-chart-line', value: summary.value.revenue, route: 'analytics', delta: pct(curRev, prevRevenue.value) })
+    k.push({ key: 'ord', label: 'Orders', sub: `last ${period.value} days`, icon: 'pi pi-shopping-cart', value: summary.value.order_count, route: 'orders', delta: pct(summary.value.order_count, prevOrders.value) })
+    k.push({ key: 'aov', label: 'Avg order value', sub: `last ${period.value} days`, icon: 'pi pi-receipt', value: summary.value.avg_order_value, route: 'analytics', delta: pct(curAov, prevAov) })
   }
   if (arOpen.value !== null) k.push({ key: 'ar', label: 'Open AR', sub: 'outstanding', icon: 'pi pi-wallet', value: arOpen.value, route: 'ar-aging' })
   if (customersTotal.value !== null) k.push({ key: 'cust', label: 'Customers', icon: 'pi pi-building', value: customersTotal.value, route: 'customers' })
@@ -70,8 +90,6 @@ const kpis = computed<Kpi[]>(() => {
 
 const salesLabels = computed(() => salesItems.value.map((d) => d.day.slice(5)))
 const salesValues = computed(() => salesItems.value.map((d) => Number(d.revenue)))
-const topLabels = computed(() => top.value.map((t) => t.name))
-const topValues = computed(() => top.value.map((t) => Number(t.revenue)))
 
 interface Task {
   label: string
@@ -81,6 +99,19 @@ interface Task {
   severity: 'info' | 'warn' | 'danger' | 'success'
 }
 const tasks = ref<Task[]>([])
+
+// Quick-create shortcuts — gated by the matching manage permission. Each lands
+// on its list view with ?new=1, which the view reads to open its create dialog.
+const quickActions = computed(() =>
+  [
+    { label: 'New quote', icon: 'pi pi-file-edit', route: 'quotes', perm: 'quote.manage' },
+    { label: 'New order', icon: 'pi pi-shopping-cart', route: 'orders', perm: 'order.manage' },
+    { label: 'New product', icon: 'pi pi-box', route: 'products', perm: 'product.manage' },
+  ].filter((a) => auth.can(a.perm)),
+)
+function quickCreate(route: string) {
+  router.push({ name: route, query: { new: '1' } })
+}
 
 const greeting = computed(() => {
   const h = new Date().getHours()
@@ -97,25 +128,30 @@ function statusSeverity(s: string) {
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
-// Period-dependent reports — refetched whenever the toggle changes.
+// Period-dependent reports + previous-window comparison for the deltas.
 async function loadReports(days: number) {
   if (!canReport.value) return
   const to = new Date()
   const from = new Date()
   from.setDate(from.getDate() - days)
-  const [s, sales] = await Promise.all([
+  const prevFrom = new Date()
+  prevFrom.setDate(prevFrom.getDate() - 2 * days)
+  const [s, sales, prevSales] = await Promise.all([
     api.GET('/admin/reports/summary', { params: { query: { days } } }),
     api.GET('/admin/reports/sales', { params: { query: { from: ymd(from), to: ymd(to) } } }),
+    api.GET('/admin/reports/sales', { params: { query: { from: ymd(prevFrom), to: ymd(from) } } }),
   ])
   summary.value = s.data ?? null
   salesItems.value = sales.data?.items ?? []
+  const prev = prevSales.data?.items ?? []
+  prevRevenue.value = prev.reduce((a, d) => a + Number(d.revenue), 0)
+  prevOrders.value = prev.reduce((a, d) => a + d.order_count, 0)
 }
 
 async function load() {
-  loading.value = true
   const can = (p: string) => auth.can(p)
 
-  const [orders, aging, rfqs, quotes, returns, pendingProducts, customers, products, org, topProducts] =
+  const [orders, aging, rfqs, quotes, returns, pendingProducts, customers, products, org, topProducts, health, opps] =
     await Promise.all([
       can('order.view') ? api.GET('/admin/orders') : null,
       can('invoice.view') ? api.GET('/admin/invoices/aging') : null,
@@ -127,6 +163,8 @@ async function load() {
       can('product.view') ? api.GET('/admin/products', { params: { query: { page: 1, page_size: 1 } } }) : null,
       can('tenant.view') ? api.GET('/admin/organization') : null,
       can('report.view') ? api.GET('/admin/reports/top-products', { params: { query: { limit: 6 } } }) : null,
+      can('crm.view') ? api.GET('/admin/accounts/health') : null,
+      can('crm.view') ? api.GET('/admin/opportunities') : null,
       loadReports(period.value),
     ])
 
@@ -154,6 +192,17 @@ async function load() {
       .slice(0, 5)
   }
 
+  // At-risk accounts.
+  atRisk.value = (health?.data?.items ?? []).filter((a) => a.at_risk).slice(0, 6)
+
+  // Open sales pipeline (opportunities not yet closed).
+  if (opps?.data?.items?.length) {
+    const open = opps.data.items.filter((o) => !o.closed_at)
+    pipelineValue.value = open.reduce((a, o) => a + Number(o.amount), 0)
+    pipelineCount.value = open.length
+    pipelineCurrency.value = open[0]?.currency ?? ''
+  }
+
   const t: Task[] = []
   const newRfqs = rfqs?.data?.items?.filter((r) => r.status === 'submitted').length ?? 0
   if (rfqs && newRfqs) t.push({ label: 'RFQs to quote', icon: 'pi pi-inbox', count: newRfqs, route: 'rfqs', severity: 'info' })
@@ -165,13 +214,23 @@ async function load() {
   if (returns && toProcess) t.push({ label: 'Returns to review', icon: 'pi pi-replay', count: toProcess, route: 'returns', severity: 'warn' })
   const pending = pendingProducts?.data?.items?.length ?? 0
   if (pendingProducts && pending) t.push({ label: 'Products awaiting moderation', icon: 'pi pi-check-square', count: pending, route: 'moderation', severity: 'warn' })
+  if (atRisk.value.length) t.push({ label: 'At-risk accounts', icon: 'pi pi-heart', count: atRisk.value.length, route: 'account-health', severity: 'danger' })
   tasks.value = t
 
   loading.value = false
 }
 
-// Re-pull the period-dependent reports when the toggle changes (no full reload).
-watch(period, (d) => loadReports(d))
+async function refresh() {
+  refreshing.value = true
+  await load()
+  refreshing.value = false
+}
+
+// Re-pull the period-dependent reports when the toggle changes; persist choice.
+watch(period, (d) => {
+  localStorage.setItem(PERIOD_KEY, String(d))
+  loadReports(d)
+})
 
 onMounted(load)
 </script>
@@ -187,15 +246,28 @@ onMounted(load)
           today.
         </p>
       </div>
-      <SelectButton
-        v-if="canReport"
-        v-model="period"
-        :options="periodOptions"
-        optionLabel="label"
-        optionValue="value"
-        :allowEmpty="false"
-        aria-label="Reporting period"
-      />
+      <div class="head-actions">
+        <Button
+          v-for="a in quickActions"
+          :key="a.route"
+          :label="a.label"
+          :icon="a.icon"
+          size="small"
+          severity="secondary"
+          outlined
+          @click="quickCreate(a.route)"
+        />
+        <Button icon="pi pi-refresh" size="small" severity="secondary" text :loading="refreshing" aria-label="Refresh" @click="refresh" />
+        <SelectButton
+          v-if="canReport"
+          v-model="period"
+          :options="periodOptions"
+          optionLabel="label"
+          optionValue="value"
+          :allowEmpty="false"
+          aria-label="Reporting period"
+        />
+      </div>
     </header>
 
     <div v-if="loading" class="loading"><ProgressSpinner style="width: 2.5rem; height: 2.5rem" /></div>
@@ -213,7 +285,16 @@ onMounted(load)
           <span class="stat-ic"><i :class="k.icon" /></span>
           <span class="stat-main">
             <span class="stat-val">{{ k.value }}</span>
-            <span class="stat-lbl">{{ k.label }}</span>
+            <span class="stat-lbl">
+              {{ k.label }}
+              <span
+                v-if="k.delta !== undefined && k.delta !== null"
+                class="delta"
+                :class="k.delta >= 0 ? 'up' : 'down'"
+              >
+                <i :class="k.delta >= 0 ? 'pi pi-arrow-up' : 'pi pi-arrow-down'" />{{ Math.abs(k.delta) }}%
+              </span>
+            </span>
             <span v-if="k.sub" class="stat-sub">{{ k.sub }}</span>
           </span>
         </button>
@@ -247,6 +328,40 @@ onMounted(load)
               <i class="pi pi-check-circle" />
               <span>You're all caught up — nothing needs attention.</span>
             </div>
+          </template>
+        </Card>
+
+        <!-- Sales pipeline -->
+        <Card v-if="pipelineValue !== null" class="panel">
+          <template #title>Sales pipeline</template>
+          <template #subtitle>Open opportunities</template>
+          <template #content>
+            <button type="button" class="pipeline" @click="router.push({ name: 'pipeline' })">
+              <span class="pipe-val">{{ pipelineValue.toLocaleString() }} {{ pipelineCurrency }}</span>
+              <span class="pipe-lbl">{{ pipelineCount }} open {{ pipelineCount === 1 ? 'opportunity' : 'opportunities' }}</span>
+            </button>
+          </template>
+        </Card>
+
+        <!-- At-risk accounts -->
+        <Card v-if="atRisk.length" class="panel">
+          <template #title>At-risk accounts</template>
+          <template #subtitle>Customers slipping in order cadence</template>
+          <template #content>
+            <ul class="risklist">
+              <li
+                v-for="a in atRisk"
+                :key="a.customer_id"
+                class="risk"
+                @click="router.push({ name: 'account-health' })"
+              >
+                <span class="risk-main">
+                  <span class="risk-name">{{ a.name }}</span>
+                  <span v-if="a.reason" class="risk-reason">{{ a.reason }}</span>
+                </span>
+                <Tag :value="`${a.days_since}d`" severity="danger" />
+              </li>
+            </ul>
           </template>
         </Card>
 
@@ -321,6 +436,7 @@ onMounted(load)
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.5rem;
 }
 .dash-head h1 {
@@ -333,6 +449,12 @@ onMounted(load)
   margin: 0.3rem 0 0;
   color: var(--p-text-muted-color, #64748b);
   font-size: 0.92rem;
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 .loading {
   display: flex;
@@ -395,7 +517,20 @@ onMounted(load)
   font-weight: 600;
   color: var(--p-text-color, #334155);
   margin-top: 0.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.delta .pi { font-size: 0.6rem; }
+.delta.up { color: var(--p-green-600, #16a34a); }
+.delta.down { color: var(--p-red-500, #ef4444); }
 .stat-sub {
   font-size: 0.72rem;
   color: var(--p-text-muted-color, #94a3b8);
@@ -427,7 +562,8 @@ onMounted(load)
 .tasklist,
 .orderlist,
 .aging,
-.toplist {
+.toplist,
+.risklist {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -482,6 +618,42 @@ onMounted(load)
   font-size: 1.5rem;
   color: var(--p-green-500, #22c55e);
 }
+
+/* Sales pipeline */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.pipe-val {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--p-text-color, #0f172a);
+}
+.pipe-lbl {
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color, #64748b);
+}
+
+/* At-risk accounts */
+.risk {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--teggo-border, #f1f5f9);
+  cursor: pointer;
+}
+.risk:last-child { border-bottom: none; }
+.risk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.risk-name { font-size: 0.9rem; font-weight: 600; }
+.risk-reason { font-size: 0.75rem; color: var(--p-text-muted-color, #94a3b8); }
 
 /* Top products */
 .topitem {

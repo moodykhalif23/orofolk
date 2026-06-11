@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -19,6 +19,7 @@ import EmptyState from '@/components/EmptyState.vue'
 type Quote = components['schemas']['QuoteSummary']
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 const rows = ref<Quote[]>([])
 const loading = ref(false)
@@ -82,6 +83,8 @@ function sev(s: string) {
 }
 
 onMounted(load)
+// Opened from the dashboard "New quote" quick action.
+onMounted(() => { if (route.query.new) openCreate() })
 </script>
 
 <template>
