@@ -9,11 +9,13 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions } from '@/composables/useRecordOptions'
+import { useAuthStore } from '@/stores/auth'
 import type { components } from '@teggo/api/schema'
 
 type AdminProduct = components['schemas']['AdminProduct']
 type ProductInput = components['schemas']['ProductInput']
 type VisRule = components['schemas']['CatalogVisibilityRule']
+type ProductImage = components['schemas']['ProductImage']
 
 const props = defineProps<{ open: boolean; product: AdminProduct | null }>()
 const emit = defineEmits<{ 'update:open': [boolean]; saved: [] }>()
@@ -22,6 +24,71 @@ const toast = useToast()
 const saving = ref(false)
 const error = ref('')
 const attrsText = ref('{}')
+
+// ---- Product photos (max 5) — reuse the DAM upload, then link by asset id ---
+const auth = useAuthStore()
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
+const src = (u?: string | null) => (u ? `${apiBase}${u}` : '')
+const MAX_IMAGES = 5
+const images = ref<ProductImage[]>([])
+const uploading = ref(false)
+const imageInput = ref<HTMLInputElement | null>(null)
+
+async function loadImages() {
+  if (!props.product) {
+    images.value = []
+    return
+  }
+  const { data } = await api.GET('/admin/products/{id}/images', { params: { path: { id: props.product.id } } })
+  images.value = data?.items ?? []
+}
+function pickImage() {
+  imageInput.value?.click()
+}
+async function onImageFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !props.product) return
+  uploading.value = true
+  try {
+    // 1) Upload the file to the media library (dedupe + renditions handled there).
+    const fd = new FormData()
+    fd.append('file', file)
+    const up = await fetch(`${apiBase}/admin/media`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.token ?? ''}` },
+      body: fd,
+    })
+    if (!up.ok) {
+      const b = await up.json().catch(() => ({}))
+      throw new Error(b.message ?? `Upload failed (${up.status})`)
+    }
+    const asset = (await up.json()) as { id: number }
+    // 2) Link the uploaded asset to this product.
+    const { error: err } = await api.POST('/admin/products/{id}/images', {
+      params: { path: { id: props.product.id } },
+      body: { media_asset_id: asset.id },
+    })
+    if (err) throw new Error(errMessage(err, 'Could not attach image'))
+    await loadImages()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: errMessage(e, 'Upload failed'), life: 4000 })
+  } finally {
+    uploading.value = false
+    input.value = ''
+  }
+}
+async function removeImage(id: number) {
+  if (!props.product) return
+  const { error: err } = await api.DELETE('/admin/products/{id}/images/{imageID}', {
+    params: { path: { id: props.product.id, imageID: id } },
+  })
+  if (err) {
+    toast.add({ severity: 'error', summary: errMessage(err, 'Delete failed'), life: 3500 })
+    return
+  }
+  loadImages()
+}
 
 // Per-customer catalog visibility (only for an existing product).
 const { customers, customersLoaded, loadCustomers } = useCustomerOptions()
@@ -83,8 +150,10 @@ watch(
       attrsText.value = JSON.stringify(props.product.attributes ?? {}, null, 2)
       loadCustomers()
       loadVisibility()
+      loadImages()
     } else {
       visRules.value = []
+      images.value = []
       Object.assign(form, { sku: '', name: '', slug: '', type: 'simple', status: 'draft', unit: 'each', description: '' })
       attrsText.value = '{}'
     }
@@ -166,6 +235,30 @@ async function save() {
         <Textarea v-model="attrsText" rows="4" fluid class="mono" />
       </div>
 
+      <div v-if="product" class="field photos">
+        <label>Photos <span class="hint">(up to {{ MAX_IMAGES }} — shown to buyers)</span></label>
+        <div class="img-grid">
+          <div v-for="img in images" :key="img.id" class="img-cell">
+            <img :src="src(img.url)" :alt="img.alt ?? ''" loading="lazy" />
+            <button type="button" class="img-del" aria-label="Remove photo" @click="removeImage(img.id)">
+              <i class="pi pi-times" />
+            </button>
+          </div>
+          <button
+            v-if="images.length < MAX_IMAGES"
+            type="button"
+            class="img-add"
+            :disabled="uploading"
+            @click="pickImage"
+          >
+            <i :class="uploading ? 'pi pi-spin pi-spinner' : 'pi pi-plus'" />
+            <span>{{ uploading ? 'Uploading…' : 'Add photo' }}</span>
+          </button>
+        </div>
+        <p v-if="!images.length" class="muted hint">No photos yet — add up to {{ MAX_IMAGES }}.</p>
+        <input ref="imageInput" type="file" accept="image/*" hidden @change="onImageFile" />
+      </div>
+
       <div v-if="product" class="field vis">
         <label>Catalog visibility <span class="hint">(hide this product from specific customers)</span></label>
         <ul class="vis-list">
@@ -221,6 +314,54 @@ async function save() {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem;
 }
+.photos { border-top: 1px solid var(--p-surface-200, #e2e8f0); padding-top: 0.8rem; }
+.muted { color: var(--p-text-muted-color, #64748b); }
+.img-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.img-cell {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: var(--teggo-radius, 6px);
+  overflow: hidden;
+  border: 1px solid var(--teggo-border, #e2e8f0);
+  background: var(--p-surface-100, #f1f5f9);
+}
+.img-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-del {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  color: #fff;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+.img-del:hover { background: rgba(15, 23, 42, 0.85); }
+.img-add {
+  width: 76px;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border: 1px dashed var(--p-surface-300, #cbd5e1);
+  border-radius: var(--teggo-radius, 6px);
+  background: var(--p-surface-50, #f8fafc);
+  color: var(--p-text-muted-color, #64748b);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.img-add:hover:not(:disabled) { border-color: var(--p-primary-color, #16a34a); color: var(--p-primary-color, #16a34a); }
+.img-add:disabled { cursor: progress; opacity: 0.7; }
 .vis { border-top: 1px solid var(--p-surface-200, #e2e8f0); padding-top: 0.8rem; }
 .hint { font-weight: 400; color: var(--p-text-muted-color, #64748b); font-size: 0.75rem; }
 .vis-list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }

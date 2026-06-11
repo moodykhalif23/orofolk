@@ -58,6 +58,16 @@ func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(ht
 		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/products/{id}", h.adminDelete)
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/categories", h.listProductCategories)
 		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/categories", h.assignProductCategory)
+
+		// Bulk CSV import/export. Static segments — chi matches these before the
+		// /admin/products/{id} param route, so they never collide.
+		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/export", h.exportCSV)
+		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/import", h.importCSV)
+
+		// Product image gallery (links DAM media_assets; capped at 5 per product).
+		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/images", h.listImages)
+		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/images", h.addImage)
+		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/products/{id}/images/{imageID}", h.deleteImage)
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/visibility", h.listVisibility)
 		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/visibility", h.createVisibility)
 		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/catalog-visibility/{id}", h.deleteVisibility)

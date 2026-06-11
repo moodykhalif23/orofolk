@@ -117,6 +117,50 @@ components:
         page: { type: integer }
         total: { type: integer, format: int64 }
 
+    ProductImage:
+      type: object
+      required: [id, url, sort_order]
+      properties:
+        id: { type: integer, format: int64 }
+        media_asset_id: { type: integer, format: int64, nullable: true }
+        url: { type: string }
+        alt: { type: string, nullable: true }
+        sort_order: { type: integer }
+        status: { type: string, nullable: true, description: 'DAM asset status (ready/processing/…)' }
+        width: { type: integer, nullable: true }
+        height: { type: integer, nullable: true }
+
+    ProductImageInput:
+      type: object
+      required: [media_asset_id]
+      properties:
+        media_asset_id: { type: integer, format: int64, description: 'A media asset uploaded via POST /admin/media.' }
+        alt: { type: string, nullable: true }
+
+    ProductImageList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ProductImage' } }
+
+    ProductImportRow:
+      type: object
+      required: [row, action]
+      properties:
+        row: { type: integer, description: 'Source line number in the CSV (header is line 1).' }
+        sku: { type: string }
+        action: { type: string, enum: [created, updated, error] }
+        error: { type: string }
+
+    ProductImportResult:
+      type: object
+      required: [created, updated, errors, results]
+      properties:
+        created: { type: integer }
+        updated: { type: integer }
+        errors: { type: integer }
+        results: { type: array, items: { $ref: '#/components/schemas/ProductImportRow' } }
+
     StorefrontProduct:
       type: object
       required: [public_id, sku, name, slug, status, unit]
@@ -2764,6 +2808,78 @@ paths:
                 category_id: { type: integer, format: int64 }
       responses:
         '204': { description: No Content }
+
+  /admin/products/export:
+    get:
+      tags: [Catalog]
+      operationId: adminExportProducts
+      summary: Export the catalog as CSV (sku,name,slug,type,status,unit,description,attributes).
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+
+  /admin/products/import:
+    post:
+      tags: [Catalog]
+      operationId: adminImportProducts
+      summary: Bulk create/update products from a CSV (upsert by SKU). Returns per-row results.
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Import summary
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProductImportResult' } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/products/{id}/images:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    get:
+      tags: [Catalog]
+      operationId: adminListProductImages
+      summary: List a product's gallery images (max 5).
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ProductImageList' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Catalog]
+      operationId: adminAddProductImage
+      summary: Link an uploaded media asset to a product (rejected past 5 images).
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProductImageInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ProductImage' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+
+  /admin/products/{id}/images/{imageID}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      - { name: imageID, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Catalog]
+      operationId: adminDeleteProductImage
+      summary: Remove an image from a product's gallery.
+      security: [{ adminAuth: [] }]
+      responses:
+        '204': { description: No Content }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /admin/categories:
     get:

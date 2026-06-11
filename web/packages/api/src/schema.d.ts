@@ -196,6 +196,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export the catalog as CSV (sku,name,slug,type,status,unit,description,attributes). */
+        get: operations["adminExportProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk create/update products from a CSV (upsert by SKU). Returns per-row results. */
+        post: operations["adminImportProducts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** List a product's gallery images (max 5). */
+        get: operations["adminListProductImages"];
+        put?: never;
+        /** Link an uploaded media asset to a product (rejected past 5 images). */
+        post: operations["adminAddProductImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{id}/images/{imageID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                imageID: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an image from a product's gallery. */
+        delete: operations["adminDeleteProductImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/categories": {
         parameters: {
             query?: never;
@@ -3652,6 +3726,44 @@ export interface components {
             /** Format: int64 */
             total?: number;
         };
+        ProductImage: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            media_asset_id?: number | null;
+            url: string;
+            alt?: string | null;
+            sort_order: number;
+            /** @description DAM asset status (ready/processing/…) */
+            status?: string | null;
+            width?: number | null;
+            height?: number | null;
+        };
+        ProductImageInput: {
+            /**
+             * Format: int64
+             * @description A media asset uploaded via POST /admin/media.
+             */
+            media_asset_id: number;
+            alt?: string | null;
+        };
+        ProductImageList: {
+            items: components["schemas"]["ProductImage"][];
+        };
+        ProductImportRow: {
+            /** @description Source line number in the CSV (header is line 1). */
+            row: number;
+            sku?: string;
+            /** @enum {string} */
+            action: "created" | "updated" | "error";
+            error?: string;
+        };
+        ProductImportResult: {
+            created: number;
+            updated: number;
+            errors: number;
+            results: components["schemas"]["ProductImportRow"][];
+        };
         StorefrontProduct: {
             /** Format: uuid */
             public_id: string;
@@ -6327,6 +6439,128 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    adminExportProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    adminImportProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Import summary */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImportResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListProductImages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImageList"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminAddProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductImageInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImage"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                imageID: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListCategories: {
