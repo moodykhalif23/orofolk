@@ -8,7 +8,7 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs'
 const config: Config = {
   title: 'Teggo Developer Docs',
   tagline: 'Self-hosted, API-first B2B commerce platform',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
   url: 'https://docs.teggo.local',
   baseUrl: '/',
   organizationName: 'teggo',
@@ -80,13 +80,35 @@ const config: Config = {
   themeConfig: {
     navbar: {
       title: 'Teggo',
+      logo: { alt: 'Teggo', src: 'img/logo.svg' },
       items: [
         { type: 'docSidebar', sidebarId: 'guides', position: 'left', label: 'Guides' },
         { type: 'docSidebar', sidebarId: 'api', position: 'left', label: 'API reference' },
+        { to: '/getting-started', label: 'Get started', position: 'right', className: 'navbar-cta' },
       ],
     },
     footer: {
       style: 'dark',
+      links: [
+        {
+          title: 'Docs',
+          items: [
+            { label: 'Introduction', to: '/intro' },
+            { label: 'Getting started', to: '/getting-started' },
+            { label: 'Architecture', to: '/architecture' },
+            { label: 'API reference', to: '/api' },
+          ],
+        },
+        {
+          title: 'Build',
+          items: [
+            { label: 'Adding a module', to: '/module-pattern' },
+            { label: 'Conventions', to: '/conventions' },
+            { label: 'Auth & RBAC', to: '/auth-rbac' },
+            { label: 'Configuration', to: '/configuration' },
+          ],
+        },
+      ],
       copyright: 'Teggo — self-hosted B2B commerce.',
     },
     prism: {
