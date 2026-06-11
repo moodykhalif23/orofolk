@@ -33,7 +33,9 @@ function sev(s: string) {
       @rowClick="router.push(`/account/invoices/${$event.data.public_id}`)"
       class="clickable"
     >
-      <template #empty>No invoices yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-receipt" title="No invoices yet" message="Invoices for your orders will appear here, where you can view balances and due dates." />
+      </template>
       <Column header="Reference"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column header="Total"><template #body="{ data }">{{ data.grand_total }} {{ data.currency }}</template></Column>

@@ -3,6 +3,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
+import Button from 'primevue/button'
 
 definePageMeta({ middleware: 'auth' })
 useSeoMeta({ title: 'My orders — Teggo Store' })
@@ -36,7 +37,11 @@ function sev(s: string) {
       @rowClick="router.push(`/account/orders/${$event.data.public_id}`)"
       class="clickable"
     >
-      <template #empty>No orders yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-shopping-cart" title="No orders yet" message="When you place an order it'll appear here so you can track and reorder it.">
+          <NuxtLink to="/c/all"><Button label="Browse catalog" icon="pi pi-search" /></NuxtLink>
+        </EmptyState>
+      </template>
       <Column header="Reference"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column header="Total"><template #body="{ data }">{{ data.grand_total }} {{ data.currency }}</template></Column>

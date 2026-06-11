@@ -25,7 +25,9 @@ function sev(s: string) {
     <h1 class="title">My returns</h1>
     <Message v-if="error" severity="error" :closable="false">Could not load your returns.</Message>
     <DataTable :value="data?.items ?? []" dataKey="id" stripedRows>
-      <template #empty>No returns yet. Start one from an order.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-replay" title="No returns yet" message="Need to send something back? Open one of your orders and choose “Request return”." />
+      </template>
       <Column header="RMA"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column field="reason" header="Reason" />

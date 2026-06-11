@@ -6,7 +6,7 @@ import ConfirmationService from 'primevue/confirmationservice'
 
 import 'primeicons/primeicons.css'
 import '@/assets/main.css'
-import { TeggoPreset } from '@/theme'
+import Aura from '@primeuix/themes/aura'
 
 import App from '@/App.vue'
 import { router } from '@/router'
@@ -18,7 +18,7 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(PrimeVue, {
   theme: {
-    preset: TeggoPreset,
+    preset: Aura,
     options: {
       darkModeSelector: '.app-dark',
     },

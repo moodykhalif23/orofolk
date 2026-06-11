@@ -178,7 +178,9 @@ await loadLists()
             <Button label="Add all to cart" icon="pi pi-cart-plus" :disabled="busy || !items.length" @click="convertToCart" />
           </div>
           <DataTable :value="items" dataKey="id" stripedRows>
-            <template #empty>This list is empty. Add products from the catalog.</template>
+            <template #empty>
+              <EmptyState icon="pi pi-list" title="This list is empty" message="Add products from the catalog to build a reusable shopping list." />
+            </template>
             <Column field="name" header="Product" />
             <Column field="sku" header="SKU" />
             <Column header="Qty">

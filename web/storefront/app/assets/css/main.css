@@ -16,5 +16,70 @@ body {
 }
 
 a {
-  color: var(--p-primary-color, #0ea5e9);
+  color: var(--p-primary-color, #16a34a);
+}
+
+/* ===========================================================================
+   Shared surface tokens — kept in sync with the admin app so the two frontends
+   read as one product. Aura theme, but cards/controls use a slightly-sharp 6px
+   corner (not Aura's softer fully-rounded default, not razor-square).
+   =========================================================================== */
+:root {
+  --teggo-border: #e2e8f0; /* slate-200 */
+  --teggo-radius: 6px;
+  --teggo-surface: #ffffff;
+  --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
+}
+
+/* Cards: bordered, subtle elevation, slightly-sharp corner. */
+.p-card {
+  border: 1px solid var(--teggo-border);
+  border-radius: var(--teggo-radius);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+/* Tighten the common controls to the same slightly-sharp geometry as admin. */
+.p-inputtext,
+.p-textarea,
+.p-select,
+.p-multiselect,
+.p-button,
+.p-tag,
+.p-chip,
+.p-dialog,
+.p-datatable,
+.p-message {
+  border-radius: var(--teggo-radius) !important;
+}
+
+/* DataTable: defined slate gridlines + flat uppercase header, matching admin. */
+.p-datatable {
+  border: 1px solid var(--teggo-border);
+}
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--teggo-surface-muted);
+  border-color: var(--teggo-border);
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--p-text-muted-color, #475569);
+}
+
+/* ---------------------------------------------------------------------------
+   Page scaffold + shared utilities — mirror admin's. Page headers use the
+   <PageHeader> component; empty states use <EmptyState>.
+   --------------------------------------------------------------------------- */
+.title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1rem;
+}
+.muted {
+  color: var(--p-text-muted-color, #64748b);
+  font-weight: 400;
+}
+.mb {
+  margin-bottom: 1rem;
 }

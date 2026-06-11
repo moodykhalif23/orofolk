@@ -22,13 +22,18 @@ function sev(s: string) {
 
 <template>
   <section>
-    <div class="head">
-      <h1>My requests for quote</h1>
-      <NuxtLink to="/rfq"><Button label="New request" icon="pi pi-plus" /></NuxtLink>
-    </div>
+    <PageHeader title="My requests for quote">
+      <template #actions>
+        <NuxtLink to="/rfq"><Button label="New request" icon="pi pi-plus" /></NuxtLink>
+      </template>
+    </PageHeader>
     <Message v-if="error" severity="error" :closable="false">Could not load your RFQs.</Message>
     <DataTable v-else :value="data?.items ?? []" dataKey="id" stripedRows>
-      <template #empty>No requests yet.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-inbox" title="No requests yet" message="Send a request for quote and we'll get back to you with pricing here.">
+          <NuxtLink to="/rfq"><Button label="New request" icon="pi pi-plus" /></NuxtLink>
+        </EmptyState>
+      </template>
       <Column header="Reference"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column field="notes" header="Notes" />
@@ -36,7 +41,3 @@ function sev(s: string) {
   </section>
 </template>
 
-<style scoped>
-.head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-.head h1 { margin: 0; }
-</style>

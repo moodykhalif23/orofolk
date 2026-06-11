@@ -129,15 +129,20 @@ await load()
     </Message>
 
     <template v-else>
-      <div class="head">
-        <h1>Company users</h1>
-        <Button label="Invite user" icon="pi pi-user-plus" @click="openCreate" />
-      </div>
+      <PageHeader title="Company users">
+        <template #actions>
+          <Button label="Invite user" icon="pi pi-user-plus" @click="openCreate" />
+        </template>
+      </PageHeader>
 
       <Message v-if="error" severity="error" :closable="true" class="mb">{{ error }}</Message>
 
       <DataTable :value="users" dataKey="id" stripedRows>
-        <template #empty>No users.</template>
+        <template #empty>
+          <EmptyState icon="pi pi-users" title="No users yet" message="Invite colleagues to buy under your company account, each with their own role.">
+            <Button label="Invite user" icon="pi pi-user-plus" @click="openCreate" />
+          </EmptyState>
+        </template>
         <Column field="full_name" header="Name" />
         <Column field="email" header="Email" />
         <Column header="Role"><template #body="{ data }"><Tag :value="data.role" /></template></Column>
@@ -184,8 +189,6 @@ await load()
 
 <style scoped>
 .wrap { max-width: 920px; }
-.head { display: flex; align-items: center; justify-content: space-between; margin: 0.5rem 0 1rem; }
-.head h1 { margin: 0; }
 .mb { margin-bottom: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
 .field label { font-size: 0.85rem; font-weight: 600; }

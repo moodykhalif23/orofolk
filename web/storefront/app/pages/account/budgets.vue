@@ -30,7 +30,9 @@ function pct(spent: string, amount: string) {
     <Message v-if="error" severity="error" :closable="false">Could not load your budgets.</Message>
 
     <DataTable :value="data?.items ?? []" dataKey="cost_center" stripedRows>
-      <template #empty>No budgets configured.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-wallet" title="No budgets configured" message="Your administrator hasn't set spending limits. Orders won't be blocked at checkout." />
+      </template>
       <Column header="Cost center"><template #body="{ data }">{{ data.cost_center || 'Company-wide' }}</template></Column>
       <Column field="period" header="Period" />
       <Column header="Spent / budget">

@@ -33,7 +33,9 @@ function sev(s: string) {
       @rowClick="router.push(`/quotes/${$event.data.public_id}`)"
       class="clickable"
     >
-      <template #empty>No quotes yet — your requests will appear here once we respond.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-file-edit" title="No quotes yet" message="Submit a request for quote and our responses will appear here to review and accept." />
+      </template>
       <Column header="Reference"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
       <Column header="Status"><template #body="{ data }"><Tag :value="data.status" :severity="sev(data.status)" /></template></Column>
       <Column header="Total"><template #body="{ data }">{{ data.subtotal }} {{ data.currency }}</template></Column>

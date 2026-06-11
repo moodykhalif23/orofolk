@@ -44,7 +44,11 @@ async function addToCart(s: Suggestion) {
     <Message v-if="notice" severity="success" :closable="true" class="mb">{{ notice }}</Message>
 
     <DataTable :value="data?.items ?? []" dataKey="slug" stripedRows>
-      <template #empty>Nothing due for reorder yet — order a few times and we'll spot the pattern.</template>
+      <template #empty>
+        <EmptyState icon="pi pi-history" title="Nothing due for reorder" message="Order a few times and we'll spot your patterns and suggest refills here.">
+          <NuxtLink to="/c/all"><Button label="Browse catalog" icon="pi pi-search" /></NuxtLink>
+        </EmptyState>
+      </template>
       <Column header="Product">
         <template #body="{ data }">
           <NuxtLink :to="`/p/${data.slug}`" class="lnk">{{ data.name }}</NuxtLink>

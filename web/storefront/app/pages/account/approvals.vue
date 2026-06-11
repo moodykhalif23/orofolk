@@ -67,7 +67,9 @@ await load()
       <Message v-if="notice" severity="success" :closable="true" class="mb">{{ notice }}</Message>
 
       <DataTable :value="items" dataKey="public_id" stripedRows>
-        <template #empty>No orders are awaiting approval.</template>
+        <template #empty>
+          <EmptyState icon="pi pi-check-circle" title="Nothing to approve" message="Orders that need your sign-off before they're released will appear here." />
+        </template>
         <Column header="Order"><template #body="{ data }">{{ data.public_id.slice(0, 8) }}…</template></Column>
         <Column header="Total"><template #body="{ data }">{{ data.grand_total }} {{ data.currency }}</template></Column>
         <Column header="Placed by"><template #body="{ data }">{{ data.placed_by_user ? `User #${data.placed_by_user}` : '—' }}</template></Column>

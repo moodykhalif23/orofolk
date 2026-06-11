@@ -74,7 +74,7 @@ async function submit() {
 
 <template>
   <section class="wrap">
-    <h1>Request a quote</h1>
+    <h1 class="title">Request a quote</h1>
     <p class="muted">Add the products and quantities you need. Our team will send back a quote.</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
