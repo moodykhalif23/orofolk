@@ -48,7 +48,8 @@ func (h *Handler) payInvoiceByCard(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	res, err := h.gateway.CreateCharge(r.Context(), gateway.ChargeRequest{
+	gw := h.gateways.For(r.Context(), claimsOrg(r))
+	res, err := gw.CreateCharge(r.Context(), gateway.ChargeRequest{
 		Amount: inv.GrandTotal, Currency: inv.Currency, Token: req.Token, Reference: inv.PublicID.String(),
 	})
 	if err != nil {
@@ -60,7 +61,7 @@ func (h *Handler) payInvoiceByCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider := h.gateway.Provider()
+	provider := gw.Provider()
 	ref := res.GatewayReference
 	if _, err := h.q.CreatePayment(r.Context(), gen.CreatePaymentParams{
 		InvoiceID: &inv.ID, OrderID: &inv.OrderID, CustomerID: cid,
@@ -140,7 +141,8 @@ func (h *Handler) payMyOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 
-	res, err := h.gateway.CreateCharge(r.Context(), gateway.ChargeRequest{
+	gw := h.gateways.For(r.Context(), order.OrganizationID)
+	res, err := gw.CreateCharge(r.Context(), gateway.ChargeRequest{
 		Amount: inv.GrandTotal, Currency: inv.Currency, Token: req.Token, Reference: inv.PublicID.String(),
 	})
 	if err != nil {
@@ -152,7 +154,7 @@ func (h *Handler) payMyOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	provider := h.gateway.Provider()
+	provider := gw.Provider()
 	ref := res.GatewayReference
 	if _, err := h.q.CreatePayment(r.Context(), gen.CreatePaymentParams{
 		InvoiceID: &inv.ID, OrderID: &inv.OrderID, CustomerID: cid,

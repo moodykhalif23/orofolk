@@ -168,7 +168,7 @@ HAVING count(DISTINCT o.id) >= 2;
 -- ListQuotesForFollowup returns 'sent' quotes expiring within the cutoff that
 -- haven't been followed up yet (one nudge per quote). $1 = cutoff timestamp.
 -- name: ListQuotesForFollowup :many
-SELECT id, public_id, customer_id FROM quotes
+SELECT id, public_id, customer_id, organization_id FROM quotes
 WHERE status = 'sent' AND valid_until IS NOT NULL
   AND valid_until > now() AND valid_until <= $1
   AND followup_at IS NULL;

@@ -49,6 +49,8 @@ import (
 	"b2bcommerce/internal/modules/wfadmin"
 	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/payments/gateway"
+	"b2bcommerce/internal/payments/tenantgw"
+	"b2bcommerce/internal/secretbox"
 	mw "b2bcommerce/internal/server/middleware"
 	shippingeng "b2bcommerce/internal/shipping"
 	"b2bcommerce/internal/store"
@@ -57,6 +59,7 @@ import (
 
 type notifier interface {
 	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error
 	EmitEvent(ctx context.Context, event string, payload map[string]any) error
 }
 
@@ -83,6 +86,7 @@ type options struct {
 	rtCluster      string
 	platformDomain string
 	signupVerify   string
+	secrets        *secretbox.Box
 }
 
 // Option configures optional server dependencies.
@@ -176,6 +180,13 @@ func WithPlatform(baseDomain, verifyURL string) Option {
 	return func(o *options) { o.platformDomain = baseDomain; o.signupVerify = verifyURL }
 }
 
+// WithSecrets wires the at-rest encryption box for tenant credentials (gateway
+// keys). Without it, tenants cannot store payment credentials (the endpoints
+// refuse) and charge resolution ignores stored ones.
+func WithSecrets(box *secretbox.Box) Option {
+	return func(o *options) { o.secrets = box }
+}
+
 // New builds the fully-wired HTTP handler.
 func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	var o options
@@ -234,7 +245,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	mp.Routes(r, authMW)
 	mp.RoutesVendor(r, authMW)
 	assistant.New(st.Queries(), o.aiProvider).Routes(r, authMW)
-	settings.New(st.Pool()).RoutesWithOptionalAuth(r, authMW, optAuthMW)
+	settings.NewWithSecrets(st.Pool(), o.secrets).RoutesWithOptionalAuth(r, authMW, optAuthMW)
 	pricing.New(st.Queries(), o.recompute).Routes(r, authMW)
 	promo.New(st.Queries()).Routes(r, authMW)
 	fxadmin.New(st.Pool()).Routes(r, authMW)
@@ -243,7 +254,10 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	subscription.New(st.Pool()).Routes(r, authMW)
 	cart.New(st.Queries()).Routes(r, authMW)
 	sales.New(st.Pool(), o.notifier).Routes(r, authMW)
-	otc.New(st.Pool(), o.pdf, o.notifier, o.gateway, issuer).Routes(r, authMW)
+	// Charges resolve their gateway per org (tenants are their own merchants of
+	// record); orgs without a config use the platform default.
+	gwResolver := &tenantgw.Resolver{Q: st.Queries(), Box: o.secrets, Default: o.gateway, Logger: o.logger}
+	otc.New(st.Pool(), o.pdf, o.notifier, gwResolver, issuer).Routes(r, authMW)
 	inventory.New(st.Pool()).Routes(r, authMW)
 	crm.New(st.Pool()).Routes(r, authMW)
 	wfadmin.New(st.Pool()).Routes(r, authMW)

@@ -594,6 +594,9 @@ type captureNotifier struct{ events []string }
 func (c *captureNotifier) EnqueueEmail(_ context.Context, _, _ string, _ map[string]any) error {
 	return nil
 }
+func (c *captureNotifier) EnqueueEmailForOrg(_ context.Context, _ int64, _, _ string, _ map[string]any) error {
+	return nil
+}
 func (c *captureNotifier) EmitEvent(_ context.Context, event string, _ map[string]any) error {
 	c.events = append(c.events, event)
 	return nil

@@ -15,6 +15,7 @@ import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import StoreIdentityPanel from './StoreIdentityPanel.vue'
 
 type Setting = components['schemas']['ConfigSetting']
 
@@ -122,6 +123,8 @@ onMounted(load)
       </template>
     </PageHeader>
     <p class="muted">Settings cascade: a key can be set at org, website, customer-group or customer scope. The most specific value wins (customer &gt; group &gt; website &gt; org).</p>
+
+    <StoreIdentityPanel />
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 

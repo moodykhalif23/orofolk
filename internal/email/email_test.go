@@ -51,7 +51,7 @@ func (c *captureSender) Send(_ context.Context, m email.Message) error {
 
 func TestSendEmailJobRendersAndSends(t *testing.T) {
 	cap := &captureSender{}
-	err := jobs.SendEmail(context.Background(), cap, jobs.SendEmailArgs{
+	err := jobs.SendEmail(context.Background(), cap, nil, jobs.SendEmailArgs{
 		To:       "buyer@acme.test",
 		Template: "order_confirmation",
 		Data:     []byte(`{"name":"Ada","order_number":"ORD-abcd1234","total":"12.0000","currency":"USD"}`),

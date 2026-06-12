@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"b2bcommerce/internal/secretbox"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -20,9 +21,17 @@ import (
 
 type Handler struct {
 	q *gen.Queries
+	// box seals tenant payment credentials at rest; nil disables storing them
+	// (the payments endpoints then refuse credential writes).
+	box *secretbox.Box
 }
 
 func New(pool *pgxpool.Pool) *Handler { return &Handler{q: gen.New(pool)} }
+
+// NewWithSecrets is New plus the credential-encryption box (SAAS.md #4).
+func NewWithSecrets(pool *pgxpool.Pool, box *secretbox.Box) *Handler {
+	return &Handler{q: gen.New(pool), box: box}
+}
 
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 	h.RoutesWithOptionalAuth(r, authMW, nil)
@@ -37,7 +46,14 @@ func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(ht
 		ar.With(mw.RequirePermission("settings.manage")).Put("/admin/settings", h.upsert)
 		ar.With(mw.RequirePermission("settings.manage")).Delete("/admin/settings/{id}", h.delete)
 		ar.With(mw.RequirePermission("settings.view")).Get("/admin/settings/resolve", h.adminResolve)
+
+		// Per-tenant payment gateway + credentials (encrypted at rest, never echoed).
+		ar.With(mw.RequirePermission("settings.view")).Get("/admin/settings/payments", h.getPayments)
+		ar.With(mw.RequirePermission("settings.manage")).Put("/admin/settings/payments", h.putPayments)
 	})
+
+	// Public storefront branding (org by serving host, like the catalog).
+	r.Get("/storefront/branding", h.branding)
 
 	r.Group(func(sr chi.Router) {
 		if optAuthMW != nil {

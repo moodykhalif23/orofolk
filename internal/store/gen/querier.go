@@ -364,6 +364,8 @@ type Querier interface {
 	GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Order, error)
 	GetOrderByPublicID(ctx context.Context, publicID uuid.UUID) (Order, error)
 	GetOrderItem(ctx context.Context, arg GetOrderItemParams) (OrderItem, error)
+	// Per-tenant payment gateway config (SAAS.md #4).
+	GetOrgPaymentConfig(ctx context.Context, organizationID int64) (OrgPaymentConfig, error)
 	GetOrganization(ctx context.Context, id int64) (Organization, error)
 	// GetPageAdmin fetches any page (any status) by id, org-scoped via its website.
 	GetPageAdmin(ctx context.Context, arg GetPageAdminParams) (ContentPage, error)
@@ -853,6 +855,7 @@ type Querier interface {
 	UpsertFieldDevice(ctx context.Context, arg UpsertFieldDeviceParams) (FieldDevice, error)
 	// UpsertInvoiceDocument stores (or replaces, on regeneration) the rendered PDF.
 	UpsertInvoiceDocument(ctx context.Context, arg UpsertInvoiceDocumentParams) error
+	UpsertOrgPaymentConfig(ctx context.Context, arg UpsertOrgPaymentConfigParams) (OrgPaymentConfig, error)
 	// ===== Prices (tiers) ======================================================
 	UpsertPrice(ctx context.Context, arg UpsertPriceParams) (Price, error)
 	// Configure-Price-Quote (PRD §8). Loads the configuration model and stores

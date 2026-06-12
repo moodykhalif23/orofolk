@@ -3020,6 +3020,24 @@ components:
       properties:
         id: { type: integer, format: int64 }
         status: { type: string }
+    PaymentConfig:
+      type: object
+      properties:
+        gateway: { type: string }
+        available: { type: array, items: { type: string }, description: 'Gateway adapters this deployment can use.' }
+        configured_keys: { type: array, items: { type: string }, description: 'Names of stored credential keys — values are never returned.' }
+    PaymentConfigUpdate:
+      type: object
+      required: [gateway]
+      properties:
+        gateway: { type: string }
+        credentials: { type: object, additionalProperties: { type: string }, description: 'Replaces stored credentials (encrypted at rest). Omit to keep the existing ones; {} clears.' }
+    StorefrontBranding:
+      type: object
+      properties:
+        store_name: { type: string }
+        brand_color: { type: string }
+        logo_url: { type: string }
 
   responses:
     ErrorResponse:
@@ -6384,3 +6402,33 @@ paths:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OrgStatusResponse' } } } }
         '400': { $ref: '#/components/responses/ErrorResponse' }
         '404': { $ref: '#/components/responses/ErrorResponse' }
+
+  # ===== Per-tenant config (SAAS.md #4) =====================================
+  /admin/settings/payments:
+    get:
+      tags: [Platform]
+      operationId: getPaymentConfig
+      summary: The org's payment gateway config — credential values are never returned.
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PaymentConfig' } } } }
+    put:
+      tags: [Platform]
+      operationId: updatePaymentConfig
+      summary: Set the org's gateway and (optionally) replace its encrypted credentials.
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentConfigUpdate' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { gateway: { type: string } } } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '503': { $ref: '#/components/responses/ErrorResponse' }
+  /storefront/branding:
+    get:
+      tags: [Platform]
+      operationId: storefrontBranding
+      summary: Public storefront identity for the serving host (name, color, logo).
+      security: []
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/StorefrontBranding' } } } }

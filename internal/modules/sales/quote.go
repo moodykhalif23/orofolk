@@ -225,7 +225,7 @@ func (h *Handler) sendQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.notify != nil {
 		if to, name := h.primaryContact(r.Context(), sent.CustomerID); to != "" {
-			if err := h.notify.EnqueueEmail(r.Context(), to, "quote_sent", map[string]any{
+			if err := h.notify.EnqueueEmailForOrg(r.Context(), sent.OrganizationID, to, "quote_sent", map[string]any{
 				"name":         name,
 				"quote_number": "Q-" + sent.PublicID.String()[:8],
 				"total":        sent.Subtotal,

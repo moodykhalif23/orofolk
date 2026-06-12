@@ -1020,16 +1020,17 @@ func (q *Queries) ListQuotesForCustomer(ctx context.Context, customerID int64) (
 }
 
 const listQuotesForFollowup = `-- name: ListQuotesForFollowup :many
-SELECT id, public_id, customer_id FROM quotes
+SELECT id, public_id, customer_id, organization_id FROM quotes
 WHERE status = 'sent' AND valid_until IS NOT NULL
   AND valid_until > now() AND valid_until <= $1
   AND followup_at IS NULL
 `
 
 type ListQuotesForFollowupRow struct {
-	ID         int64     `json:"id"`
-	PublicID   uuid.UUID `json:"public_id"`
-	CustomerID int64     `json:"customer_id"`
+	ID             int64     `json:"id"`
+	PublicID       uuid.UUID `json:"public_id"`
+	CustomerID     int64     `json:"customer_id"`
+	OrganizationID int64     `json:"organization_id"`
 }
 
 // ListQuotesForFollowup returns 'sent' quotes expiring within the cutoff that
@@ -1043,7 +1044,12 @@ func (q *Queries) ListQuotesForFollowup(ctx context.Context, validUntil pgtype.T
 	var items []ListQuotesForFollowupRow
 	for rows.Next() {
 		var i ListQuotesForFollowupRow
-		if err := rows.Scan(&i.ID, &i.PublicID, &i.CustomerID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.CustomerID,
+			&i.OrganizationID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

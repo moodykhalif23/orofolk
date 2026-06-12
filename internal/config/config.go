@@ -70,6 +70,11 @@ type Config struct {
 	PlatformBaseDomain string
 	SignupVerifyURL    string
 
+	// ConfigEncryptionKey seals tenant payment credentials at rest (SAAS.md #4).
+	// Empty falls back to a key derived from JWT_SECRET (with a startup warning) —
+	// set a dedicated value so rotating one doesn't orphan the other.
+	ConfigEncryptionKey string
+
 	// CORSAllowedOrigins lists browser origins permitted to call the API
 	// cross-origin (the SSR storefront's client-side calls). Comma-separated in
 	// CORS_ALLOWED_ORIGINS; defaults to the local dev frontends. Set to "*" to
@@ -121,6 +126,8 @@ func Load() (Config, error) {
 
 		PlatformBaseDomain: getenv("PLATFORM_BASE_DOMAIN", "teggo.local"),
 		SignupVerifyURL:    getenv("SIGNUP_VERIFY_URL", "http://localhost:5173/verify-signup"),
+
+		ConfigEncryptionKey: getenv("CONFIG_ENCRYPTION_KEY", ""),
 
 		CORSAllowedOrigins: splitList(getenv("CORS_ALLOWED_ORIGINS",
 			"http://localhost:3000,http://localhost:5173,http://localhost:5174")),

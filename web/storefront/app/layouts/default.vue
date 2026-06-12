@@ -7,6 +7,17 @@ const router = useRouter()
 const route = useRoute()
 const client = useClient()
 
+// Per-tenant branding (SAAS.md #4): name, accent color and logo resolve from
+// the serving host server-side, so the first paint is already on-brand.
+const { data: branding } = await useAsyncData('branding', async () => {
+  const { data } = await client.GET('/storefront/branding')
+  return data ?? null
+})
+const storeName = computed(() => branding.value?.store_name || 'Teggo Store')
+const brandStyle = computed(() =>
+  branding.value?.brand_color ? { '--p-primary-color': branding.value.brand_color } : undefined,
+)
+
 // i18n: content-locale selector (populated from the store's configured locales).
 const locale = useLocale()
 const localeOptions = ref<string[]>([])
@@ -37,11 +48,15 @@ function signOut() {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :style="brandStyle">
     <header class="header">
       <!-- Top tier: brand + search + cart/auth. Stays on one line. -->
       <div class="bar">
-        <NuxtLink to="/" class="brand"><i class="pi pi-shopping-bag" /> Teggo Store</NuxtLink>
+        <NuxtLink to="/" class="brand">
+          <img v-if="branding?.logo_url" :src="branding.logo_url" :alt="storeName" class="brand-logo" />
+          <i v-else class="pi pi-shopping-bag" />
+          {{ storeName }}
+        </NuxtLink>
         <button class="hamburger" :aria-expanded="mobileOpen" aria-label="Menu" @click="mobileOpen = !mobileOpen">
           <i :class="mobileOpen ? 'pi pi-times' : 'pi pi-bars'" />
         </button>
@@ -121,7 +136,7 @@ function signOut() {
     </main>
 
     <footer class="footer">
-      <p>Teggo storefront — server-rendered for SEO. © {{ new Date().getFullYear() }}</p>
+      <p>{{ storeName }} — powered by Teggo. © {{ new Date().getFullYear() }}</p>
     </footer>
 
     <AssistantWidget v-if="isAuthenticated" />
@@ -154,6 +169,11 @@ function signOut() {
   align-items: center;
   gap: 0.4rem;
   white-space: nowrap;
+}
+.brand-logo {
+  height: 1.6rem;
+  width: auto;
+  display: block;
 }
 /* Bottom tier: navigation as a wrapping row of pill-buttons. */
 .nav {

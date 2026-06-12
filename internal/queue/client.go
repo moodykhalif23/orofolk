@@ -17,6 +17,7 @@ import (
 	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
+	"b2bcommerce/internal/store/gen"
 )
 
 // NewWorkerClient builds the worker-side river client. renderer is used by the
@@ -39,7 +40,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	reg.Register(automation.NewCartRecovery(pool, enq))
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &jobs.SendEmailWorker{Sender: sender})
+	river.AddWorker(workers, &jobs.SendEmailWorker{Sender: sender, Q: gen.New(pool)})
 	river.AddWorker(workers, &jobs.RecomputeWorker{Pool: pool})
 	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool, Renderer: renderer})
 	river.AddWorker(workers, &jobs.AutomationActionWorker{Registry: reg})
@@ -148,6 +149,13 @@ func (e *Enqueuer) EnqueueRendition(ctx context.Context, mediaAssetID int64, pre
 // EnqueueEmail schedules a transactional email (rendered from a template key +
 // data by the send_email worker). A nil/empty recipient is a no-op.
 func (e *Enqueuer) EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error {
+	return e.EnqueueEmailForOrg(ctx, 0, to, template, data)
+}
+
+// EnqueueEmailForOrg is EnqueueEmail carrying the tenant whose sender identity
+// (email.from_name / email.from_address config) the worker applies at send time.
+// orgID 0 = platform identity (SAAS.md #4).
+func (e *Enqueuer) EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error {
 	if to == "" {
 		return nil
 	}
@@ -155,7 +163,7 @@ func (e *Enqueuer) EnqueueEmail(ctx context.Context, to, template string, data m
 	if err != nil {
 		return err
 	}
-	_, err = e.ic.Insert(ctx, jobs.SendEmailArgs{To: to, Template: template, Data: raw}, nil)
+	_, err = e.ic.Insert(ctx, jobs.SendEmailArgs{To: to, Template: template, Data: raw, OrganizationID: orgID}, nil)
 	return err
 }
 

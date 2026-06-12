@@ -85,22 +85,27 @@ defense-in-depth:
   sqlc + pgx pool layer makes a per-org connection string feasible later; don't
   build it now.
 
-## 4. Per-tenant config  ·  Impact: High · Effort: M
-SMTP from-address, payments gateway, and Pusher are global env vars. Tenants are
-their own merchants of record.
-- **Data**: extend org `settings` (JSONB or typed columns) with: payment gateway +
-  credentials (encrypted at rest — pgcrypto or app-level AES with a platform KMS key),
-  email sender identity (from-name/address, optionally per-tenant SMTP/provider
-  subaccount), branding (logo media id, brand color, storefront theme knobs).
-- **Engine**: gateway resolution per-org at charge time (the `PaymentGateway`
-  interface already exists — make the mock/real selection org-scoped); the email
-  worker reads the org's sender identity per message; storefront SSR reads branding
-  by website.
-- **Deliverability**: per-tenant sending domains need SPF/DKIM — use a provider with
-  subaccounts/domains API (SES/Postmark/Resend) instead of raw SMTP; platform-managed
-  fallback sender for tenants who don't bring a domain.
-- **Surfaces**: admin Settings grows "Payments", "Email", "Branding" sections
-  (org-scoped, `settings.manage`).
+## 4. Per-tenant config  ·  ✅ Done · Impact: High · Effort: M
+Payments, email identity and branding are org-scoped settings, not env vars.
+- **Data** (`0052`): `org_payment_configs` (gateway + credentials sealed with
+  AES-256-GCM via `internal/secretbox`, key from `CONFIG_ENCRYPTION_KEY` — a
+  dedicated table so the settings list endpoint can never echo secrets). Branding
+  + email identity live in `config_settings` (`branding.*`, `email.*` keys).
+- **Engine**: charges resolve their gateway per org at charge time
+  (`internal/payments/tenantgw` — adapter registry, platform default as fallback);
+  the send_email worker resolves `email.from_name`/`email.from_address` per
+  message at SEND time (queued mail picks up identity changes); the SMTP envelope
+  sender stays the platform's so SPF/DKIM never depend on tenant input. All
+  buyer-facing mail (orders, quotes, invoices, dunning, recurring, automation)
+  carries its org.
+- **Surfaces**: admin Settings → "Store identity" panel (branding, email sender,
+  gateway + write-only credentials showing stored key names only); public
+  `GET /storefront/branding` resolves by serving host and the storefront layout
+  applies name/color/logo server-side on first paint.
+- **Deferred (future):** real gateway adapters (stripe/mpesa — the registry +
+  encrypted credential plumbing is ready); per-tenant sending domains with
+  SPF/DKIM via a provider subaccount API; per-tenant Pusher (realtime stays
+  platform-level); logo picker wired to the Media library (URL paste today).
 
 ## 5. Infra swaps  ·  Impact: Medium-High (all anticipated by the code) · Effort: M, mostly ops
 - [ ] **Object storage**: implement `blob.Store` against S3/R2 and select by env
@@ -124,7 +129,7 @@ their own merchants of record.
 ## Suggested sequence
 1. ~~Security pre-flight (#0)~~ — done (secrets rotated, .env untracked).
 2. ~~Tenant provisioning (#1)~~ — ✅ shipped.
-3. **Per-tenant config** (#4) — makes a second real tenant actually usable.
+3. ~~Per-tenant config (#4)~~ — ✅ shipped.
 4. **Platform billing & metering** (#2) — monetize once tenants can self-serve.
 5. **Isolation hardening** (#3) — land RLS before opening signup to strangers.
 6. **Infra swaps** (#5) — opportunistically; object storage + TLS first.

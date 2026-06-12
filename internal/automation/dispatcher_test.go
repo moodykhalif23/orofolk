@@ -63,7 +63,7 @@ func TestDispatcherMatchesConditionsAndEnqueues(t *testing.T) {
 // fakeEmail counts quote_expired notifications.
 type fakeEmail struct{ expired int }
 
-func (f *fakeEmail) EnqueueEmail(_ context.Context, _, template string, _ map[string]any) error {
+func (f *fakeEmail) EnqueueEmailForOrg(_ context.Context, _ int64, _, template string, _ map[string]any) error {
 	if template == "quote_expired" {
 		f.expired++
 	}
@@ -118,7 +118,7 @@ func TestExpireQuotesSweep(t *testing.T) {
 // recEmail records (to, template) of every enqueued email.
 type recEmail struct{ sent []string }
 
-func (r *recEmail) EnqueueEmail(_ context.Context, to, template string, _ map[string]any) error {
+func (r *recEmail) EnqueueEmailForOrg(_ context.Context, _ int64, to, template string, _ map[string]any) error {
 	r.sent = append(r.sent, to+"|"+template)
 	return nil
 }
@@ -149,7 +149,7 @@ func TestEmailCustomerAction(t *testing.T) {
 // countEmail tallies enqueued emails by template.
 type countEmail struct{ byTemplate map[string]int }
 
-func (c *countEmail) EnqueueEmail(_ context.Context, _, template string, _ map[string]any) error {
+func (c *countEmail) EnqueueEmailForOrg(_ context.Context, _ int64, _, template string, _ map[string]any) error {
 	if c.byTemplate == nil {
 		c.byTemplate = map[string]int{}
 	}

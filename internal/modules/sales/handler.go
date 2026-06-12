@@ -23,8 +23,10 @@ import (
 
 // Notifier schedules transactional email and emits domain events for the
 // automation engine. Satisfied by *queue.Enqueuer; may be nil (then skipped).
+// Buyer-facing mail carries the org so the worker applies the tenant's sender
+// identity (SAAS.md #4).
 type Notifier interface {
-	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error
 	EmitEvent(ctx context.Context, event string, payload map[string]any) error
 }
 

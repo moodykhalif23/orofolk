@@ -63,9 +63,10 @@ func dateOf(t time.Time) pgtype.Date      { return pgtype.Date{Time: t, Valid: t
 func tsOf(t time.Time) pgtype.Timestamptz { return pgtype.Timestamptz{Time: t, Valid: true} }
 
 // Emailer enqueues a transactional email (satisfied by *queue.Enqueuer). Optional
-// — a nil Emailer skips the buyer notification (e.g. admin "run now").
+// — a nil Emailer skips the buyer notification (e.g. admin "run now"). The org
+// selects the tenant's sender identity at send time (SAAS.md #4).
 type Emailer interface {
-	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error
 }
 
 // MaterializeDue processes every active subscription due on/before `today`,
@@ -254,7 +255,7 @@ func runOne(ctx context.Context, pool *pgxpool.Pool, sub gen.Subscription, today
 
 	// Best-effort buyer notification (post-commit, never blocks the order).
 	if mailer != nil && buyerEmail != "" {
-		_ = mailer.EnqueueEmail(ctx, buyerEmail, "subscription_order_placed", map[string]any{
+		_ = mailer.EnqueueEmailForOrg(ctx, sub.OrganizationID, buyerEmail, "subscription_order_placed", map[string]any{
 			"order_public_id": order.PublicID.String(),
 			"grand_total":     grand,
 			"currency":        sub.Currency,

@@ -90,7 +90,7 @@ func (h *Handler) runOverdueSweep(w http.ResponseWriter, r *http.Request) {
 			if err != nil || len(users) == 0 {
 				continue
 			}
-			_ = h.notify.EnqueueEmail(r.Context(), users[0].Email, "invoice_overdue", map[string]any{
+			_ = h.notify.EnqueueEmailForOrg(r.Context(), a.orgID, users[0].Email, "invoice_overdue", map[string]any{
 				"name":           users[0].FullName,
 				"invoice_number": "INV-" + inv.PublicID.String()[:8],
 				"amount":         inv.GrandTotal,

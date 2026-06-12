@@ -39,25 +39,43 @@ type PDFEnqueuer interface {
 }
 
 // Notifier schedules a transactional email (template key + data). Satisfied by
-// *queue.Enqueuer; may be nil (emails are then skipped).
+// *queue.Enqueuer; may be nil (emails are then skipped). The org selects the
+// tenant's sender identity at send time (SAAS.md #4).
 type Notifier interface {
-	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error
 }
+
+// GatewayResolver picks the payment processor for an organization — tenants are
+// their own merchants of record (SAAS.md #4). Satisfied by *tenantgw.Resolver.
+type GatewayResolver interface {
+	For(ctx context.Context, orgID int64) gateway.Gateway
+}
+
+// staticGateway adapts a single gateway to the GatewayResolver shape (every org
+// charges through the same processor — the pre-tenant-config behaviour).
+type staticGateway struct{ gw gateway.Gateway }
+
+func (s staticGateway) For(context.Context, int64) gateway.Gateway { return s.gw }
 
 type Handler struct {
-	pool    *pgxpool.Pool
-	q       *gen.Queries
-	pdf     PDFEnqueuer
-	notify  Notifier
-	gateway gateway.Gateway
-	signer  URLSigner
-	wf      *workflow.Engine
+	pool     *pgxpool.Pool
+	q        *gen.Queries
+	pdf      PDFEnqueuer
+	notify   Notifier
+	gateways GatewayResolver
+	signer   URLSigner
+	wf       *workflow.Engine
 }
 
-func New(pool *pgxpool.Pool, pdf PDFEnqueuer, notify Notifier, gw gateway.Gateway, signer URLSigner) *Handler {
+func New(pool *pgxpool.Pool, pdf PDFEnqueuer, notify Notifier, gateways GatewayResolver, signer URLSigner) *Handler {
 	// Shipment transitions are governed by the DB-defined `shipment_default`
 	// workflow (no guards/actions configured → an empty registry suffices).
-	return &Handler{pool: pool, q: gen.New(pool), pdf: pdf, notify: notify, gateway: gw, signer: signer, wf: workflow.New(pool, nil)}
+	return &Handler{pool: pool, q: gen.New(pool), pdf: pdf, notify: notify, gateways: gateways, signer: signer, wf: workflow.New(pool, nil)}
+}
+
+// NewWithGateway is New with a fixed processor for every org.
+func NewWithGateway(pool *pgxpool.Pool, pdf PDFEnqueuer, notify Notifier, gw gateway.Gateway, signer URLSigner) *Handler {
+	return New(pool, pdf, notify, staticGateway{gw: gw}, signer)
 }
 
 func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
@@ -126,6 +144,15 @@ func admin(r *http.Request) (adminCtx, bool) {
 		a.userID = &id
 	}
 	return a, true
+}
+
+// claimsOrg returns the authenticated caller's org (0 when unauthenticated —
+// the gateway resolver then falls back to the platform default).
+func claimsOrg(r *http.Request) int64 {
+	if c, ok := mw.ClaimsFrom(r.Context()); ok {
+		return c.OrgID
+	}
+	return 0
 }
 
 func customerID(r *http.Request) (int64, bool) {

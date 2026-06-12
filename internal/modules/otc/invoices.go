@@ -84,7 +84,7 @@ func (h *Handler) createInvoiceForOrder(ctx context.Context, order gen.Order) (g
 			if invoice.DueAt.Valid {
 				dueStr = invoice.DueAt.Time.Format("2006-01-02")
 			}
-			if err := h.notify.EnqueueEmail(ctx, to, "invoice_issued", map[string]any{
+			if err := h.notify.EnqueueEmailForOrg(ctx, order.OrganizationID, to, "invoice_issued", map[string]any{
 				"name":           name,
 				"invoice_number": "INV-" + shortID(invoice.PublicID.String()),
 				"total":          invoice.GrandTotal,

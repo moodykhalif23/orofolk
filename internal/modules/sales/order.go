@@ -781,7 +781,7 @@ func (h *Handler) emailOrderConfirmation(ctx context.Context, order gen.Order) {
 	if to == "" {
 		return
 	}
-	if err := h.notify.EnqueueEmail(ctx, to, "order_confirmation", map[string]any{
+	if err := h.notify.EnqueueEmailForOrg(ctx, order.OrganizationID, to, "order_confirmation", map[string]any{
 		"name":         name,
 		"order_number": "ORD-" + order.PublicID.String()[:8],
 		"total":        order.GrandTotal,

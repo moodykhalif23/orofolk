@@ -20,6 +20,7 @@ import (
 	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/payments/gateway"
 	"b2bcommerce/internal/queue"
+	"b2bcommerce/internal/secretbox"
 	"b2bcommerce/internal/server"
 	"b2bcommerce/internal/store"
 	"b2bcommerce/internal/telemetry"
@@ -76,20 +77,14 @@ func main() {
 		logger.Warn("payment gateway not implemented, using mock", "requested", cfg.PaymentsGateway)
 	}
 
-	// DAM blob store (local FS; swap for object storage in multi-node deploys).
 	mediaStore, err := blob.NewFSStore(cfg.MediaRoot)
 	if err != nil {
 		logger.Error("media store init failed", "err", err)
 		os.Exit(1)
 	}
 
-	// AI assistant decision engine. The deterministic local engine is the default;
-	// a language-model adapter is used only when explicitly selected AND an API
-	// key is present (otherwise we fall back to deterministic with a warning).
+	// AI assistant decision engine.
 	var aiProvider ai.Provider = ai.NewDeterministicProvider()
-	// The storefront page designer follows the same split: deterministic template
-	// engine by default, Claude when explicitly selected with a key present (the
-	// OpenAI-compatible chat provider does not drive the page designer).
 	var pageDesigner ai.PageDesigner = ai.NewDeterministicPageDesigner()
 	switch cfg.AIProvider {
 	case "claude":
@@ -106,6 +101,17 @@ func main() {
 		} else {
 			logger.Warn("AI_PROVIDER=openai but AI_CHAT_API_KEY is empty; using deterministic engine")
 		}
+	}
+
+	encKey := cfg.ConfigEncryptionKey
+	if encKey == "" {
+		encKey = cfg.JWTSecret
+		logger.Warn("CONFIG_ENCRYPTION_KEY not set; deriving the credential-encryption key from JWT_SECRET — set a dedicated key before rotating JWT_SECRET")
+	}
+	secrets, err := secretbox.New(encKey)
+	if err != nil {
+		logger.Error("secretbox init failed", "err", err)
+		os.Exit(1)
 	}
 
 	// Real-time notifications. With Pusher credentials we sign private-channel
@@ -125,6 +131,7 @@ func main() {
 		server.WithInvoicePDF(enq),
 		server.WithNotifier(enq),
 		server.WithPlatform(cfg.PlatformBaseDomain, cfg.SignupVerifyURL),
+		server.WithSecrets(secrets),
 		server.WithPaymentGateway(gw),
 		server.WithLogger(logger),
 		server.WithMedia(mediaStore, imageproc.GoProcessor{}),

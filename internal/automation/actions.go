@@ -36,8 +36,9 @@ func (r *Registry) Run(ctx context.Context, key string, params, payload map[stri
 }
 
 // EmailEnqueuer schedules transactional email (satisfied by *queue.Enqueuer).
+// The org selects the tenant's sender identity at send time (SAAS.md #4).
 type EmailEnqueuer interface {
-	EnqueueEmail(ctx context.Context, to, template string, data map[string]any) error
+	EnqueueEmailForOrg(ctx context.Context, orgID int64, to, template string, data map[string]any) error
 }
 
 // EmailCustomer is the `email_customer` action: it sends a template (param
@@ -75,7 +76,8 @@ func (a EmailCustomer) Run(ctx context.Context, params, payload map[string]any) 
 	for k, v := range payload {
 		data[k] = v
 	}
-	return a.email.EnqueueEmail(ctx, users[0].Email, template, data)
+	org, _ := payloadInt(payload, "organization_id") // 0 = platform identity
+	return a.email.EnqueueEmailForOrg(ctx, org, users[0].Email, template, data)
 }
 
 // payloadInt coerces a JSON payload value (float64/int/string) to int64.
@@ -126,7 +128,7 @@ func (a ExpireQuotes) Run(ctx context.Context, _, _ map[string]any) error {
 		if err != nil || len(users) == 0 {
 			continue
 		}
-		_ = a.email.EnqueueEmail(ctx, users[0].Email, "quote_expired", map[string]any{
+		_ = a.email.EnqueueEmailForOrg(ctx, qt.OrganizationID, users[0].Email, "quote_expired", map[string]any{
 			"name":         users[0].FullName,
 			"quote_number": "Q-" + qt.PublicID.String()[:8],
 		})
@@ -162,7 +164,7 @@ func (a MarkOverdue) Run(ctx context.Context, _, _ map[string]any) error {
 		if err != nil || len(users) == 0 {
 			continue
 		}
-		_ = a.email.EnqueueEmail(ctx, users[0].Email, "invoice_overdue", map[string]any{
+		_ = a.email.EnqueueEmailForOrg(ctx, inv.OrganizationID, users[0].Email, "invoice_overdue", map[string]any{
 			"name":           users[0].FullName,
 			"invoice_number": "INV-" + inv.PublicID.String()[:8],
 			"amount":         inv.GrandTotal,
@@ -214,7 +216,7 @@ func (a QuoteFollowup) Run(ctx context.Context, params, _ map[string]any) error 
 	for _, qt := range quotes {
 		if a.email != nil {
 			if users, err := q.ListCustomerUsers(ctx, qt.CustomerID); err == nil && len(users) > 0 {
-				_ = a.email.EnqueueEmail(ctx, users[0].Email, "quote_followup", map[string]any{
+				_ = a.email.EnqueueEmailForOrg(ctx, qt.OrganizationID, users[0].Email, "quote_followup", map[string]any{
 					"name":         users[0].FullName,
 					"quote_number": "Q-" + qt.PublicID.String()[:8],
 				})
@@ -251,7 +253,7 @@ func (a CartRecovery) Run(ctx context.Context, params, _ map[string]any) error {
 	for _, c := range carts {
 		if a.email != nil {
 			if users, err := q.ListCustomerUsers(ctx, c.CustomerID); err == nil && len(users) > 0 {
-				_ = a.email.EnqueueEmail(ctx, users[0].Email, "cart_recovery", map[string]any{
+				_ = a.email.EnqueueEmailForOrg(ctx, c.OrganizationID, users[0].Email, "cart_recovery", map[string]any{
 					"name": users[0].FullName,
 				})
 			}

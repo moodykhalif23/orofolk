@@ -844,18 +844,21 @@ func (q *Queries) MarkOverdueInvoicesForOrg(ctx context.Context, organizationID 
 
 const markOverdueInvoicesGlobal = `-- name: MarkOverdueInvoicesGlobal :many
 
-UPDATE invoices SET status = 'overdue', updated_at = now()
-WHERE status = 'issued' AND due_at IS NOT NULL AND due_at < now()
-RETURNING id, public_id, customer_id, grand_total, currency, due_at
+UPDATE invoices i SET status = 'overdue', updated_at = now()
+FROM customers c
+WHERE i.customer_id = c.id
+  AND i.status = 'issued' AND i.due_at IS NOT NULL AND i.due_at < now()
+RETURNING i.id, i.public_id, i.customer_id, i.grand_total, i.currency, i.due_at, c.organization_id
 `
 
 type MarkOverdueInvoicesGlobalRow struct {
-	ID         int64              `json:"id"`
-	PublicID   uuid.UUID          `json:"public_id"`
-	CustomerID int64              `json:"customer_id"`
-	GrandTotal string             `json:"grand_total"`
-	Currency   string             `json:"currency"`
-	DueAt      pgtype.Timestamptz `json:"due_at"`
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	CustomerID     int64              `json:"customer_id"`
+	GrandTotal     string             `json:"grand_total"`
+	Currency       string             `json:"currency"`
+	DueAt          pgtype.Timestamptz `json:"due_at"`
+	OrganizationID int64              `json:"organization_id"`
 }
 
 // ===== AR aging & dunning (revenue ops) ====================================
@@ -877,6 +880,7 @@ func (q *Queries) MarkOverdueInvoicesGlobal(ctx context.Context) ([]MarkOverdueI
 			&i.GrandTotal,
 			&i.Currency,
 			&i.DueAt,
+			&i.OrganizationID,
 		); err != nil {
 			return nil, err
 		}

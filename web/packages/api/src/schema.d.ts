@@ -4280,6 +4280,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/settings/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The org's payment gateway config — credential values are never returned. */
+        get: operations["getPaymentConfig"];
+        /** Set the org's gateway and (optionally) replace its encrypted credentials. */
+        put: operations["updatePaymentConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public storefront identity for the serving host (name, color, logo). */
+        get: operations["storefrontBranding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7061,6 +7096,25 @@ export interface components {
             /** Format: int64 */
             id?: number;
             status?: string;
+        };
+        PaymentConfig: {
+            gateway?: string;
+            /** @description Gateway adapters this deployment can use. */
+            available?: string[];
+            /** @description Names of stored credential keys — values are never returned. */
+            configured_keys?: string[];
+        };
+        PaymentConfigUpdate: {
+            gateway: string;
+            /** @description Replaces stored credentials (encrypted at rest). Omit to keep the existing ones; {} clears. */
+            credentials?: {
+                [key: string]: string;
+            };
+        };
+        StorefrontBranding: {
+            store_name?: string;
+            brand_color?: string;
+            logo_url?: string;
         };
     };
     responses: {
@@ -14823,6 +14877,74 @@ export interface operations {
             };
             400: components["responses"]["ErrorResponse"];
             404: components["responses"]["ErrorResponse"];
+        };
+    };
+    getPaymentConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentConfig"];
+                };
+            };
+        };
+    };
+    updatePaymentConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        gateway?: string;
+                    };
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            503: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontBranding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorefrontBranding"];
+                };
+            };
         };
     };
 }

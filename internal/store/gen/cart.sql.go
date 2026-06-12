@@ -239,16 +239,18 @@ func (q *Queries) GetShoppingList(ctx context.Context, arg GetShoppingListParams
 }
 
 const listAbandonedCarts = `-- name: ListAbandonedCarts :many
-SELECT c.id, c.public_id, c.customer_id FROM carts c
+SELECT c.id, c.public_id, c.customer_id, cu.organization_id FROM carts c
+JOIN customers cu ON cu.id = c.customer_id
 WHERE c.status = 'active' AND c.updated_at < $1
   AND (c.reminded_at IS NULL OR c.reminded_at < c.updated_at)
   AND EXISTS (SELECT 1 FROM cart_items ci WHERE ci.cart_id = c.id)
 `
 
 type ListAbandonedCartsRow struct {
-	ID         int64     `json:"id"`
-	PublicID   uuid.UUID `json:"public_id"`
-	CustomerID int64     `json:"customer_id"`
+	ID             int64     `json:"id"`
+	PublicID       uuid.UUID `json:"public_id"`
+	CustomerID     int64     `json:"customer_id"`
+	OrganizationID int64     `json:"organization_id"`
 }
 
 // ListAbandonedCarts returns active carts with items that have gone idle past
@@ -262,7 +264,12 @@ func (q *Queries) ListAbandonedCarts(ctx context.Context, updatedAt time.Time) (
 	var items []ListAbandonedCartsRow
 	for rows.Next() {
 		var i ListAbandonedCartsRow
-		if err := rows.Scan(&i.ID, &i.PublicID, &i.CustomerID); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.CustomerID,
+			&i.OrganizationID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

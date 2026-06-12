@@ -613,6 +613,13 @@ type OrderStatusHistory struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+type OrgPaymentConfig struct {
+	OrganizationID int64     `json:"organization_id"`
+	Gateway        string    `json:"gateway"`
+	CredentialsEnc []byte    `json:"credentials_enc"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type Organization struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`

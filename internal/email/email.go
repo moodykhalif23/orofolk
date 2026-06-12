@@ -12,12 +12,41 @@ import (
 	"strings"
 )
 
-// Message is a rendered email ready to send.
+// Message is a rendered email ready to send. FromName/FromAddress optionally
+// override the sender identity per message (per-tenant branding — SAAS.md #4);
+// empty means the platform default. The SMTP envelope sender always stays the
+// platform's, so SPF/DKIM alignment never depends on tenant input.
 type Message struct {
 	To      string
 	Subject string
 	HTML    string
 	Text    string
+
+	FromName    string
+	FromAddress string
+}
+
+// headerFrom composes the From header: tenant address and/or display name when
+// set, the platform identity otherwise.
+func headerFrom(platformFrom string, msg Message) string {
+	addr := platformFrom
+	if msg.FromAddress != "" {
+		addr = msg.FromAddress
+	}
+	if msg.FromName == "" {
+		return addr
+	}
+	return msg.FromName + " <" + bareAddr(addr) + ">"
+}
+
+// bareAddr extracts the addr-spec from "Display Name <addr>" forms.
+func bareAddr(s string) string {
+	if i := strings.IndexByte(s, '<'); i >= 0 {
+		if j := strings.IndexByte(s[i:], '>'); j > 0 {
+			return s[i+1 : i+j]
+		}
+	}
+	return strings.TrimSpace(s)
 }
 
 // Sender delivers a Message. Implemented by SMTPSender (real) and LogSender (dev).
@@ -46,7 +75,7 @@ func (s *SMTPSender) Send(_ context.Context, msg Message) error {
 	if s.cfg.Username != "" {
 		auth = smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
 	}
-	body := buildMIME(s.cfg.From, msg)
+	body := buildMIME(headerFrom(s.cfg.From, msg), msg)
 	return smtp.SendMail(addr, auth, s.cfg.From, []string{msg.To}, body)
 }
 
@@ -70,6 +99,6 @@ func buildMIME(from string, msg Message) []byte {
 type LogSender struct{ From string }
 
 func (l LogSender) Send(_ context.Context, msg Message) error {
-	log.Printf("[email] (log transport) from=%s to=%s subject=%q\n%s", l.From, msg.To, msg.Subject, msg.Text)
+	log.Printf("[email] (log transport) from=%s to=%s subject=%q\n%s", headerFrom(l.From, msg), msg.To, msg.Subject, msg.Text)
 	return nil
 }
