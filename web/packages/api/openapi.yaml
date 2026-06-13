@@ -2309,6 +2309,21 @@ components:
         limit: { type: integer }
         offset: { type: integer }
 
+    # ----- Data export center -----
+    ExportDataset:
+      type: object
+      required: [key, label, description, formats]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        description: { type: string }
+        formats: { type: array, items: { type: string } }
+    ExportManifest:
+      type: object
+      required: [datasets]
+      properties:
+        datasets: { type: array, items: { $ref: '#/components/schemas/ExportDataset' } }
+
     # ----- Custom report builder (Pack 3 §1) -----
     ReportMeasure:
       type: object
@@ -5779,6 +5794,34 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuditEntry' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  # ----- Data export center -----
+  /admin/exports:
+    get:
+      tags: [Exports]
+      operationId: adminExportManifest
+      summary: Datasets the caller may export (filtered by entity permissions)
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ExportManifest' } } } }
+  /admin/exports/{dataset}:
+    parameters:
+      - { name: dataset, in: path, required: true, schema: { type: string, enum: [orders, order-items, customers, invoices] } }
+    get:
+      tags: [Exports]
+      operationId: adminExportDataset
+      summary: Download a full-record export of one dataset as CSV or XLSX
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: format, in: query, schema: { type: string, enum: [csv, xlsx], default: csv } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: File download
+          content:
+            text/csv: { schema: { type: string } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
         '404': { $ref: '#/components/responses/ErrorResponse' }
   # ----- Custom report builder (Pack 3 §1) -----
   /admin/reports/entities:

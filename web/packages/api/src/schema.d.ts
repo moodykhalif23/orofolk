@@ -3200,6 +3200,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Datasets the caller may export (filtered by entity permissions) */
+        get: operations["adminExportManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/exports/{dataset}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dataset: "orders" | "order-items" | "customers" | "invoices";
+            };
+            cookie?: never;
+        };
+        /** Download a full-record export of one dataset as CSV or XLSX */
+        get: operations["adminExportDataset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/reports/entities": {
         parameters: {
             query?: never;
@@ -6611,6 +6647,15 @@ export interface components {
             total?: number;
             limit?: number;
             offset?: number;
+        };
+        ExportDataset: {
+            key: string;
+            label: string;
+            description: string;
+            formats: string[];
+        };
+        ExportManifest: {
+            datasets: components["schemas"]["ExportDataset"][];
         };
         ReportMeasure: {
             field?: string;
@@ -13193,6 +13238,54 @@ export interface operations {
                     "application/json": components["schemas"]["AuditEntry"];
                 };
             };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminExportManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportManifest"];
+                };
+            };
+        };
+    };
+    adminExportDataset: {
+        parameters: {
+            query?: {
+                format?: "csv" | "xlsx";
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                dataset: "orders" | "order-items" | "customers" | "invoices";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description File download */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
             404: components["responses"]["ErrorResponse"];
         };
     };

@@ -295,6 +295,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'audit.view' },
       },
       {
+        path: 'exports',
+        name: 'exports',
+        component: () => import('@/views/exports/ExportCenterView.vue'),
+        meta: { permission: 'report.view' },
+      },
+      {
         path: 'websites',
         name: 'websites',
         component: () => import('@/views/tenancy/WebsitesView.vue'),

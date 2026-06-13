@@ -141,6 +141,7 @@ const groups: NavGroup[] = [
       { label: 'Briefings', icon: 'pi pi-sparkles', routeName: 'insights', permission: 'report.view' },
       { label: 'Analytics', icon: 'pi pi-chart-line', routeName: 'analytics', permission: 'report.view' },
       { label: 'Report builder', icon: 'pi pi-table', routeName: 'report-builder', permission: 'report.view' },
+      { label: 'Data export', icon: 'pi pi-download', routeName: 'exports', permission: 'report.view' },
     ],
   },
   {

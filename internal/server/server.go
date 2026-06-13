@@ -28,6 +28,7 @@ import (
 	"b2bcommerce/internal/modules/customers"
 	"b2bcommerce/internal/modules/dam"
 	erpmod "b2bcommerce/internal/modules/erp"
+	"b2bcommerce/internal/modules/exports"
 	"b2bcommerce/internal/modules/field"
 	"b2bcommerce/internal/modules/fxadmin"
 	auditmod "b2bcommerce/internal/modules/audit"
@@ -293,6 +294,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	reporting.New(st.Pool()).Routes(r, authMW)
 	insightsmod.New(st.Pool()).WithNarrator(o.insightsNarr).WithEnqueuer(o.insightDigest).Routes(r, authMW)
 	auditmod.New(st.Pool()).Routes(r, authMW)
+	exports.New(st.Pool()).Routes(r, authMW)
 	tenancy.New(st.Pool()).Routes(r, authMW)
 	if o.blobStore != nil {
 		proc := o.imageProc
