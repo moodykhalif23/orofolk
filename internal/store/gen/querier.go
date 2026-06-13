@@ -161,7 +161,7 @@ type Querier interface {
 	// are the primitives. Money columns are decimal strings (sqlc money override).
 	// ===== RFQ =================================================================
 	CreateRFQ(ctx context.Context, arg CreateRFQParams) (Rfq, error)
-	// Rebates / volume incentives (Roadmap Tier 3 #7).
+	// Rebates / volume incentives .
 	// ===== Programs ============================================================
 	CreateRebateProgram(ctx context.Context, arg CreateRebateProgramParams) (RebateProgram, error)
 	// ===== Settlements =========================================================
@@ -217,10 +217,14 @@ type Querier interface {
 	// CustomerTimeline aggregates activities linked to a customer directly, via its
 	// contacts, or via its opportunities (Pack 2 §1.4), newest first.
 	CustomerTimeline(ctx context.Context, arg CustomerTimelineParams) ([]Activity, error)
-	// Reporting queries — Pack 3 §1. All read from the precomputed materialized
-	// views, org-scoped.
+	// Reporting queries — live aggregates over orders/order_items, org-scoped. No
+	// materialized views: dashboards are real-time. Every query is bounded by a date
+	// window and rides idx_orders_org_created, so a just-placed order is reflected
+	// immediately (no hourly refresh, no staleness). Mirrors the read-time pricing
+	// model (migration 0055/0056).
 	// DailySales returns the daily revenue/order series within a date range
-	// (aggregated across currencies for the dashboard line chart).
+	// (summed across currencies for the dashboard line chart — a known V1
+	// simplification when an org trades in several currencies).
 	DailySales(ctx context.Context, arg DailySalesParams) ([]DailySalesRow, error)
 	DeleteApprovalRoutingRule(ctx context.Context, arg DeleteApprovalRoutingRuleParams) (int64, error)
 	DeleteAssignment(ctx context.Context, id int64) (int64, error)
@@ -832,7 +836,8 @@ type Querier interface {
 	// SumReturnedForOrderItem totals quantity already returned for an order line
 	// across non-rejected returns (the returnable cap).
 	SumReturnedForOrderItem(ctx context.Context, orderItemID int64) (string, error)
-	// TopProducts ranks products by revenue in a month, joined to product names.
+	// TopProducts ranks products by revenue in a calendar month, joined to product
+	// names. The month is the first day of the target month.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)
 	TouchUserLogin(ctx context.Context, id int64) error
 	UpdateActivity(ctx context.Context, arg UpdateActivityParams) (Activity, error)

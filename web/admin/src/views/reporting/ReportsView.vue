@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue'
-import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -22,7 +21,6 @@ const top = ref<TopProduct[]>([])
 const loading = ref(false)
 const error = ref('')
 const refreshing = ref(false)
-const toast = useToast()
 
 const salesLabels = computed(() => sales.value.map((d) => d.day.slice(5))) // MM-DD
 const salesValues = computed(() => sales.value.map((d) => Number(d.revenue)))
@@ -47,16 +45,12 @@ async function load() {
   top.value = tp.data?.items ?? []
 }
 
+// Reports are computed live on every read, so "refresh" just re-fetches — there
+// is no cache to rebuild.
 async function refresh() {
   refreshing.value = true
-  const { error: err } = await api.POST('/admin/reports/refresh')
+  await load()
   refreshing.value = false
-  if (err) {
-    toast.add({ severity: 'error', summary: 'Refresh failed', detail: errMessage(err), life: 4000 })
-    return
-  }
-  toast.add({ severity: 'success', summary: 'Reports refreshed', life: 2000 })
-  load()
 }
 
 onMounted(load)

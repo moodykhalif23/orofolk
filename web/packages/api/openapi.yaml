@@ -5562,15 +5562,6 @@ paths:
         - { name: limit, in: query, schema: { type: integer, default: 10 } }
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/TopProductsResult' } } } }
-  /admin/reports/refresh:
-    post:
-      tags: [Reporting]
-      operationId: adminReportRefresh
-      summary: Refresh the reporting materialized views
-      security: [{ adminAuth: [] }]
-      responses:
-        '200': { description: OK }
-
   # ----- Custom report builder (Pack 3 §1) -----
   /admin/reports/entities:
     get:

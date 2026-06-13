@@ -87,10 +87,8 @@ func TestReportingDashboards(t *testing.T) {
 	tok := reportToken(t, issuer)
 	seedOrder(t, pool, 1, "100.0000", "100.0000")
 
-	// Materialized views are stale until refreshed (created empty in the test DB).
-	if rr := do(t, h, http.MethodPost, "/admin/reports/refresh", tok, nil); rr.Code != http.StatusOK {
-		t.Fatalf("refresh: %d (%s)", rr.Code, rr.Body.String())
-	}
+	// Reporting aggregates live — the order above is reflected immediately, no
+	// materialized-view refresh needed.
 
 	// Summary KPIs.
 	var sum struct {
@@ -146,7 +144,6 @@ func TestReportingTenantIsolationAndAuth(t *testing.T) {
 	// org2 needs a website id 1? website_id references websites; seed has website 1 for org1.
 	// Use website 1 (FK only requires existence); revenue is grouped by org, so isolation still holds.
 	seedOrder(t, pool, org2, "999.0000", "999.0000")
-	do(t, h, http.MethodPost, "/admin/reports/refresh", tok, nil)
 
 	var sum struct {
 		Revenue string `json:"revenue"`

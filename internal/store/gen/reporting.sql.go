@@ -13,17 +13,22 @@ import (
 
 const dailySales = `-- name: DailySales :many
 
-SELECT day, sum(order_count)::bigint AS order_count, sum(revenue)::numeric(15,4) AS revenue
-FROM mv_daily_sales
-WHERE organization_id = $1 AND day >= $2 AND day <= $3
-GROUP BY day
-ORDER BY day
+SELECT date_trunc('day', o.created_at)::date AS day,
+       count(*)::bigint AS order_count,
+       COALESCE(sum(o.grand_total), 0)::numeric(15,4) AS revenue
+FROM orders o
+WHERE o.organization_id = $1
+  AND o.status <> 'cancelled'
+  AND o.created_at >= $2::date
+  AND o.created_at < ($3::date + 1)
+GROUP BY 1
+ORDER BY 1
 `
 
 type DailySalesParams struct {
 	OrganizationID int64       `json:"organization_id"`
-	Day            pgtype.Date `json:"day"`
-	Day_2          pgtype.Date `json:"day_2"`
+	FromDate       pgtype.Date `json:"from_date"`
+	ToDate         pgtype.Date `json:"to_date"`
 }
 
 type DailySalesRow struct {
@@ -32,12 +37,16 @@ type DailySalesRow struct {
 	Revenue    string      `json:"revenue"`
 }
 
-// Reporting queries — Pack 3 §1. All read from the precomputed materialized
-// views, org-scoped.
+// Reporting queries — live aggregates over orders/order_items, org-scoped. No
+// materialized views: dashboards are real-time. Every query is bounded by a date
+// window and rides idx_orders_org_created, so a just-placed order is reflected
+// immediately (no hourly refresh, no staleness). Mirrors the read-time pricing
+// model (migration 0055/0056).
 // DailySales returns the daily revenue/order series within a date range
-// (aggregated across currencies for the dashboard line chart).
+// (summed across currencies for the dashboard line chart — a known V1
+// simplification when an org trades in several currencies).
 func (q *Queries) DailySales(ctx context.Context, arg DailySalesParams) ([]DailySalesRow, error) {
-	rows, err := q.db.Query(ctx, dailySales, arg.OrganizationID, arg.Day, arg.Day_2)
+	rows, err := q.db.Query(ctx, dailySales, arg.OrganizationID, arg.FromDate, arg.ToDate)
 	if err != nil {
 		return nil, err
 	}
@@ -57,15 +66,17 @@ func (q *Queries) DailySales(ctx context.Context, arg DailySalesParams) ([]Daily
 }
 
 const salesSummary = `-- name: SalesSummary :one
-SELECT COALESCE(sum(order_count), 0)::bigint AS order_count,
-       COALESCE(sum(revenue), 0)::numeric(15,4) AS revenue
-FROM mv_daily_sales
-WHERE organization_id = $1 AND day >= $2
+SELECT count(*)::bigint AS order_count,
+       COALESCE(sum(o.grand_total), 0)::numeric(15,4) AS revenue
+FROM orders o
+WHERE o.organization_id = $1
+  AND o.status <> 'cancelled'
+  AND o.created_at >= $2::date
 `
 
 type SalesSummaryParams struct {
 	OrganizationID int64       `json:"organization_id"`
-	Day            pgtype.Date `json:"day"`
+	Since          pgtype.Date `json:"since"`
 }
 
 type SalesSummaryRow struct {
@@ -75,27 +86,32 @@ type SalesSummaryRow struct {
 
 // SalesSummary is the headline KPI rollup since a date.
 func (q *Queries) SalesSummary(ctx context.Context, arg SalesSummaryParams) (SalesSummaryRow, error) {
-	row := q.db.QueryRow(ctx, salesSummary, arg.OrganizationID, arg.Day)
+	row := q.db.QueryRow(ctx, salesSummary, arg.OrganizationID, arg.Since)
 	var i SalesSummaryRow
 	err := row.Scan(&i.OrderCount, &i.Revenue)
 	return i, err
 }
 
 const topProducts = `-- name: TopProducts :many
-SELECT t.product_id, p.sku, p.name,
-       t.qty::numeric(15,4) AS qty,
-       t.revenue::numeric(15,4) AS revenue
-FROM mv_top_products t
-JOIN products p ON p.id = t.product_id
-WHERE t.organization_id = $1 AND t.month = $2
-ORDER BY t.revenue DESC, p.name
+SELECT oi.product_id, p.sku, p.name,
+       sum(oi.quantity)::numeric(15,4) AS qty,
+       sum(oi.row_total)::numeric(15,4) AS revenue
+FROM order_items oi
+JOIN orders o ON o.id = oi.order_id
+JOIN products p ON p.id = oi.product_id
+WHERE o.organization_id = $1
+  AND o.status <> 'cancelled'
+  AND o.created_at >= $2::date
+  AND o.created_at < ($2::date + interval '1 month')
+GROUP BY oi.product_id, p.sku, p.name
+ORDER BY revenue DESC, p.name
 LIMIT $3
 `
 
 type TopProductsParams struct {
 	OrganizationID int64       `json:"organization_id"`
 	Month          pgtype.Date `json:"month"`
-	Limit          int32       `json:"limit"`
+	Lim            int32       `json:"lim"`
 }
 
 type TopProductsRow struct {
@@ -106,9 +122,10 @@ type TopProductsRow struct {
 	Revenue   string `json:"revenue"`
 }
 
-// TopProducts ranks products by revenue in a month, joined to product names.
+// TopProducts ranks products by revenue in a calendar month, joined to product
+// names. The month is the first day of the target month.
 func (q *Queries) TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error) {
-	rows, err := q.db.Query(ctx, topProducts, arg.OrganizationID, arg.Month, arg.Limit)
+	rows, err := q.db.Query(ctx, topProducts, arg.OrganizationID, arg.Month, arg.Lim)
 	if err != nil {
 		return nil, err
 	}

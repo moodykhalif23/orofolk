@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"context"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -32,7 +31,6 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/summary", h.summary)
 		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/sales", h.sales)
 		ar.With(mw.RequirePermission("report.view")).Get("/admin/reports/top-products", h.topProducts)
-		ar.With(mw.RequirePermission("report.view")).Post("/admin/reports/refresh", h.refresh)
 
 		// ---- custom report builder ----
 		// Static segments (entities/runs) are registered alongside the {id}
@@ -72,15 +70,6 @@ func dateParam(s string, def time.Time) pgtype.Date {
 	return pgtype.Date{Time: def, Valid: true}
 }
 
-func RefreshViews(ctx context.Context, pool *pgxpool.Pool) error {
-	for _, v := range []string{"mv_daily_sales", "mv_top_products"} {
-		if _, err := pool.Exec(ctx, "REFRESH MATERIALIZED VIEW CONCURRENTLY "+v); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // ---- handlers -------------------------------------------------------------
 
 func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +83,7 @@ func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
 		days = d
 	}
 	since := pgtype.Date{Time: today().AddDate(0, 0, -days), Valid: true}
-	row, err := h.q.SalesSummary(r.Context(), gen.SalesSummaryParams{OrganizationID: org, Day: since})
+	row, err := h.q.SalesSummary(r.Context(), gen.SalesSummaryParams{OrganizationID: org, Since: since})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not compute summary")
 		return
@@ -119,7 +108,7 @@ func (h *Handler) sales(w http.ResponseWriter, r *http.Request) {
 	}
 	from := dateParam(r.URL.Query().Get("from"), today().AddDate(0, 0, -30))
 	to := dateParam(r.URL.Query().Get("to"), today())
-	rows, err := h.q.DailySales(r.Context(), gen.DailySalesParams{OrganizationID: org, Day: from, Day_2: to})
+	rows, err := h.q.DailySales(r.Context(), gen.DailySalesParams{OrganizationID: org, FromDate: from, ToDate: to})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not load sales")
 		return
@@ -152,7 +141,7 @@ func (h *Handler) topProducts(w http.ResponseWriter, r *http.Request) {
 		limit = l
 	}
 	rows, err := h.q.TopProducts(r.Context(), gen.TopProductsParams{
-		OrganizationID: org, Month: pgtype.Date{Time: month, Valid: true}, Limit: int32(limit),
+		OrganizationID: org, Month: pgtype.Date{Time: month, Valid: true}, Lim: int32(limit),
 	})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not load top products")
@@ -167,14 +156,3 @@ func (h *Handler) topProducts(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]any{"month": month.Format("2006-01-02"), "items": items})
 }
 
-func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
-	if _, ok := orgID(r); !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
-		return
-	}
-	if err := RefreshViews(r.Context(), h.pool); err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not refresh reporting views")
-		return
-	}
-	response.JSON(w, http.StatusOK, map[string]any{"refreshed": true})
-}

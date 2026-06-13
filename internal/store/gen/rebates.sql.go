@@ -28,7 +28,7 @@ type CreateRebateProgramParams struct {
 	IsActive       bool    `json:"is_active"`
 }
 
-// Rebates / volume incentives (Roadmap Tier 3 #7).
+// Rebates / volume incentives .
 // ===== Programs ============================================================
 func (q *Queries) CreateRebateProgram(ctx context.Context, arg CreateRebateProgramParams) (RebateProgram, error) {
 	row := q.db.QueryRow(ctx, createRebateProgram,
