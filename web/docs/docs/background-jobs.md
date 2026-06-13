@@ -24,10 +24,12 @@ One file per kind. Each defines an `Args` (with `Kind()`) and a `Worker`:
 - `refresh_reporting` — materialized-view refresh.
 - `run_report_schedules` — due custom-report exports.
 - `erp_sync_sweep` — pushes confirmed orders + issued invoices to ERP connections.
+- `run_insight_digests` — weekly sweep that fans out one digest job per active org.
+- `generate_insight_digest` — computes one org's executive insights snapshot, detects anomalies, narrates an AI briefing (deterministic fallback), persists it, and emails the configured recipients.
 
 ## Periodic jobs
 
-Registered in `queue.NewWorkerClient` via `river.PeriodicJob`: hourly `schedule.hourly` (drives quote-expiry/overdue automation), hourly reporting refresh (run-on-start), hourly report-schedule sweep, hourly ERP sweep.
+Registered in `queue.NewWorkerClient` via `river.PeriodicJob`: hourly `schedule.hourly` (drives quote-expiry/overdue automation), hourly report-schedule sweep, hourly ERP sweep, daily subscription materialization, and a **weekly executive insights digest** (`run_insight_digests`).
 
 ## Adding a job
 

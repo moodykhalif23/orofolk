@@ -48,20 +48,20 @@ func Detect(s Snapshot) []Anomaly {
 	case s.PrevRevenueNonZero() && s.RevenueDelta <= -25:
 		out = append(out, Anomaly{
 			Key: "revenue_drop", Severity: SevCritical,
-			Title:  fmt.Sprintf("Revenue down %.1f%%", -s.RevenueDelta),
-			Detail: fmt.Sprintf("revenue fell from %s to %s versus the prior period", s.PrevRevenue, s.Revenue),
-			Metric: pct(s.RevenueDelta),
+			Title:          fmt.Sprintf("Revenue down %.1f%%", -s.RevenueDelta),
+			Detail:         fmt.Sprintf("revenue fell from %s to %s versus the prior period", s.PrevRevenue, s.Revenue),
+			Metric:         pct(s.RevenueDelta),
 			Recommendation: "Identify the accounts that stopped or cut back and have a rep reach out this week",
-			Action: &Action{Kind: "at_risk", Label: "Review at-risk accounts", Href: "/account-health"},
+			Action:         &Action{Kind: "at_risk", Label: "Review at-risk accounts", Href: "/account-health"},
 		})
 	case s.PrevRevenueNonZero() && s.RevenueDelta <= -10:
 		out = append(out, Anomaly{
 			Key: "revenue_softening", Severity: SevWarn,
-			Title:  fmt.Sprintf("Revenue softening (%.1f%%)", s.RevenueDelta),
-			Detail: fmt.Sprintf("revenue eased from %s to %s versus the prior period", s.PrevRevenue, s.Revenue),
-			Metric: pct(s.RevenueDelta),
+			Title:          fmt.Sprintf("Revenue softening (%.1f%%)", s.RevenueDelta),
+			Detail:         fmt.Sprintf("revenue eased from %s to %s versus the prior period", s.PrevRevenue, s.Revenue),
+			Metric:         pct(s.RevenueDelta),
 			Recommendation: "Watch the biggest accounts for slipping order frequency",
-			Action: &Action{Kind: "at_risk", Label: "Review at-risk accounts", Href: "/account-health"},
+			Action:         &Action{Kind: "at_risk", Label: "Review at-risk accounts", Href: "/account-health"},
 		})
 	case s.PrevRevenueNonZero() && s.RevenueDelta >= 20:
 		out = append(out, Anomaly{
@@ -106,9 +106,9 @@ func Detect(s Snapshot) []Anomaly {
 		}
 		out = append(out, Anomaly{
 			Key: "at_risk_accounts", Severity: SevWarn,
-			Title:  fmt.Sprintf("%d account(s) at churn risk", len(s.AtRisk)),
-			Detail: fmt.Sprintf("%s%s", strings.Join(names, ", "), more),
-			Metric: fmt.Sprintf("%d", len(s.AtRisk)),
+			Title:          fmt.Sprintf("%d account(s) at churn risk", len(s.AtRisk)),
+			Detail:         fmt.Sprintf("%s%s", strings.Join(names, ", "), more),
+			Metric:         fmt.Sprintf("%d", len(s.AtRisk)),
 			Recommendation: "Have a rep re-engage the flagged accounts before they lapse",
 			Action:         &Action{Kind: "at_risk", Label: "Review at-risk accounts", Href: "/account-health"},
 		})
@@ -118,9 +118,9 @@ func Detect(s Snapshot) []Anomaly {
 	if s.TopConcentration >= 40 && len(s.TopCustomers) > 0 {
 		out = append(out, Anomaly{
 			Key: "revenue_concentration", Severity: SevWarn,
-			Title:  fmt.Sprintf("Revenue concentration: %.0f%% from one account", s.TopConcentration),
-			Detail: fmt.Sprintf("%s accounts for %.0f%% of this period's revenue", s.TopCustomers[0].Name, s.TopConcentration),
-			Metric: fmt.Sprintf("%.0f%%", s.TopConcentration),
+			Title:          fmt.Sprintf("Revenue concentration: %.0f%% from one account", s.TopConcentration),
+			Detail:         fmt.Sprintf("%s accounts for %.0f%% of this period's revenue", s.TopCustomers[0].Name, s.TopConcentration),
+			Metric:         fmt.Sprintf("%.0f%%", s.TopConcentration),
 			Recommendation: "Grow demand across more accounts to reduce single-customer dependency",
 			Action:         &Action{Kind: "customers", Label: "View accounts", Href: "/customers"},
 		})
@@ -134,9 +134,9 @@ func Detect(s Snapshot) []Anomaly {
 		}
 		out = append(out, Anomaly{
 			Key: "low_stock", Severity: sev,
-			Title:  fmt.Sprintf("%d SKU(s) at or below reorder point", s.LowStock),
-			Detail: "low stock risks back-orders and lost sales",
-			Metric: fmt.Sprintf("%d", s.LowStock),
+			Title:          fmt.Sprintf("%d SKU(s) at or below reorder point", s.LowStock),
+			Detail:         "low stock risks back-orders and lost sales",
+			Metric:         fmt.Sprintf("%d", s.LowStock),
 			Recommendation: "Replenish the low-stock SKUs to avoid stockouts",
 			Action:         &Action{Kind: "inventory", Label: "Open low-stock report", Href: "/inventory"},
 		})
