@@ -66,7 +66,7 @@ fmt:
 vet:
 	go vet ./...
 
-# ---- Frontend / docs -------------------------------------------------------
+#  Frontend / docs 
 
 dev:
 	./scripts/dev.sh
