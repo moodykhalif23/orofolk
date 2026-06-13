@@ -69,6 +69,14 @@ var templates = map[string]tmpl{
 <p>Download it here: <a href="{{.file_url}}">{{.file_url}}</a></p>
 <p>— Teggo</p>`,
 	},
+	"insights_digest": {
+		subject: "Your business briefing — {{.period}}",
+		body: `<p>Hello,</p>
+<p>Here's your executive briefing for the {{.period}}.</p>
+<blockquote style="border-left:3px solid #cbd5e1;padding-left:12px;color:#334155;white-space:pre-line">{{.narrative}}</blockquote>
+<p>See the full breakdown — KPIs, signals and recommended actions — on your dashboard: <a href="{{.link}}">{{.link}}</a></p>
+<p>— Teggo</p>`,
+	},
 }
 
 func Render(to, key string, data map[string]any) (Message, error) {

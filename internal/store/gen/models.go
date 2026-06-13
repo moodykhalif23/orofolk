@@ -338,6 +338,19 @@ type IdentityProvider struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type InsightDigest struct {
+	ID             int64       `json:"id"`
+	OrganizationID int64       `json:"organization_id"`
+	PeriodStart    pgtype.Date `json:"period_start"`
+	PeriodEnd      pgtype.Date `json:"period_end"`
+	GeneratedAt    time.Time   `json:"generated_at"`
+	Source         string      `json:"source"`
+	Trigger        string      `json:"trigger"`
+	Narrative      string      `json:"narrative"`
+	Kpis           []byte      `json:"kpis"`
+	Anomalies      []byte      `json:"anomalies"`
+}
+
 type IntegrationConnection struct {
 	ID             int64     `json:"id"`
 	OrganizationID int64     `json:"organization_id"`

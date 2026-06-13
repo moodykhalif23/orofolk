@@ -130,6 +130,7 @@ func main() {
 		server.WithInvoicePDF(enq),
 		server.WithNotifier(enq),
 		server.WithRebateSettle(enq),
+		server.WithInsightDigest(enq),
 		server.WithPlatform(cfg.PlatformBaseDomain, cfg.SignupVerifyURL),
 		server.WithSecrets(secrets),
 		server.WithPaymentGateway(gw),

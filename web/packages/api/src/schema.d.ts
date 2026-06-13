@@ -3062,6 +3062,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/insights/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live, on-demand KPIs + detected anomalies for the dashboard */
+        get: operations["adminInsightMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/insights/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Most recent persisted digest (AI-narrated briefing), if any */
+        get: operations["adminLatestInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List recent executive digests */
+        get: operations["adminListInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/insights/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate a fresh digest now (async when a queue is wired, else inline) */
+        post: operations["adminGenerateInsight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/insights/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetInsight"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/reports/entities": {
         parameters: {
             query?: never;
@@ -6357,6 +6443,92 @@ export interface components {
         TopProductsResult: {
             month?: string;
             items?: components["schemas"]["TopProduct"][];
+        };
+        InsightTopCustomer: {
+            /** Format: int64 */
+            customer_id: number;
+            name: string;
+            /** Format: int64 */
+            orders: number;
+            revenue: string;
+        };
+        InsightRiskAccount: {
+            name: string;
+            reason: string;
+        };
+        /** @description Flat KPI map computed for the period (current vs prior window). */
+        InsightKPIs: {
+            revenue?: string;
+            /** Format: int64 */
+            orders?: number;
+            avg_order_value?: string;
+            prev_revenue?: string;
+            /** Format: int64 */
+            prev_orders?: number;
+            revenue_delta_pct?: number;
+            orders_delta_pct?: number;
+            /** Format: int64 */
+            new_customers?: number;
+            open_ar?: string;
+            ar_90_plus?: string;
+            open_invoices?: number;
+            top_concentration_pct?: number;
+            /** Format: int64 */
+            low_stock?: number;
+            top_customers?: components["schemas"]["InsightTopCustomer"][];
+            at_risk?: components["schemas"]["InsightRiskAccount"][];
+            period_start?: string;
+            period_end?: string;
+            window_days?: number;
+        };
+        InsightAction: {
+            kind: string;
+            label: string;
+            href: string;
+        };
+        InsightAnomaly: {
+            key: string;
+            /** @enum {string} */
+            severity: "critical" | "warn" | "info";
+            title: string;
+            detail: string;
+            metric: string;
+            recommendation: string;
+            action?: components["schemas"]["InsightAction"];
+        };
+        InsightDigest: {
+            /** Format: int64 */
+            id: number;
+            period_start: string;
+            period_end: string;
+            /** Format: date-time */
+            generated_at: string;
+            /** @description deterministic | claude | openai */
+            source: string;
+            /** @enum {string} */
+            trigger: "schedule" | "manual";
+            narrative: string;
+            kpis?: components["schemas"]["InsightKPIs"];
+            anomalies?: components["schemas"]["InsightAnomaly"][];
+        };
+        InsightMetrics: {
+            period_label: string;
+            period_start: string;
+            period_end: string;
+            kpis: components["schemas"]["InsightKPIs"];
+            anomalies: components["schemas"]["InsightAnomaly"][];
+        };
+        LatestInsightResult: {
+            digest?: components["schemas"]["InsightDigest"];
+        };
+        InsightDigestList: {
+            items: components["schemas"]["InsightDigest"][];
+            limit?: number;
+            offset?: number;
+        };
+        GenerateInsightResult: {
+            scheduled: boolean;
+            digest?: components["schemas"]["InsightDigest"];
         };
         ReportMeasure: {
             field?: string;
@@ -12742,6 +12914,123 @@ export interface operations {
                     "application/json": components["schemas"]["TopProductsResult"];
                 };
             };
+        };
+    };
+    adminInsightMetrics: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightMetrics"];
+                };
+            };
+        };
+    };
+    adminLatestInsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatestInsightResult"];
+                };
+            };
+        };
+    };
+    adminListInsights: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightDigestList"];
+                };
+            };
+        };
+    };
+    adminGenerateInsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Generated inline */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateInsightResult"];
+                };
+            };
+            /** @description Scheduled */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateInsightResult"];
+                };
+            };
+        };
+    };
+    adminGetInsight: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightDigest"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminReportEntities: {

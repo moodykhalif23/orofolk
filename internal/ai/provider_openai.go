@@ -144,14 +144,21 @@ type openAIFunctionCall struct {
 }
 
 func (p *OpenAIProvider) post(ctx context.Context, body map[string]any) (openAIResponse, error) {
+	return openAIChatCompletions(ctx, p.client, p.baseURL, p.apiKey, body)
+}
+
+// openAIChatCompletions POSTs a chat-completions request to an OpenAI-compatible
+// endpoint and decodes the response. Shared by the chat provider and the insight
+// narrator so the wire details live in one place.
+func openAIChatCompletions(ctx context.Context, client *http.Client, baseURL, apiKey string, body map[string]any) (openAIResponse, error) {
 	buf, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/chat/completions", bytes.NewReader(buf))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/chat/completions", bytes.NewReader(buf))
 	if err != nil {
 		return openAIResponse{}, err
 	}
 	req.Header.Set("content-type", "application/json")
-	req.Header.Set("authorization", "Bearer "+p.apiKey)
-	res, err := p.client.Do(req)
+	req.Header.Set("authorization", "Bearer "+apiKey)
+	res, err := client.Do(req)
 	if err != nil {
 		return openAIResponse{}, err
 	}

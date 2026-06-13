@@ -138,6 +138,7 @@ const groups: NavGroup[] = [
     label: 'Insights',
     icon: 'pi pi-chart-bar',
     items: [
+      { label: 'Briefings', icon: 'pi pi-sparkles', routeName: 'insights', permission: 'report.view' },
       { label: 'Analytics', icon: 'pi pi-chart-line', routeName: 'analytics', permission: 'report.view' },
       { label: 'Report builder', icon: 'pi pi-table', routeName: 'report-builder', permission: 'report.view' },
     ],

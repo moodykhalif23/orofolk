@@ -271,6 +271,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'vendor.view' },
       },
       {
+        path: 'insights',
+        name: 'insights',
+        component: () => import('@/views/insights/InsightsView.vue'),
+        meta: { permission: 'report.view' },
+      },
+      {
         path: 'analytics',
         name: 'analytics',
         component: () => import('@/views/reporting/ReportsView.vue'),

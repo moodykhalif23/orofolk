@@ -10,6 +10,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
+	"b2bcommerce/internal/ai"
 	"b2bcommerce/internal/automation"
 	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/email"
@@ -26,7 +27,7 @@ import (
 // It also wires the automation engine: registered actions (e.g. expire_quotes)
 // run via run_automation_action, and an hourly periodic job emits
 // schedule.hourly into the dispatcher (driving quote-expiry, overdue sweeps).
-func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender, store blob.Store, proc imageproc.Processor, notifier *notify.Service) (*river.Client[pgx.Tx], error) {
+func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sender, store blob.Store, proc imageproc.Processor, notifier *notify.Service, narrator ai.Narrator) (*river.Client[pgx.Tx], error) {
 	enq, err := NewEnqueuer(pool)
 	if err != nil {
 		return nil, err
@@ -50,6 +51,8 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.ERPSyncWorker{Pool: pool})
 	river.AddWorker(workers, &jobs.RebateSettleWorker{Pool: pool})
 	river.AddWorker(workers, &jobs.MaterializeSubscriptionsWorker{Pool: pool, Mailer: enq})
+	river.AddWorker(workers, &jobs.RunInsightDigestsWorker{Pool: pool, Enq: enq})
+	river.AddWorker(workers, &jobs.InsightDigestWorker{Pool: pool, Narrator: narrator, Mailer: enq})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -81,6 +84,14 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 			river.PeriodicInterval(24*time.Hour),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return jobs.MaterializeDueSubscriptionsArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false},
+		),
+		// Weekly: fan out an executive insights digest per active org.
+		river.NewPeriodicJob(
+			river.PeriodicInterval(7*24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.RunInsightDigestsArgs{}, nil
 			},
 			&river.PeriodicJobOpts{RunOnStart: false},
 		),
@@ -124,6 +135,14 @@ func (e *Enqueuer) EnqueueInvoicePDF(ctx context.Context, invoiceID int64) error
 // EnqueueRendition schedules derivation of one preset rendition for an asset.
 func (e *Enqueuer) EnqueueRendition(ctx context.Context, mediaAssetID int64, preset string) error {
 	_, err := e.ic.Insert(ctx, jobs.GenerateRenditionArgs{MediaAssetID: mediaAssetID, Preset: preset}, nil)
+	return err
+}
+
+// EnqueueInsightDigest schedules generation of one org's executive insights
+// digest. trigger is "schedule" (the weekly sweep) or "manual" (an on-demand
+// run from the dashboard).
+func (e *Enqueuer) EnqueueInsightDigest(ctx context.Context, orgID int64, trigger string) error {
+	_, err := e.ic.Insert(ctx, jobs.GenerateInsightDigestArgs{OrganizationID: orgID, Trigger: trigger}, nil)
 	return err
 }
 

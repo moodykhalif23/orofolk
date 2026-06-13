@@ -30,6 +30,7 @@ import (
 	"b2bcommerce/internal/modules/field"
 	"b2bcommerce/internal/modules/fxadmin"
 	"b2bcommerce/internal/modules/health"
+	insightsmod "b2bcommerce/internal/modules/insights"
 	"b2bcommerce/internal/modules/integration"
 	"b2bcommerce/internal/modules/marketplace"
 	"b2bcommerce/internal/modules/merch"
@@ -81,6 +82,8 @@ type options struct {
 	shipProvider   shippingeng.Adapter
 	aiProvider     ai.Provider
 	pageDesigner   ai.PageDesigner
+	insightsNarr   ai.Narrator
+	insightDigest  insightsmod.Enqueuer
 	allowedOrigins []string
 	rtAuthorizer   notify.Authorizer
 	rtKey          string
@@ -161,6 +164,18 @@ func WithAIProvider(p ai.Provider) Option {
 // deterministic template designer when unset.
 func WithPageDesigner(d ai.PageDesigner) Option {
 	return func(o *options) { o.pageDesigner = d }
+}
+
+// WithInsightsNarrator sets the AI narrator used when an insights digest is
+// generated inline on the request (no enqueuer). Defaults to deterministic.
+func WithInsightsNarrator(n ai.Narrator) Option {
+	return func(o *options) { o.insightsNarr = n }
+}
+
+// WithInsightDigest wires async insight-digest generation; without it the
+// "generate now" endpoint runs the engine inline on the request.
+func WithInsightDigest(e insightsmod.Enqueuer) Option {
+	return func(o *options) { o.insightDigest = e }
 }
 
 // WithAllowedOrigins sets the browser origins permitted to make cross-origin
@@ -270,6 +285,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	wfadmin.New(st.Pool()).Routes(r, authMW)
 	cms.New(st.Pool(), issuer, o.pageDesigner).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)
+	insightsmod.New(st.Pool()).WithNarrator(o.insightsNarr).WithEnqueuer(o.insightDigest).Routes(r, authMW)
 	tenancy.New(st.Pool()).Routes(r, authMW)
 	if o.blobStore != nil {
 		proc := o.imageProc

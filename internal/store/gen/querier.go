@@ -102,6 +102,8 @@ type Querier interface {
 	// SSO / federated identity (PRD §15).
 	// ===== Identity providers ==================================================
 	CreateIdentityProvider(ctx context.Context, arg CreateIdentityProviderParams) (IdentityProvider, error)
+	// ===== digest persistence ==================================================
+	CreateInsightDigest(ctx context.Context, arg CreateInsightDigestParams) (InsightDigest, error)
 	// ERP / accounting sync (Pack 2 §4.6).
 	// ===== Connections =========================================================
 	CreateIntegrationConnection(ctx context.Context, arg CreateIntegrationConnectionParams) (IntegrationConnection, error)
@@ -325,6 +327,7 @@ type Querier interface {
 	GetIdentityProvider(ctx context.Context, arg GetIdentityProviderParams) (IdentityProvider, error)
 	// GetIdentityProviderByID resolves a provider without org (public login/callback).
 	GetIdentityProviderByID(ctx context.Context, id int64) (IdentityProvider, error)
+	GetInsightDigest(ctx context.Context, arg GetInsightDigestParams) (InsightDigest, error)
 	GetInstanceForEntity(ctx context.Context, arg GetInstanceForEntityParams) (WorkflowInstance, error)
 	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
 	// GetIntegrationConnectionByID resolves a connection without org (inbound
@@ -468,6 +471,7 @@ type Querier interface {
 	IncrementInviteUse(ctx context.Context, id int64) error
 	IncrementPromotionRedeemed(ctx context.Context, id int64) error
 	IncrementUsage(ctx context.Context, arg IncrementUsageParams) (int64, error)
+	LatestInsightDigest(ctx context.Context, organizationID int64) (InsightDigest, error)
 	// ListAbandonedCarts returns active carts with items that have gone idle past
 	// the cutoff and weren't reminded since their last change. $1 = idle cutoff.
 	ListAbandonedCarts(ctx context.Context, updatedAt time.Time) ([]ListAbandonedCartsRow, error)
@@ -478,6 +482,9 @@ type Querier interface {
 	ListActiveCustomerUserIDs(ctx context.Context, customerID int64) ([]int64, error)
 	// ListActiveIntegrationConnections (all orgs) drives the periodic sweep.
 	ListActiveIntegrationConnections(ctx context.Context) ([]IntegrationConnection, error)
+	// ListActiveOrganizationIDs enumerates active tenants for the weekly digest
+	// sweep (one digest job is fanned out per id).
+	ListActiveOrganizationIDs(ctx context.Context) ([]int64, error)
 	// Price adjustment rules (migration 0035).
 	ListActivePriceAdjustmentRules(ctx context.Context, organizationID int64) ([]PriceAdjustmentRule, error)
 	ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error)
@@ -531,6 +538,7 @@ type Querier interface {
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
 	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
 	ListIdentityProviders(ctx context.Context, organizationID int64) ([]IdentityProvider, error)
+	ListInsightDigests(ctx context.Context, arg ListInsightDigestsParams) ([]InsightDigest, error)
 	ListIntegrationConnections(ctx context.Context, organizationID int64) ([]IntegrationConnection, error)
 	ListInventoryLevelsForProduct(ctx context.Context, productID int64) ([]ListInventoryLevelsForProductRow, error)
 	ListInventoryMovements(ctx context.Context, arg ListInventoryMovementsParams) ([]InventoryMovement, error)
@@ -699,6 +707,9 @@ type Querier interface {
 	// MaxScopedCursor is the current high-water mark for the rep's scope (used when
 	// a pull returns no rows so the client still advances its cursor).
 	MaxScopedCursor(ctx context.Context, arg MaxScopedCursorParams) (int64, error)
+	// NewCustomerCountWindow counts accounts whose FIRST ever non-cancelled order
+	// falls inside the window — new-logo acquisition for the period.
+	NewCustomerCountWindow(ctx context.Context, arg NewCustomerCountWindowParams) (int64, error)
 	// PipelineBoard: per-stage open count, total and probability-weighted amounts
 	// (Pack 2 §1.4). Sums cast to text via the numeric override; count is bigint.
 	PipelineBoard(ctx context.Context, pipelineID int64) ([]PipelineBoardRow, error)
@@ -752,6 +763,20 @@ type Querier interface {
 	// ("buy 100+ at X"). Replaces ListCustomerPriceTiersForSlug.
 	// params: $1 customer_id, $2 slug, $3 organization_id, $4 currency, $5 website_id, $6 at
 	ResolvePriceTiersForSlug(ctx context.Context, arg ResolvePriceTiersForSlugParams) ([]ResolvePriceTiersForSlugRow, error)
+	// RevenueByCustomerWindow ranks customers by spend in the window. The engine
+	// uses it for revenue concentration (top-account dependency risk) and for the
+	// biggest movers narrative.
+	RevenueByCustomerWindow(ctx context.Context, arg RevenueByCustomerWindowParams) ([]RevenueByCustomerWindowRow, error)
+	// Insights analytics + digest persistence.
+	//
+	// The analytics queries are all date-windowed GROUP BY/aggregate over
+	// orders/order_items, riding idx_orders_org_created (migration 0056) — the same
+	// live, no-materialization philosophy as reporting. They take an explicit
+	// [from_ts, to_ts) window so the engine can compute period-over-period deltas by
+	// running the same query for the current and the immediately-preceding window.
+	// RevenueWindow is the headline rollup for one window: order count + gross
+	// revenue (excluding cancelled). Run twice (current + prior) for growth.
+	RevenueWindow(ctx context.Context, arg RevenueWindowParams) (RevenueWindowRow, error)
 	RevokeCustomerInvite(ctx context.Context, arg RevokeCustomerInviteParams) (int64, error)
 	// SalesSummary is the headline KPI rollup since a date.
 	SalesSummary(ctx context.Context, arg SalesSummaryParams) (SalesSummaryRow, error)

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"b2bcommerce/internal/ai"
 	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/config"
 	"b2bcommerce/internal/db"
@@ -73,8 +74,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Real-time notification publisher. Pusher when configured; otherwise a
-	// no-op so notifications still persist (poll-only delivery).
 	var rtPub notify.Publisher = notify.NoopPublisher{}
 	if pp, ok := notify.NewPusherPublisher(cfg.PusherAppID, cfg.PusherKey, cfg.PusherSecret, cfg.PusherCluster); ok {
 		rtPub = pp
@@ -82,7 +81,25 @@ func main() {
 	}
 	notifier := notify.New(pool, rtPub, logger)
 
-	client, err := queue.NewWorkerClient(pool, renderer, sender, mediaStore, imageproc.GoProcessor{}, notifier)
+	var narrator ai.Narrator = ai.NewDeterministicNarrator()
+	switch cfg.AIProvider {
+	case "claude":
+		if cfg.AnthropicAPIKey != "" {
+			narrator = ai.NewClaudeNarrator(cfg.AnthropicAPIKey, cfg.AIModel)
+			logger.Info("insights digest narration: claude", "model", cfg.AIModel)
+		} else {
+			logger.Warn("AI_PROVIDER=claude but ANTHROPIC_API_KEY is empty; insights digest stays deterministic")
+		}
+	case "openai":
+		if cfg.AIChatAPIKey != "" {
+			narrator = ai.NewOpenAINarrator(cfg.AIChatBaseURL, cfg.AIChatAPIKey, cfg.AIChatModel)
+			logger.Info("insights digest narration: openai-compatible", "base_url", cfg.AIChatBaseURL, "model", cfg.AIChatModel)
+		} else {
+			logger.Warn("AI_PROVIDER=openai but AI_CHAT_API_KEY is empty; insights digest stays deterministic")
+		}
+	}
+
+	client, err := queue.NewWorkerClient(pool, renderer, sender, mediaStore, imageproc.GoProcessor{}, notifier, narrator)
 	if err != nil {
 		logger.Error("queue init failed", "err", err)
 		os.Exit(1)
