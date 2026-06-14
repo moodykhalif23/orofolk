@@ -302,8 +302,8 @@ function logout() {
   flex-shrink: 0;
 }
 .menu-text { display: block; width: 100%; }
-/* Active marker on the indigo rail: a vertical amber accent pill flush to the
-   left edge, plus white icon + label — no cushion. */
+/* Active marker: a white vertical pill flush to the rail's left edge + white
+   icon/label (matches the vendor rail) — no cushion. */
 .menu-link.active { color: #fff; }
 .menu-link.active .menu-icon { color: #fff; }
 .menu-link.active::before {
@@ -315,7 +315,7 @@ function logout() {
   width: 3px;
   height: 26px;
   border-radius: 0 3px 3px 0;
-  background: var(--teggo-accent, #f59e0b);
+  background: #fff;
 }
 
 /* --- Main column --- */
