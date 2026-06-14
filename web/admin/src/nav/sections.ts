@@ -50,7 +50,7 @@ export const sections: NavSection[] = [
   {
     key: 'pricing',
     label: 'Pricing',
-    icon: 'pi pi-dollar',
+    icon: 'pi pi-wallet',
     blurb: 'How every customer sees their price.',
     items: [
       { label: 'Price lists', icon: 'pi pi-dollar', routeName: 'pricing', permission: 'price_list.view', blurb: 'Per-customer and contract price books.' },

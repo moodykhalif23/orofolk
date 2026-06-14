@@ -181,6 +181,30 @@ func Provision(ctx context.Context, pool *pgxpool.Pool, in Input) (Result, error
 		return Result{}, fmt.Errorf("create website: %w", err)
 	}
 
+	// Seed a default CRM pipeline + stages so lead conversion and the pipeline
+	// board work out of the box — mirrors migration 0013's demo-org seed. Without
+	// this, GetDefaultPipeline finds nothing and lead conversion fails.
+	var pipelineID int64
+	if err := tx.QueryRow(ctx,
+		`INSERT INTO pipelines (organization_id, name, is_default) VALUES ($1, 'Default', true) RETURNING id`,
+		org.ID).Scan(&pipelineID); err != nil {
+		return Result{}, fmt.Errorf("create default pipeline: %w", err)
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO pipeline_stages (pipeline_id, code, label, probability, is_won, is_lost, sort_order)
+		 SELECT $1, s.code, s.label, s.probability, s.is_won, s.is_lost, s.sort_order
+		 FROM (VALUES
+		   ('new',         'New',         10.0, false, false, 1),
+		   ('qualified',   'Qualified',   25.0, false, false, 2),
+		   ('proposal',    'Proposal',    50.0, false, false, 3),
+		   ('negotiation', 'Negotiation', 75.0, false, false, 4),
+		   ('won',         'Won',        100.0, true,  false, 5),
+		   ('lost',        'Lost',         0.0, false, true,  6)
+		 ) AS s(code, label, probability, is_won, is_lost, sort_order)`,
+		pipelineID); err != nil {
+		return Result{}, fmt.Errorf("seed pipeline stages: %w", err)
+	}
+
 	hash, err := auth.HashPassword(in.Password)
 	if err != nil {
 		return Result{}, err

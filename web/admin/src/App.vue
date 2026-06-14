@@ -5,7 +5,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 </script>
 
 <template>
-  <Toast />
+  <Toast position="bottom-right" />
   <ConfirmDialog />
   <RouterView />
 </template>
