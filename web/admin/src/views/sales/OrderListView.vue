@@ -171,33 +171,35 @@ onMounted(() => { if (route.query.new) openCreate() })
           <label>Line items <span v-if="currency" class="ccy">(prices in {{ currency }})</span></label>
           <Button label="Add line" icon="pi pi-plus" size="small" text @click="addLine" />
         </div>
-        <table class="lines">
-          <thead>
-            <tr><th>Product</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th><th></th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="(l, i) in form.lines" :key="i">
-              <td>
-                <Select
-                  v-model="l.product_id"
-                  :options="productOptions"
-                  optionLabel="label"
-                  optionValue="id"
-                  filter
-                  filterPlaceholder="Search…"
-                  placeholder="Select a product"
-                  :emptyMessage="productsLoaded ? 'No products' : 'Loading…'"
-                  showClear
-                  fluid
-                />
-              </td>
-              <td class="num"><InputText v-model="l.quantity" class="sm" /></td>
-              <td class="num"><InputText v-model="l.unit_price" class="sm" /></td>
-              <td class="num total">{{ lineTotal(l) }}</td>
-              <td><Button icon="pi pi-times" text rounded severity="danger" :disabled="form.lines.length === 1" @click="removeLine(i)" /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="lines">
+            <thead>
+              <tr><th>Product</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="(l, i) in form.lines" :key="i">
+                <td>
+                  <Select
+                    v-model="l.product_id"
+                    :options="productOptions"
+                    optionLabel="label"
+                    optionValue="id"
+                    filter
+                    filterPlaceholder="Search…"
+                    placeholder="Select a product"
+                    :emptyMessage="productsLoaded ? 'No products' : 'Loading…'"
+                    showClear
+                    fluid
+                  />
+                </td>
+                <td class="num"><InputText v-model="l.quantity" class="sm" /></td>
+                <td class="num"><InputText v-model="l.unit_price" class="sm" /></td>
+                <td class="num total">{{ lineTotal(l) }}</td>
+                <td><Button icon="pi pi-times" text rounded severity="danger" :disabled="form.lines.length === 1" @click="removeLine(i)" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </form>
       <template #footer>
         <Button label="Cancel" severity="secondary" text @click="dialogOpen = false" />
@@ -216,7 +218,7 @@ onMounted(() => { if (route.query.new) openCreate() })
 .ccy { font-weight: 400; color: var(--p-text-muted-color, #64748b); }
 .lines-head { display: flex; align-items: center; justify-content: space-between; }
 .lines-head label { font-size: 0.8rem; font-weight: 600; }
-.lines { width: 100%; border-collapse: collapse; }
+.lines { width: 100%; min-width: 30rem; border-collapse: collapse; }
 .lines th { text-align: left; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--p-text-muted-color, #64748b); padding: 0.25rem 0.4rem; }
 .lines th.num, .lines td.num { text-align: right; }
 .lines td { padding: 0.25rem 0.4rem; vertical-align: middle; }

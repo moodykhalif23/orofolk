@@ -165,15 +165,46 @@ body {
   color: var(--p-text-color, #0f172a);
 }
 
-/* ---------------------------------------------------------------------------
-   Shared utilities — promoted from per-view scoped CSS so every view reads the
-   same. `.muted` for secondary text, `.mb` for a one-rem bottom gap. Page
-   headers now use the <PageHeader> component; empty states use <EmptyState>.
-   --------------------------------------------------------------------------- */
 .muted {
   color: var(--p-text-muted-color, #64748b);
   font-weight: 400;
 }
 .mb {
   margin-bottom: 1rem;
+}
+
+
+.page {
+  margin-inline: auto;
+}
+
+/* A dialog never exceeds the viewport, whatever fixed width it requests — so a
+   640px form dialog becomes a tidy ~96vw card on a phone instead of overflowing. */
+.p-dialog {
+  max-width: 96vw;
+}
+
+.p-datatable-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .grid2,
+  .grid3,
+  .cols,
+  .row,
+  .row2,
+  .prow,
+  .meta-row,
+  .cred-row,
+  .diff,
+  .adduser {
+    grid-template-columns: 1fr !important;
+  }
 }

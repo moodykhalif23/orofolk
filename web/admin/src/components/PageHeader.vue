@@ -32,8 +32,11 @@ defineProps<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   margin-bottom: 1rem;
+  /* When the title + actions can't fit on one line, the actions wrap beneath
+     rather than overflowing or crushing the title. */
+  flex-wrap: wrap;
 }
 .page-header__heading {
   min-width: 0;
@@ -61,5 +64,6 @@ defineProps<{
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 </style>

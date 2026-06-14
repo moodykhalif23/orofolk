@@ -238,6 +238,7 @@ onMounted(() => {
           </div>
         </template>
         <template #content>
+          <div class="table-scroll">
           <table class="lines">
             <thead>
               <tr><th>Product</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Discount</th><th class="r">Row total</th><th></th></tr>
@@ -268,6 +269,7 @@ onMounted(() => {
               <tr v-if="!lines.length"><td colspan="7" class="empty">No lines — add one.</td></tr>
             </tbody>
           </table>
+          </div>
 
           <div class="totals">
             <span class="muted">Preview subtotal (saved server-side on Save):</span>
@@ -369,7 +371,7 @@ onMounted(() => {
 .qtyrow { margin-top: 0.8rem; }
 .errs { margin: 0; padding-left: 1.1rem; }
 .cfgtotal { margin-top: 0.8rem; font-size: 1.05rem; }
-.lines { width: 100%; border-collapse: collapse; }
+.lines { width: 100%; min-width: 38rem; border-collapse: collapse; }
 .lines th { text-align: left; font-size: 0.78rem; color: var(--p-text-muted-color, #64748b); padding: 0.3rem 0.5rem; }
 .lines td { padding: 0.3rem 0.5rem; }
 .lines .r { text-align: right; }

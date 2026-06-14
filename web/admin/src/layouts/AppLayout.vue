@@ -453,4 +453,11 @@ function logout() {
     background: rgba(15, 23, 42, 0.45);
   }
 }
+
+/* Phones: tighten the chrome so content gets the space it needs. */
+@media (max-width: 640px) {
+  .content { padding: 1rem; }
+  .topbar { padding: 0 1rem; }
+  .subnav-inner { padding: 0 1rem; }
+}
 </style>

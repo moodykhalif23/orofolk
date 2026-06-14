@@ -88,14 +88,16 @@ onMounted(load)
     <Dialog v-model:visible="detailOpen" modal :header="detail ? `Return ${detail.public_id.slice(0,8)}…` : 'Return'" :style="{ width: '40rem' }">
       <template v-if="detail">
         <div class="status"><Tag :value="detail.status" :severity="sev(detail.status)" /></div>
-        <table class="lines">
-          <thead><tr><th>Product</th><th>SKU</th><th>Qty</th><th class="r">Unit</th></tr></thead>
-          <tbody>
-            <tr v-for="it in detail.items" :key="it.id">
-              <td>{{ it.name }}</td><td>{{ it.sku }}</td><td>{{ it.quantity }}</td><td class="r">{{ it.unit_price }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="lines">
+            <thead><tr><th>Product</th><th>SKU</th><th>Qty</th><th class="r">Unit</th></tr></thead>
+            <tbody>
+              <tr v-for="it in detail.items" :key="it.id">
+                <td>{{ it.name }}</td><td>{{ it.sku }}</td><td>{{ it.quantity }}</td><td class="r">{{ it.unit_price }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-if="detail.credit_notes.length" class="credits">
           <strong>Credit notes</strong>
           <div v-for="cn in detail.credit_notes" :key="cn.id" class="cn">{{ cn.amount }} {{ cn.currency }} <Tag :value="cn.status" severity="success" /></div>
