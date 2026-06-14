@@ -103,15 +103,6 @@ const leaves = computed(() =>
   border-radius: 0 18px 0 0; /* 3 sharp edges, top-right curve */
   text-decoration: none;
   color: inherit;
-  transition:
-    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-.hub-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--p-primary-color, #16a34a);
-  box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.4);
 }
 .hub-card__icon {
   display: inline-flex;
@@ -146,10 +137,5 @@ const leaves = computed(() =>
   color: var(--p-text-muted-color, #cbd5e1);
   font-size: 0.85rem;
   flex-shrink: 0;
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-.hub-card:hover .hub-card__go {
-  color: var(--p-primary-color, #16a34a);
-  transform: translateX(3px);
 }
 </style>

@@ -213,7 +213,9 @@ function logout() {
 
 /* --- Tier 1: sidebar --- */
 .sidebar {
-  width: var(--teggo-sidebar-width, 248px);
+  /* Compact icon-over-label rail on large screens — reclaims working space for
+     content. The mobile drawer widens back out (see the breakpoint below). */
+  width: 108px;
   flex-shrink: 0;
   height: 100%;
   background: var(--teggo-surface, #fff);
@@ -224,9 +226,10 @@ function logout() {
 .brand {
   display: flex;
   align-items: center;
+  justify-content: center; /* rail: just the badge, centred */
   gap: 0.6rem;
   height: 58px; /* match the topbar so the header line is flush */
-  padding: 0 1.1rem;
+  padding: 0 0.5rem;
   flex-shrink: 0;
   text-decoration: none;
 }
@@ -243,6 +246,7 @@ function logout() {
   flex-shrink: 0;
 }
 .brand-name {
+  display: none; /* hidden on the rail; shown again in the mobile drawer */
   font-weight: 800;
   font-size: 1.05rem;
   letter-spacing: -0.01em;
@@ -268,36 +272,36 @@ function logout() {
 .menu {
   list-style: none;
   margin: 0;
-  padding: 0 0.75rem;
+  padding: 0 0.4rem;
   display: flex;
   flex-direction: column;
   height: 100%;
 }
-.menu-item { margin-bottom: 2px; }
+.menu-item { margin-bottom: 4px; }
 /* Assistant pinned to the foot of the rail. */
 .menu-item--pinned { margin-top: auto; }
+/* Rail item: icon stacked over its label, centred. */
 .menu-link {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.6rem 0.7rem;
-  border-radius: 8px;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.55rem 0.3rem;
+  border-radius: 10px;
   text-decoration: none;
   color: var(--p-text-color, #334155);
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  text-align: center;
 }
 .menu-icon {
-  font-size: 1rem;
-  width: 1.2rem;
-  text-align: center;
+  font-size: 1.2rem;
   color: var(--p-text-muted-color, #94a3b8);
   flex-shrink: 0;
 }
-.menu-text { flex: 1; min-width: 0; }
-.menu-link:hover { background: var(--p-surface-100, #f1f5f9); }
+.menu-text { display: block; width: 100%; }
 .menu-link.active { background: var(--p-primary-50, #f0fdf4); color: var(--p-primary-color, #16a34a); }
 .menu-link.active .menu-icon { color: var(--p-primary-color, #16a34a); }
 
@@ -389,7 +393,6 @@ function logout() {
   color: var(--p-text-muted-color, #94a3b8);
   transition: color 0.12s ease;
 }
-.sub-link:hover { background: var(--p-surface-100, #f1f5f9); }
 .sub-link.active { background: var(--p-primary-50, #f0fdf4); color: var(--p-primary-color, #16a34a); }
 .sub-link.active i { color: var(--p-primary-color, #16a34a); }
 
@@ -436,6 +439,7 @@ function logout() {
 @media (max-width: 1024px) {
   .hamburger { display: inline-flex; }
   .sidebar {
+    width: 264px;
     position: fixed;
     top: 0;
     left: 0;
@@ -444,6 +448,21 @@ function logout() {
     transition: transform 0.2s ease;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
   }
+  /* The drawer has room for the comfortable icon-beside-label layout. */
+  .brand { justify-content: flex-start; padding: 0 1.1rem; }
+  .brand-name { display: inline; }
+  .menu { padding: 0 0.75rem; }
+  .menu-link {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.7rem;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+  .menu-icon { font-size: 1rem; width: 1.2rem; text-align: center; }
+  .menu-text { width: auto; flex: 1; min-width: 0; }
   .drawer-open .sidebar { transform: translateX(0); }
   .drawer-open .scrim {
     display: block;

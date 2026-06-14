@@ -284,7 +284,9 @@ function goAction(href: string | undefined) {
 .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 0.75rem; }
 .no-signals { display: inline-flex; align-items: center; gap: 0.4rem; }
 .signal-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.signal { border-left: 3px solid var(--p-surface-300, #cbd5e1); }
+/* Signals use sharp edges (this section only) — the scoped `.signal` selector
+   outspecifies the global `.p-card` radius, so it stays contained here. */
+.signal { border-left: 3px solid var(--p-surface-300, #cbd5e1); border-radius: 0; }
 .signal.critical { border-left-color: #dc2626; }
 .signal.warn { border-left-color: #d97706; }
 .signal.info { border-left-color: #2563eb; }
