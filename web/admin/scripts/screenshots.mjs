@@ -27,16 +27,36 @@ const shots = [
 ]
 
 async function main() {
-  let token
+  // A pre-minted admin token (e.g. from `go run ./cmd/seeddemo`) wins — it lets
+  // us screenshot a specific (seeded) org even when the running API predates the
+  // /demo endpoint.
+  let token = process.env.SHOT_TOKEN
+  if (token) {
+    console.log('• using SHOT_TOKEN')
+  }
+  // Otherwise prefer a freshly-provisioned, pre-seeded demo org so the dashboards
+  // are populated for the marketing shots; fall back to the seed admin login.
   try {
-    const res = await fetch(`${BASE}/admin/auth/login`, {
+    if (token) throw 'skip'
+    const demoRes = await fetch(`${BASE}/demo`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+      body: JSON.stringify({ email: 'demo@teggo.dev', company: 'Northwind Industrial', name: 'Demo' }),
     })
-    if (!res.ok) throw new Error(`login returned ${res.status}`)
-    token = (await res.json()).token
-    if (!token) throw new Error('no token in login response')
+    if (demoRes.ok) {
+      token = (await demoRes.json()).token
+      console.log('• using a freshly-seeded demo org for populated screenshots')
+    } else {
+      const res = await fetch(`${BASE}/admin/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+      })
+      if (!res.ok) throw new Error(`login returned ${res.status}`)
+      token = (await res.json()).token
+      console.log('• demo endpoint unavailable; using the seed admin login')
+    }
+    if (!token) throw new Error('no token returned')
   } catch (e) {
     console.error(`\n✗ Could not authenticate against ${BASE} (${e.message}).`)
     console.error('  Make sure the admin dev server is running:')
