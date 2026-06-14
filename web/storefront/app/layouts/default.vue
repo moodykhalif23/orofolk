@@ -40,9 +40,12 @@ const mobileOpen = ref(false)
 const accountOp = ref()
 function toggleAccount(e: Event) { accountOp.value?.toggle(e) }
 watch(() => route.fullPath, () => { mobileOpen.value = false; accountOp.value?.hide() })
-// The Account trigger reads as active on any portal page — every Account-menu
-// link lives under /account.
-const accountActive = computed(() => route.path === '/account' || route.path.startsWith('/account/'))
+// The Account trigger reads as active on any portal page. Most live under
+// /account; the quote detail page sits at /quotes/:id, so include it too.
+const accountActive = computed(() => {
+  const p = route.path
+  return p === '/account' || p.startsWith('/account/') || p.startsWith('/quotes')
+})
 
 // Search typeahead: fetch suggestions while typing; selecting one jumps
 // straight to that product, while Enter runs a full search.
