@@ -112,8 +112,7 @@ function logout() {
     <!-- Tier 1: sidebar of sections -->
     <aside class="sidebar">
       <RouterLink :to="{ name: 'dashboard' }" class="brand">
-        <span class="brand-badge"><i class="pi pi-bolt" /></span>
-        <span class="brand-name">Teggo<span class="brand-sub">Admin</span></span>
+        <span class="brand-name">Teggo</span>
       </RouterLink>
       <nav class="nav-scroll">
         <ul class="menu">
@@ -247,9 +246,8 @@ function logout() {
   flex-shrink: 0;
 }
 .brand-name {
-  display: none; /* hidden on the rail; shown again in the mobile drawer */
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   letter-spacing: -0.01em;
   color: #fff;
 }
