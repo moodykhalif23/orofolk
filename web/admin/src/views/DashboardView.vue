@@ -123,11 +123,6 @@ function quickCreate(route: string) {
   router.push({ name: route, query: { new: '1' } })
 }
 
-const greeting = computed(() => {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-})
-const firstName = computed(() => (auth.email ?? '').split('@')[0] || 'there')
 const today = computed(() =>
   new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
 )
@@ -257,7 +252,6 @@ onMounted(load)
     <header class="dash-head">
       <div class="dash-greet">
         <p class="dash-date">{{ today }}</p>
-        <h1>{{ greeting }}, {{ firstName }}</h1>
       </div>
       <div class="head-actions">
         <Button
