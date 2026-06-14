@@ -144,7 +144,7 @@ function logout() {
           <span>{{ activeSection.label }}</span>
         </div>
         <span class="spacer" />
-        <NotificationBell class="topbar-bell" />
+        <NotificationBell />
         <button type="button" class="account-trigger" @click="toggleAccount" aria-label="Account">
           <Avatar :label="auth.initials" shape="square" class="account-avatar" />
         </button>
@@ -350,11 +350,13 @@ function logout() {
 }
 .topbar-context i { color: var(--p-primary-color, #6366f1); font-size: 0.95rem; }
 .spacer { flex: 1; }
-.topbar-bell { margin-right: 0.75rem; }
+/* NotificationBell is a multi-root component, so a class on it doesn't fall
+   through — space the cluster from the account button (a real element) instead. */
 .account-trigger {
   border: none;
   background: transparent;
   padding: 0;
+  margin-left: 0.9rem;
   cursor: pointer;
   display: flex;
   align-items: center;
