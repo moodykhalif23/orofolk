@@ -11,9 +11,12 @@ import (
 	"os"
 	"time"
 
+	"b2bcommerce/internal/ai"
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/db"
 	"b2bcommerce/internal/demo"
+	"b2bcommerce/internal/insights"
+	"b2bcommerce/internal/store/gen"
 )
 
 func main() {
@@ -33,6 +36,15 @@ func main() {
 		fmt.Fprintln(os.Stderr, "provision:", err)
 		os.Exit(1)
 	}
+
+	// Generate a weekly executive briefing for the new org (deterministic
+	// narrator — no API key needed) so the Insights page shows a real narrative,
+	// not the empty state.
+	if claims, perr := issuer.Parse(res.Token); perr == nil {
+		_, _ = insights.GenerateDigest(ctx, gen.New(pool), ai.NewDeterministicNarrator(),
+			claims.OrgID, time.Now(), insights.DefaultWindowDays, "manual")
+	}
+
 	out, _ := json.Marshal(map[string]string{"token": res.Token, "domain": res.Domain})
 	fmt.Println(string(out))
 }
