@@ -43,6 +43,7 @@ export const sections: NavSection[] = [
       { label: 'Categories', icon: 'pi pi-sitemap', routeName: 'categories', permission: 'category.view', blurb: 'Organize the catalog into a browsable tree.' },
       { label: 'Attributes', icon: 'pi pi-tags', routeName: 'attributes', permission: 'attribute.view', blurb: 'Define the specs and options products share.' },
       { label: 'Configurator', icon: 'pi pi-sliders-h', routeName: 'configurator', permission: 'product.view', blurb: 'Build guided, rule-based product configurations.' },
+      { label: 'Reviews', icon: 'pi pi-star', routeName: 'reviews', permission: 'review.moderate', blurb: 'Approve or reject buyer product reviews.' },
       { label: 'Search merchandising', icon: 'pi pi-search-plus', routeName: 'merchandising', permission: 'merchandising.view', feature: 'merchandising', blurb: 'Tune search results, synonyms and boosts.' },
     ],
   },
