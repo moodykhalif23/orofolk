@@ -40,6 +40,9 @@ const mobileOpen = ref(false)
 const accountOp = ref()
 function toggleAccount(e: Event) { accountOp.value?.toggle(e) }
 watch(() => route.fullPath, () => { mobileOpen.value = false; accountOp.value?.hide() })
+// The Account trigger reads as active on any portal page — every Account-menu
+// link lives under /account.
+const accountActive = computed(() => route.path === '/account' || route.path.startsWith('/account/'))
 
 // Search typeahead: fetch suggestions while typing; selecting one jumps
 // straight to that product, while Enter runs a full search.
@@ -133,6 +136,7 @@ function signOut() {
           v-if="isAuthenticated"
           type="button"
           class="nav-account"
+          :class="{ active: accountActive }"
           aria-haspopup="true"
           @click="toggleAccount"
         >
@@ -298,6 +302,12 @@ function signOut() {
 .nav-account:hover {
   background: var(--p-surface-100, #f1f5f9);
   color: var(--p-text-color, #0f172a);
+}
+.nav-account.active {
+  background: var(--p-primary-50, #eef2ff);
+  border-color: var(--p-primary-200, #c7d2fe);
+  color: var(--p-primary-700, #4338ca);
+  font-weight: 600;
 }
 .nav-account .chev {
   font-size: 0.7rem;
