@@ -220,6 +220,7 @@ function logout() {
   height: 100%;
   /* Brand indigo rail (deep gradient); nav text/icons go light for contrast. */
   background: linear-gradient(180deg, var(--p-primary-700, #4338ca) 0%, var(--p-primary-900, #312e81) 100%);
+  border-top-right-radius: 22px; /* smooth top-right curve on the desktop rail */
   display: flex;
   flex-direction: column;
 }
@@ -299,7 +300,7 @@ function logout() {
 }
 .menu-icon {
   font-size: 1.2rem;
-  color: var(--teggo-accent, #f59e0b);
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
 .menu-text { display: block; width: 100%; }
@@ -463,6 +464,7 @@ function logout() {
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
+    border-top-right-radius: 0; /* full-height drawer stays square */
   }
   /* The drawer has room for the comfortable icon-beside-label layout. */
   .brand { justify-content: flex-start; padding: 0 1.1rem; }
