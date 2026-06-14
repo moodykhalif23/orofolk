@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
@@ -51,25 +50,21 @@ async function submit() {
     <h1 class="title">Contact our sales team</h1>
     <p class="muted">Tell us what you need and we'll get back to you with pricing and availability.</p>
 
-    <Card>
-      <template #content>
-        <Message v-if="sent" severity="success" :closable="false">
-          Thanks — your enquiry has been received. Our team will be in touch shortly.
-        </Message>
+    <Message v-if="sent" severity="success" :closable="false">
+      Thanks — your enquiry has been received. Our team will be in touch shortly.
+    </Message>
 
-        <form v-else @submit.prevent="submit">
-          <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
-          <div class="field"><label>Your name</label><InputText v-model="form.contact_name" :disabled="busy" /></div>
-          <div class="field"><label>Company <span class="muted">(optional)</span></label><InputText v-model="form.company_name" :disabled="busy" /></div>
-          <div class="row">
-            <div class="field"><label>Email</label><InputText v-model="form.email" type="email" :disabled="busy" /></div>
-            <div class="field"><label>Phone</label><InputText v-model="form.phone" :disabled="busy" /></div>
-          </div>
-          <div class="field"><label>How can we help?</label><Textarea v-model="form.notes" rows="4" :disabled="busy" /></div>
-          <Button type="submit" label="Send enquiry" icon="pi pi-send" :loading="busy" />
-        </form>
-      </template>
-    </Card>
+    <form v-else @submit.prevent="submit">
+      <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+      <div class="field"><label>Your name</label><InputText v-model="form.contact_name" :disabled="busy" /></div>
+      <div class="field"><label>Company <span class="muted">(optional)</span></label><InputText v-model="form.company_name" :disabled="busy" /></div>
+      <div class="row">
+        <div class="field"><label>Email</label><InputText v-model="form.email" type="email" :disabled="busy" /></div>
+        <div class="field"><label>Phone</label><InputText v-model="form.phone" :disabled="busy" /></div>
+      </div>
+      <div class="field"><label>How can we help?</label><Textarea v-model="form.notes" rows="4" :disabled="busy" /></div>
+      <Button type="submit" label="Send enquiry" icon="pi pi-send" :loading="busy" />
+    </form>
   </section>
 </template>
 
