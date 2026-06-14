@@ -11,6 +11,7 @@ import TabPanel from 'primevue/tabpanel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import Timeline from 'primevue/timeline'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
@@ -54,6 +55,32 @@ const nextStatus = ref<string | null>(null)
 const note = ref('')
 const applying = ref(false)
 const nextOptions = computed(() => (order.value ? ORDER_TRANSITIONS[order.value.status] ?? [] : []))
+
+// Lifecycle progress timeline — the canonical order flow with the current stage
+// highlighted. Off-path statuses (cancelled/on_hold) show a banner instead.
+const ORDER_FLOW = [
+  { key: 'pending', label: 'Placed', icon: 'pi pi-shopping-cart' },
+  { key: 'confirmed', label: 'Confirmed', icon: 'pi pi-check' },
+  { key: 'processing', label: 'Processing', icon: 'pi pi-cog' },
+  { key: 'shipped', label: 'Shipped', icon: 'pi pi-truck' },
+  { key: 'delivered', label: 'Delivered', icon: 'pi pi-box' },
+  { key: 'closed', label: 'Closed', icon: 'pi pi-flag' },
+]
+interface FlowStep {
+  key: string
+  label: string
+  icon: string
+  state: 'done' | 'current' | 'todo'
+}
+const flow = computed<FlowStep[]>(() => {
+  const cur = order.value?.status ?? ''
+  const idx = ORDER_FLOW.findIndex((s) => s.key === cur)
+  return ORDER_FLOW.map((s, i) => ({
+    ...s,
+    state: idx >= 0 && i < idx ? 'done' : i === idx ? 'current' : 'todo',
+  }))
+})
+const offPath = computed(() => order.value?.status === 'cancelled' || order.value?.status === 'on_hold')
 
 async function load() {
   error.value = ''
@@ -175,6 +202,20 @@ onMounted(load)
         <div class="total">{{ order.grand_total }} {{ order.currency }}</div>
       </div>
 
+      <Card v-if="!offPath" class="progress">
+        <template #content>
+          <Timeline :value="flow" layout="horizontal" align="top" class="flow">
+            <template #marker="{ item }">
+              <span class="flow-marker" :class="item.state"><i :class="item.icon" /></span>
+            </template>
+            <template #content="{ item }">
+              <span class="flow-label" :class="item.state">{{ item.label }}</span>
+            </template>
+          </Timeline>
+        </template>
+      </Card>
+      <Message v-else severity="warn" :closable="false" class="mb">This order is {{ order.status }}.</Message>
+
       <Card v-if="nextOptions.length" class="statuscard">
         <template #content>
           <div class="statusform">
@@ -270,6 +311,31 @@ onMounted(load)
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }
 .total { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .mb { margin-bottom: 1rem; }
+.progress { margin-bottom: 1rem; }
+.flow-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid var(--p-surface-300, #cbd5e1);
+  background: var(--teggo-surface, #fff);
+  color: var(--p-text-muted-color, #94a3b8);
+  font-size: 0.8rem;
+}
+.flow-marker.done {
+  background: var(--p-primary-color, #6366f1);
+  border-color: var(--p-primary-color, #6366f1);
+  color: #fff;
+}
+.flow-marker.current {
+  border-color: var(--p-primary-color, #6366f1);
+  color: var(--p-primary-color, #6366f1);
+  box-shadow: 0 0 0 3px var(--p-primary-100, #e0e7ff);
+}
+.flow-label { font-size: 0.78rem; font-weight: 600; color: var(--p-text-muted-color, #94a3b8); }
+.flow-label.done, .flow-label.current { color: var(--p-text-color, #0f172a); }
 .statuscard { margin-bottom: 1rem; }
 .statusform { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .lbl { font-weight: 600; }

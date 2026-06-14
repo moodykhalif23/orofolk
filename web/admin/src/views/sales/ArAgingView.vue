@@ -6,6 +6,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import MeterGroup from 'primevue/metergroup'
 import { api, errMessage } from '@/lib/client'
 import { useCustomerOptions } from '@/composables/useRecordOptions'
 import type { components } from '@teggo/api/schema'
@@ -47,7 +48,24 @@ async function sweep() {
   load()
 }
 
-const buckets = computed(() => order.map((b) => ({ label: b, total: report.value?.buckets?.[b] ?? '0' })))
+// Aging buckets as a proportional MeterGroup (segments of the open total),
+// escalating from the brand colour (current) to deep red (90+).
+const BUCKET_META: Record<string, { label: string; color: string }> = {
+  current: { label: 'Current', color: '#6366f1' },
+  '1-30': { label: '1–30 days', color: '#f59e0b' },
+  '31-60': { label: '31–60 days', color: '#f97316' },
+  '61-90': { label: '61–90 days', color: '#ef4444' },
+  '90+': { label: '90+ days', color: '#b91c1c' },
+}
+const meterValue = computed(() =>
+  order.map((b) => ({
+    label: BUCKET_META[b].label,
+    color: BUCKET_META[b].color,
+    value: Number(report.value?.buckets?.[b] ?? 0),
+    money: report.value?.buckets?.[b] ?? '0',
+  })),
+)
+const meterMax = computed(() => meterValue.value.reduce((s, m) => s + m.value, 0) || 1)
 function custName(id: number) {
   return customers.value.find((c) => c.id === id)?.name ?? `#${id}`
 }
@@ -73,15 +91,22 @@ onMounted(() => {
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
-    <div v-if="report" class="cards">
-      <div v-for="b in buckets" :key="b.label" class="card" :class="{ danger: b.label === '90+' }">
-        <div class="card-label">{{ b.label === 'current' ? 'Current' : b.label + ' days' }}</div>
-        <div class="card-total">{{ b.total }}</div>
+    <div v-if="report" class="aging">
+      <div class="aging-head">
+        <span class="muted">Open receivables</span>
+        <strong class="aging-total">{{ report.open_total }}</strong>
       </div>
-      <div class="card total">
-        <div class="card-label">Open total</div>
-        <div class="card-total">{{ report.open_total }}</div>
-      </div>
+      <MeterGroup :value="meterValue" :max="meterMax" class="aging-meter">
+        <template #label>
+          <div class="aging-legend">
+            <span v-for="m in meterValue" :key="m.label" class="leg">
+              <span class="leg-dot" :style="{ background: m.color }" />
+              <span class="leg-label">{{ m.label }}</span>
+              <span class="leg-val">{{ m.money }}</span>
+            </span>
+          </div>
+        </template>
+      </MeterGroup>
     </div>
 
     <DataTable :value="report?.items ?? []" :loading="loading" dataKey="public_id" stripedRows class="mt">
@@ -101,10 +126,12 @@ onMounted(() => {
 <style scoped>
 .mb { margin-bottom: 1rem; }
 .mt { margin-top: 1rem; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem; margin: 1rem 0; }
-.card { border: 1px solid var(--p-surface-200, #e2e8f0); border-radius: 8px; padding: 0.75rem 1rem; }
-.card.danger { border-color: var(--p-red-300, #fca5a5); }
-.card.total { background: var(--p-surface-50, #f8fafc); }
-.card-label { font-size: 0.75rem; color: var(--p-text-muted-color, #64748b); }
-.card-total { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.aging { margin: 1rem 0; border: 1px solid var(--p-surface-200, #e2e8f0); border-radius: 8px; padding: 1rem 1.25rem; }
+.aging-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.75rem; }
+.aging-total { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.aging-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin-top: 0.85rem; }
+.leg { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.leg-dot { width: 0.7rem; height: 0.7rem; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+.leg-label { color: var(--p-text-muted-color, #64748b); }
+.leg-val { font-weight: 600; font-variant-numeric: tabular-nums; }
 </style>
