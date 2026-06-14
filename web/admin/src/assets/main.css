@@ -152,15 +152,26 @@ body {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
-/* When a DataTable is a dialog's SOLE content, run it full-bleed to the dialog
-   edges so it reads as one panel under the header — not a bordered card floating
-   inside another. :only-child keeps form dialogs and text+table dialogs padded. */
-.p-dialog .p-dialog-content:has(> .p-datatable:only-child) {
-  padding: 0;
+/* Tables inside dialogs run full-bleed to the dialog edges so they read as one
+   panel under the header — not a bordered card floating inside another.
+   Horizontal padding is zeroed so the table spans edge-to-edge; any non-table
+   content (summary text, messages) is re-padded so it never touches the edge. */
+.p-dialog .p-dialog-content:has(> .p-datatable) {
+  padding-left: 0;
+  padding-right: 0;
 }
-.p-dialog .p-dialog-content > .p-datatable:only-child {
+.p-dialog .p-dialog-content:has(> .p-datatable) > :not(.p-datatable) {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+.p-dialog .p-dialog-content > .p-datatable {
   border: none;
   border-radius: 0;
+}
+/* Sole content: also drop the vertical padding so the table sits flush under the
+   header (higher :has() specificity wins over the horizontal-only rule above). */
+.p-dialog .p-dialog-content:has(> .p-datatable:only-child) {
+  padding: 0;
 }
 /* Center the footer actions (Cancel / Save / Create …). */
 .p-dialog .p-dialog-footer {
