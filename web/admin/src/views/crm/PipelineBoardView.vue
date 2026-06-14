@@ -80,7 +80,7 @@ onMounted(load)
 .mb { margin-bottom: 1rem; }
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: start; }
 .stage-head { display: flex; justify-content: space-between; align-items: center; font-size: 1rem; }
-.prob { font-size: 0.8rem; color: var(--p-text-muted-color, #64748b); }
+.prob { font-size: 0.8rem; font-weight: 600; color: #0f172a; }
 .count { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
 .amt { display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.15rem 0; font-variant-numeric: tabular-nums; }
 </style>

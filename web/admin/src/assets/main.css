@@ -173,6 +173,34 @@ body {
 .p-dialog .p-dialog-content:has(> .p-datatable:only-child) {
   padding: 0;
 }
+
+/* Same treatment for tables inside a card. The card body pads 1.35rem
+   horizontally, so a direct-child table is pulled back out by that much to reach
+   the card edges; sibling content (lookup rows, messages) keeps its inset. */
+.p-card .p-card-content:has(> .p-datatable) > .p-datatable {
+  margin-left: -1.35rem;
+  margin-right: -1.35rem;
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
+}
+/* When the table is the card's sole content, go fully flush — under the header
+   and out to all edges — clipped to the card's rounded corners. Scoped via
+   :only-child so it never bites a card that also has a chart/tooltip. */
+.p-card:has(.p-card-content > .p-datatable:only-child) {
+  overflow: hidden;
+}
+.p-card:has(.p-card-content > .p-datatable:only-child) .p-card-caption {
+  margin-bottom: 0;
+}
+.p-card .p-card-content:has(> .p-datatable:only-child) {
+  padding-top: 0;
+}
+.p-card .p-card-content:has(> .p-datatable:only-child) > .p-datatable {
+  margin: 0 -1.35rem -1.15rem;
+  border: none;
+}
+
 /* Center the footer actions (Cancel / Save / Create …). */
 .p-dialog .p-dialog-footer {
   justify-content: center;
