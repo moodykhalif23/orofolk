@@ -4,8 +4,7 @@
      (matches PrimeVue's default content border so no surface looks bolder than
      another) + slightly-sharp edges. */
   --teggo-border: #e2e8f0; /* slate-200 — the single, normal border tone */
-  --teggo-radius: 6px; /* polished, gently-rounded — not fully sharp */
-  --teggo-radius-card: 3px; /* cards: slightly sharper than the default, still not razor-square */
+  --teggo-radius: 3px; /* the single UI radius — slightly sharp, not razor-square; shared by cards, dialogs, inputs, buttons, menus … */
   --teggo-surface: #ffffff;
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
   /* ULTIMA-style brand accent (amber) — for selective highlights alongside the
@@ -34,9 +33,9 @@ body {
 }
 
 .p-card.p-card {
-  --p-card-border-radius: var(--teggo-radius-card);
+  --p-card-border-radius: var(--teggo-radius);
   border: 1px solid var(--teggo-border);
-  border-radius: var(--teggo-radius-card);
+  border-radius: var(--teggo-radius);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
   background: var(--teggo-surface);
 }
@@ -67,8 +66,8 @@ body {
   background: var(--p-primary-color, #6366f1);
   margin: -1.15rem -1.35rem 0.7rem;
   padding: 0.45rem 1.35rem;
-  border-top-left-radius: var(--teggo-radius-card, 3px);
-  border-top-right-radius: var(--teggo-radius-card, 3px);
+  border-top-left-radius: var(--teggo-radius, 3px);
+  border-top-right-radius: var(--teggo-radius, 3px);
 }
 
 /* Sharp edges across the common controls. */
@@ -130,8 +129,8 @@ body {
 /* Filled brand dialog header — a slim indigo strip, white title + close button. */
 .p-dialog .p-dialog-header {
   background: var(--p-primary-color, #6366f1);
-  border-top-left-radius: var(--teggo-radius, 6px);
-  border-top-right-radius: var(--teggo-radius, 6px);
+  border-top-left-radius: var(--teggo-radius, 3px);
+  border-top-right-radius: var(--teggo-radius, 3px);
   padding: 0.75rem 1.25rem;
 }
 .p-dialog .p-dialog-title {
