@@ -299,7 +299,7 @@ function logout() {
 }
 .menu-icon {
   font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--teggo-accent, #f59e0b);
   flex-shrink: 0;
 }
 .menu-text { display: block; width: 100%; }
