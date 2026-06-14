@@ -29,16 +29,16 @@ onBeforeUnmount(() => notifications.stop())
 const router = useRouter()
 const route = useRoute()
 
-// Mobile drawer (small screens only). Closes on navigation.
+// Mobile sidebar drawer (small screens only). Closes on navigation.
 const mobileOpen = ref(false)
 watch(() => route.fullPath, () => { mobileOpen.value = false })
 
 const can = (p: string) => auth.can(p)
 const allows = (f: string) => billing.allows(f)
 
-// Tier 1 — head nav: every section the user/plan can see. Assistant is pulled
+// Tier 1 — sidebar: every section the user/plan can see. Assistant is pulled
 // out as a utility button (a distinct AI entry point), so it's excluded here.
-const headSections = computed(() =>
+const sideSections = computed(() =>
   sections.filter((s) => s.key !== 'assistant' && isSectionVisible(s, can, allows)),
 )
 const assistant = computed(() => {
@@ -76,10 +76,15 @@ const ctx = computed<NavContext | null>(() => {
   return best ? { key: best.key, leafName: best.routeName, isHub: false } : null
 })
 
+// The active section — drives both the sidebar highlight and the topbar label.
+const activeSection = computed<NavSection | null>(() => {
+  const k = ctx.value?.key
+  return k ? sectionByKey(k) ?? null : null
+})
+
 // Tier 2 — sub-nav: the current section's leaves (only when it has any).
 const subNavSection = computed<NavSection | null>(() => {
-  const k = ctx.value?.key
-  const s = k ? sectionByKey(k) : undefined
+  const s = activeSection.value
   return s && s.items?.length ? s : null
 })
 const subNavLeaves = computed(() =>
@@ -104,145 +109,124 @@ function logout() {
   <div class="layout" :class="{ 'drawer-open': mobileOpen }">
     <div class="scrim" @click="mobileOpen = false" />
 
-    <!-- Tier 1: head nav bar -->
-    <header class="head">
-      <div class="head-inner">
-        <button type="button" class="hamburger" aria-label="Menu" @click="mobileOpen = !mobileOpen">
-          <i class="pi pi-bars" />
-        </button>
-        <RouterLink :to="{ name: 'dashboard' }" class="brand">
-          <span class="brand-badge"><i class="pi pi-bolt" /></span>
-          <span class="brand-name">Teggo<span class="brand-sub">Admin</span></span>
-        </RouterLink>
-
-        <nav class="primary">
-          <RouterLink
-            v-for="s in headSections"
-            :key="s.key"
-            :to="sectionTo(s)"
-            class="primary-link"
-            :class="{ active: ctx?.key === s.key }"
-          >{{ s.label }}</RouterLink>
-        </nav>
-
-        <div class="head-utils">
-          <RouterLink
-            v-if="assistant"
-            :to="{ name: 'assistant' }"
-            class="util-btn"
-            :class="{ active: ctx?.key === 'assistant' }"
-            aria-label="Assistant"
-            title="Assistant"
-          ><i class="pi pi-sparkles" /></RouterLink>
-          <NotificationBell class="util-bell" />
-          <button type="button" class="account-trigger" @click="toggleAccount" aria-label="Account">
-            <Avatar :label="auth.initials" shape="square" class="account-avatar" />
-          </button>
-          <Popover ref="account" class="account-pop">
-            <div class="account-card">
-              <div class="account-head">
-                <Avatar :label="auth.initials" shape="square" size="large" class="account-avatar" />
-                <div class="account-id">
-                  <div class="account-email">{{ auth.email ?? 'Signed in' }}</div>
-                  <div class="account-org">Organization {{ auth.orgId ?? '—' }}</div>
-                </div>
-              </div>
-              <div class="account-meta">
-                <i class="pi pi-shield" />
-                <span>{{ auth.permissions.length }} permissions</span>
-              </div>
-              <Button
-                icon="pi pi-sign-out"
-                label="Sign out"
-                severity="secondary"
-                outlined
-                class="account-signout"
-                @click="logout"
-              />
-            </div>
-          </Popover>
-        </div>
-      </div>
-    </header>
-
-    <!-- Tier 2: per-section sub-nav bar -->
-    <div v-if="subNavSection && subNavLeaves.length" class="subnav">
-      <div class="subnav-inner">
-        <RouterLink
-          :to="{ name: 'section', params: { key: subNavSection.key } }"
-          class="sub-link sub-overview"
-          :class="{ active: ctx?.isHub }"
-        >
-          <i class="pi pi-th-large" /><span>Overview</span>
-        </RouterLink>
-        <span class="sub-divider" />
-        <RouterLink
-          v-for="leaf in subNavLeaves"
-          :key="leaf.routeName"
-          :to="{ name: leaf.routeName }"
-          class="sub-link"
-          :class="{ active: ctx?.leafName === leaf.routeName }"
-        >
-          <i :class="leaf.icon" /><span>{{ leaf.label }}</span>
-        </RouterLink>
-      </div>
-    </div>
-
-    <!-- Mobile drawer: the section list -->
-    <aside class="drawer">
-      <nav class="drawer-nav">
-        <RouterLink
-          v-for="s in headSections"
-          :key="s.key"
-          :to="sectionTo(s)"
-          class="drawer-link"
-          :class="{ active: ctx?.key === s.key }"
-        >
-          <i :class="s.icon" /><span>{{ s.label }}</span>
-        </RouterLink>
-        <RouterLink
-          v-if="assistant"
-          :to="{ name: 'assistant' }"
-          class="drawer-link"
-          :class="{ active: ctx?.key === 'assistant' }"
-        >
-          <i class="pi pi-sparkles" /><span>Assistant</span>
-        </RouterLink>
+    <!-- Tier 1: sidebar of sections -->
+    <aside class="sidebar">
+      <RouterLink :to="{ name: 'dashboard' }" class="brand">
+        <span class="brand-badge"><i class="pi pi-bolt" /></span>
+        <span class="brand-name">Teggo<span class="brand-sub">Admin</span></span>
+      </RouterLink>
+      <nav class="nav-scroll">
+        <ul class="menu">
+          <li v-for="s in sideSections" :key="s.key" class="menu-item">
+            <RouterLink :to="sectionTo(s)" class="menu-link" :class="{ active: ctx?.key === s.key }">
+              <i :class="s.icon" class="menu-icon" />
+              <span class="menu-text">{{ s.label }}</span>
+            </RouterLink>
+          </li>
+          <li v-if="assistant" class="menu-item menu-item--pinned">
+            <RouterLink :to="{ name: 'assistant' }" class="menu-link" :class="{ active: ctx?.key === 'assistant' }">
+              <i class="pi pi-sparkles menu-icon" />
+              <span class="menu-text">{{ assistant.label }}</span>
+            </RouterLink>
+          </li>
+        </ul>
       </nav>
     </aside>
 
-    <main class="content">
-      <RouterView />
-    </main>
+    <div class="main">
+      <!-- Top bar: page context on the left, account utilities on the right -->
+      <header class="topbar">
+        <button type="button" class="hamburger" aria-label="Menu" @click="mobileOpen = !mobileOpen">
+          <i class="pi pi-bars" />
+        </button>
+        <div v-if="activeSection" class="topbar-context">
+          <i :class="activeSection.icon" />
+          <span>{{ activeSection.label }}</span>
+        </div>
+        <span class="spacer" />
+        <NotificationBell class="topbar-bell" />
+        <button type="button" class="account-trigger" @click="toggleAccount" aria-label="Account">
+          <Avatar :label="auth.initials" shape="square" class="account-avatar" />
+        </button>
+        <Popover ref="account" class="account-pop">
+          <div class="account-card">
+            <div class="account-head">
+              <Avatar :label="auth.initials" shape="square" size="large" class="account-avatar" />
+              <div class="account-id">
+                <div class="account-email">{{ auth.email ?? 'Signed in' }}</div>
+                <div class="account-org">Organization {{ auth.orgId ?? '—' }}</div>
+              </div>
+            </div>
+            <div class="account-meta">
+              <i class="pi pi-shield" />
+              <span>{{ auth.permissions.length }} permissions</span>
+            </div>
+            <Button
+              icon="pi pi-sign-out"
+              label="Sign out"
+              severity="secondary"
+              outlined
+              class="account-signout"
+              @click="logout"
+            />
+          </div>
+        </Popover>
+      </header>
+
+      <!-- Tier 2: per-section sub-nav bar -->
+      <div v-if="subNavSection && subNavLeaves.length" class="subnav">
+        <div class="subnav-inner">
+          <RouterLink
+            :to="{ name: 'section', params: { key: subNavSection.key } }"
+            class="sub-link sub-overview"
+            :class="{ active: ctx?.isHub }"
+          >
+            <i class="pi pi-th-large" /><span>Overview</span>
+          </RouterLink>
+          <span class="sub-divider" />
+          <RouterLink
+            v-for="leaf in subNavLeaves"
+            :key="leaf.routeName"
+            :to="{ name: leaf.routeName }"
+            class="sub-link"
+            :class="{ active: ctx?.leafName === leaf.routeName }"
+          >
+            <i :class="leaf.icon" /><span>{{ leaf.label }}</span>
+          </RouterLink>
+        </div>
+      </div>
+
+      <main class="content">
+        <RouterView />
+      </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .layout {
   display: flex;
-  flex-direction: column;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
 }
 
-/* --- Tier 1: head nav --- */
-.head {
+/* --- Tier 1: sidebar --- */
+.sidebar {
+  width: var(--teggo-sidebar-width, 248px);
   flex-shrink: 0;
+  height: 100%;
   background: var(--teggo-surface, #fff);
-  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
-}
-.head-inner {
+  border-right: 1px solid var(--p-surface-200, #e2e8f0);
   display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  height: 58px;
-  padding: 0 1.25rem;
+  flex-direction: column;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  height: 58px; /* match the topbar so the header line is flush */
+  padding: 0 1.1rem;
   flex-shrink: 0;
   text-decoration: none;
 }
@@ -270,57 +254,85 @@ function logout() {
   font-size: 0.82rem;
   color: var(--p-text-muted-color, #94a3b8);
 }
-
-.primary {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
+.nav-scroll {
   flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--teggo-border, #cbd5e1) transparent;
+  padding: 0.6rem 0 1rem;
+}
+.nav-scroll::-webkit-scrollbar { width: 8px; }
+.nav-scroll::-webkit-scrollbar-thumb { background: var(--teggo-border, #cbd5e1); border-radius: 8px; }
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.75rem;
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
-.primary::-webkit-scrollbar { display: none; }
-.primary-link {
-  position: relative;
-  display: inline-flex;
+.menu-item { margin-bottom: 2px; }
+/* Assistant pinned to the foot of the rail. */
+.menu-item--pinned { margin-top: auto; }
+.menu-link {
+  display: flex;
   align-items: center;
-  height: 100%;
-  padding: 0 0.7rem;
-  white-space: nowrap;
+  gap: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 8px;
   text-decoration: none;
-  color: var(--p-text-color, #475569);
+  color: var(--p-text-color, #334155);
   font-size: 0.9rem;
   font-weight: 600;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  line-height: 1.2;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
-.primary-link:hover { color: var(--p-primary-color, #16a34a); }
-.primary-link.active {
-  color: var(--p-primary-color, #16a34a);
-  border-bottom-color: var(--p-primary-color, #16a34a);
-}
-
-.head-utils {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
+.menu-icon {
+  font-size: 1rem;
+  width: 1.2rem;
+  text-align: center;
+  color: var(--p-text-muted-color, #94a3b8);
   flex-shrink: 0;
 }
-.util-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  color: var(--p-text-muted-color, #64748b);
-  text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+.menu-text { flex: 1; min-width: 0; }
+.menu-link:hover { background: var(--p-surface-100, #f1f5f9); }
+.menu-link.active { background: var(--p-primary-50, #f0fdf4); color: var(--p-primary-color, #16a34a); }
+.menu-link.active .menu-icon { color: var(--p-primary-color, #16a34a); }
+
+/* --- Main column --- */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
-.util-btn:hover { background: var(--p-surface-100, #f1f5f9); color: var(--p-text-color, #0f172a); }
-.util-btn.active { background: var(--p-primary-50, #f0fdf4); color: var(--p-primary-color, #16a34a); }
+
+/* --- Top bar --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  height: 58px;
+  flex-shrink: 0;
+  padding: 0 1.25rem;
+  background: var(--teggo-surface, #fff);
+  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
+}
+.topbar-context {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  color: var(--p-text-color, #0f172a);
+}
+.topbar-context i { color: var(--p-primary-color, #16a34a); font-size: 0.95rem; }
+.spacer { flex: 1; }
+.topbar-bell { margin-right: 0.75rem; }
 .account-trigger {
   border: none;
   background: transparent;
@@ -406,7 +418,7 @@ function logout() {
 }
 .account-signout { width: 100%; }
 
-/* --- Mobile drawer (hidden on desktop) --- */
+/* --- Mobile: the sidebar becomes an off-canvas drawer --- */
 .hamburger {
   display: none;
   align-items: center;
@@ -416,33 +428,23 @@ function logout() {
   cursor: pointer;
   font-size: 1.3rem;
   color: var(--p-text-color, #1e293b);
-  padding: 0.25rem 0.4rem;
-  margin-right: -0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
 }
-.drawer { display: none; }
 .scrim { display: none; }
 
 @media (max-width: 1024px) {
   .hamburger { display: inline-flex; }
-  /* The horizontal section list collapses into the drawer on small screens. */
-  .primary { display: none; }
-  .drawer {
-    display: block;
+  .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     z-index: 60;
-    width: 260px;
-    height: 100%;
-    background: var(--teggo-surface, #fff);
-    border-right: 1px solid var(--p-surface-200, #e2e8f0);
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.15);
-    overflow-y: auto;
-    padding: 0.75rem;
   }
-  .drawer-open .drawer { transform: translateX(0); }
+  .drawer-open .sidebar { transform: translateX(0); }
   .drawer-open .scrim {
     display: block;
     position: fixed;
@@ -450,21 +452,5 @@ function logout() {
     z-index: 55;
     background: rgba(15, 23, 42, 0.45);
   }
-  .drawer-nav { display: flex; flex-direction: column; gap: 2px; }
-  .drawer-link {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.6rem 0.7rem;
-    border-radius: 8px;
-    text-decoration: none;
-    color: var(--p-text-color, #334155);
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .drawer-link i { color: var(--p-text-muted-color, #94a3b8); width: 1.15rem; text-align: center; }
-  .drawer-link:hover { background: var(--p-surface-100, #f1f5f9); }
-  .drawer-link.active { background: var(--p-primary-50, #f0fdf4); color: var(--p-primary-color, #16a34a); }
-  .drawer-link.active i { color: var(--p-primary-color, #16a34a); }
 }
 </style>
