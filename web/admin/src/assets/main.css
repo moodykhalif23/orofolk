@@ -128,17 +128,21 @@ body {
   border: 1px solid var(--p-surface-200, #e2e8f0);
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
 }
-/* Filled brand-green dialog header section, white title + close button. */
+/* Filled brand dialog header — a slim indigo strip, white title + close button. */
 .p-dialog .p-dialog-header {
   background: var(--p-primary-color, #6366f1);
   border-top-left-radius: var(--teggo-radius, 6px);
   border-top-right-radius: var(--teggo-radius, 6px);
+  padding: 0.75rem 1.25rem;
 }
 .p-dialog .p-dialog-title {
   color: #fff;
+  font-size: 1.05rem;
 }
 .p-dialog .p-dialog-header .p-dialog-close-button {
   color: #fff;
+  width: 2rem;
+  height: 2rem;
 }
 .p-dialog .p-dialog-header .p-dialog-close-button:hover {
   background: rgba(255, 255, 255, 0.18);
