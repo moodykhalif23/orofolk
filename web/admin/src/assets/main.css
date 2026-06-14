@@ -125,10 +125,12 @@ body {
   background: transparent;
 }
 
-/* Dialogs: subtle border + soft elevation (overlay, not a flat surface). */
+/* Dialogs: subtle border + soft elevation (overlay, not a flat surface).
+   overflow:hidden lets full-bleed content clip cleanly to the rounded corners. */
 .p-dialog {
   border: 1px solid var(--p-surface-200, #e2e8f0);
   box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
 }
 /* Filled brand dialog header — a slim indigo strip, white title + close button. */
 .p-dialog .p-dialog-header {
@@ -149,6 +151,16 @@ body {
 .p-dialog .p-dialog-header .p-dialog-close-button:hover {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
+}
+/* When a DataTable is a dialog's SOLE content, run it full-bleed to the dialog
+   edges so it reads as one panel under the header — not a bordered card floating
+   inside another. :only-child keeps form dialogs and text+table dialogs padded. */
+.p-dialog .p-dialog-content:has(> .p-datatable:only-child) {
+  padding: 0;
+}
+.p-dialog .p-dialog-content > .p-datatable:only-child {
+  border: none;
+  border-radius: 0;
 }
 /* Center the footer actions (Cancel / Save / Create …). */
 .p-dialog .p-dialog-footer {
