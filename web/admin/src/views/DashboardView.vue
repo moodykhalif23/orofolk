@@ -258,11 +258,6 @@ onMounted(load)
       <div class="dash-greet">
         <p class="dash-date">{{ today }}</p>
         <h1>{{ greeting }}, {{ firstName }}</h1>
-        <p class="sub">
-          Here's what's happening
-          <template v-if="orgName"> at <strong>{{ orgName }}</strong></template>
-          today.
-        </p>
       </div>
       <div class="head-actions">
         <Button
