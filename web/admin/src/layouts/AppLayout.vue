@@ -218,8 +218,8 @@ function logout() {
   width: 108px;
   flex-shrink: 0;
   height: 100%;
-  background: var(--teggo-surface, #fff);
-  border-right: 1px solid var(--p-surface-200, #e2e8f0);
+  /* Brand indigo rail (deep gradient); nav text/icons go light for contrast. */
+  background: linear-gradient(180deg, var(--p-primary-700, #4338ca) 0%, var(--p-primary-900, #312e81) 100%);
   display: flex;
   flex-direction: column;
 }
@@ -240,8 +240,8 @@ function logout() {
   width: 30px;
   height: 30px;
   border-radius: 0 10px 0 0; /* brand corner motif */
-  background: var(--p-primary-color, #6366f1);
-  color: #fff;
+  background: #fff;
+  color: var(--p-primary-color, #6366f1);
   font-size: 0.95rem;
   flex-shrink: 0;
 }
@@ -250,13 +250,13 @@ function logout() {
   font-weight: 800;
   font-size: 1.05rem;
   letter-spacing: -0.01em;
-  color: var(--p-text-color, #0f172a);
+  color: #fff;
 }
 .brand-sub {
   margin-left: 0.35rem;
   font-weight: 500;
   font-size: 0.82rem;
-  color: var(--p-text-muted-color, #94a3b8);
+  color: rgba(255, 255, 255, 0.65);
 }
 .nav-scroll {
   flex: 1;
@@ -264,11 +264,11 @@ function logout() {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--teggo-border, #cbd5e1) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   padding: 0.6rem 0 1rem;
 }
 .nav-scroll::-webkit-scrollbar { width: 8px; }
-.nav-scroll::-webkit-scrollbar-thumb { background: var(--teggo-border, #cbd5e1); border-radius: 8px; }
+.nav-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.25); border-radius: 8px; }
 .menu {
   list-style: none;
   margin: 0;
@@ -291,7 +291,7 @@ function logout() {
   padding: 0.55rem 0.3rem;
   border-radius: 10px;
   text-decoration: none;
-  color: var(--p-text-color, #334155);
+  color: rgba(255, 255, 255, 0.78);
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
@@ -299,14 +299,14 @@ function logout() {
 }
 .menu-icon {
   font-size: 1.2rem;
-  color: var(--p-text-muted-color, #94a3b8);
+  color: rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
 .menu-text { display: block; width: 100%; }
-/* Active marker: a VS Code–style vertical pill flush to the rail's left edge,
-   plus the icon + label in brand colour — no full-cell highlight. */
-.menu-link.active { color: var(--p-primary-color, #6366f1); }
-.menu-link.active .menu-icon { color: var(--p-primary-color, #6366f1); }
+/* Active marker on the indigo rail: a vertical amber accent pill flush to the
+   left edge, plus white icon + label — no cushion. */
+.menu-link.active { color: #fff; }
+.menu-link.active .menu-icon { color: #fff; }
 .menu-link.active::before {
   content: '';
   position: absolute;
@@ -316,7 +316,7 @@ function logout() {
   width: 3px;
   height: 26px;
   border-radius: 0 3px 3px 0;
-  background: var(--p-primary-color, #6366f1);
+  background: var(--teggo-accent, #f59e0b);
 }
 
 /* --- Main column --- */
