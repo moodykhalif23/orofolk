@@ -76,11 +76,25 @@ function logout() {
 .brand-name { display: flex; gap: 0.5rem; align-items: center; }
 .nav { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
 .navitem {
+  position: relative;
   display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.75rem;
   border-radius: 8px; color: #cbd5e1; font-size: 0.95rem;
 }
 .navitem:hover { background: #1e293b; color: #fff; }
-.navitem.active { background: #1d4ed8; color: #fff; }
+/* Active marker: a white vertical pill flush to the rail's left edge + white
+   icon/label (matches the admin rail) — no full-cell fill. */
+.navitem.active { color: #fff; }
+.navitem.active::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem; /* cancels the sidebar's 0.75rem left padding → flush to the edge */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 1.4rem;
+  border-radius: 0 3px 3px 0;
+  background: #fff;
+}
 .foot { border-top: 1px solid #1e293b; padding-top: 0.75rem; }
 .email { font-size: 0.8rem; color: #94a3b8; padding: 0 0.75rem 0.35rem; overflow: hidden; text-overflow: ellipsis; }
 .content { padding: 1.75rem 2rem; overflow: auto; }
