@@ -285,7 +285,7 @@ await load()
 </template>
 
 <style scoped>
-.wrap { max-width: 980px; }
+.wrap { max-width: 980px; margin-inline: auto; }
 .title { margin: 0.5rem 0 1.25rem; }
 .mb { margin-bottom: 1rem; }
 .grid { display: grid; grid-template-columns: 1fr 22rem; gap: 1.25rem; align-items: start; }

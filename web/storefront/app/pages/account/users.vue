@@ -188,7 +188,7 @@ await load()
 </template>
 
 <style scoped>
-.wrap { max-width: 920px; }
+.wrap { max-width: 920px; margin-inline: auto; }
 .mb { margin-bottom: 1rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
 .field label { font-size: 0.85rem; font-weight: 600; }

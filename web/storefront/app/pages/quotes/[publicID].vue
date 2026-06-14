@@ -93,7 +93,7 @@ await load()
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; }
+.wrap { max-width: 820px; margin-inline: auto; }
 .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; }
 .head h1 { margin: 0; display: flex; align-items: center; gap: 0.6rem; }
 .muted { color: var(--p-text-muted-color, #64748b); }

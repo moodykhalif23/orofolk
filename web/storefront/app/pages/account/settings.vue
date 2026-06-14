@@ -61,7 +61,7 @@ const canApprove = computed(() => profile.value?.me.role === 'admin' || profile.
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; }
+.wrap { max-width: 820px; margin-inline: auto; }
 .title { margin: 0 0 1.25rem; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 .dl { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem 1rem; margin: 0; }

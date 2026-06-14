@@ -77,7 +77,7 @@ async function addToCart(s: Suggestion) {
 </template>
 
 <style scoped>
-.wrap { max-width: 880px; }
+.wrap { max-width: 880px; margin-inline: auto; }
 .title { margin: 0 0 0.4rem; }
 .muted { color: var(--p-text-muted-color, #64748b); margin-bottom: 1rem; }
 .mb { margin-bottom: 1rem; }

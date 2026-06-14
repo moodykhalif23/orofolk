@@ -44,7 +44,7 @@ function logout() {
           :key="n.routeName"
           :to="{ name: n.routeName }"
           class="navitem"
-          active-class="active"
+          exact-active-class="active"
         >
           <i :class="n.icon" /> <span>{{ n.label }}</span>
         </RouterLink>

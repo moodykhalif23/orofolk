@@ -36,6 +36,6 @@ function sev(s: string) {
 </template>
 
 <style scoped>
-.wrap { max-width: 720px; }
+.wrap { max-width: 720px; margin-inline: auto; }
 .title { margin: 0 0 1rem; }
 </style>

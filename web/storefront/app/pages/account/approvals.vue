@@ -89,7 +89,7 @@ await load()
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; }
+.wrap { max-width: 820px; margin-inline: auto; }
 .title { margin: 0 0 1rem; }
 .mb { margin-bottom: 1rem; }
 .acts { display: flex; gap: 0.5rem; }

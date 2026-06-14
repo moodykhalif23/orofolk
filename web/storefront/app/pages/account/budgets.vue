@@ -49,7 +49,7 @@ function pct(spent: string, amount: string) {
 </template>
 
 <style scoped>
-.wrap { max-width: 760px; }
+.wrap { max-width: 760px; margin-inline: auto; }
 .title { margin: 0 0 0.4rem; }
 .muted { color: var(--p-text-muted-color, #64748b); margin-bottom: 1rem; }
 .bar { display: flex; flex-direction: column; gap: 0.2rem; min-width: 14rem; }

@@ -95,7 +95,7 @@ async function payByCard() {
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; }
+.wrap { max-width: 820px; margin-inline: auto; }
 .head { display: flex; align-items: center; justify-content: space-between; margin: 0.5rem 0 0.75rem; }
 .head h1 { margin: 0; display: flex; align-items: center; gap: 0.6rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; font-size: 1rem; }

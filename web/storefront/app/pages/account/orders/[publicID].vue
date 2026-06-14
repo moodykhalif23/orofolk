@@ -229,7 +229,7 @@ async function submitReturn() {
 </template>
 
 <style scoped>
-.wrap { max-width: 820px; }
+.wrap { max-width: 820px; margin-inline: auto; }
 .head { display: flex; align-items: center; justify-content: space-between; margin: 0.5rem 0 1rem; }
 .head h1 { margin: 0; display: flex; align-items: center; gap: 0.6rem; }
 .actions { display: flex; align-items: center; gap: 1.25rem; }
