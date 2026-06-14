@@ -24,6 +24,10 @@ defineProps<{ product: Product }>()
         <span class="sku">{{ product.sku }}</span>
       </template>
       <template #content>
+        <div v-if="product.rating_count" class="rating">
+          <Rating :model-value="Number(product.rating_avg)" readonly />
+          <span class="rating-n">({{ product.rating_count }})</span>
+        </div>
         <p v-if="product.description" class="desc">{{ product.description }}</p>
         <Tag :value="`per ${product.unit}`" severity="secondary" />
       </template>
@@ -72,6 +76,8 @@ defineProps<{ product: Product }>()
   font-size: 0.8rem;
   color: var(--p-text-muted-color, #64748b);
 }
+.rating { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
+.rating-n { font-size: 0.8rem; color: var(--p-text-muted-color, #64748b); }
 .desc {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;

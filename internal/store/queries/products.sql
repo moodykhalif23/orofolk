@@ -1,14 +1,18 @@
 -- name: ListActiveProducts :many
-SELECT id, public_id, sku, name, slug, description, status, attributes, unit,
+SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
-        WHERE pm.product_id = products.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
-FROM products
-WHERE organization_id = $1
-  AND status = 'active'
-  AND approval_status = 'approved'
-  AND deleted_at IS NULL
-ORDER BY name
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
+FROM products p
+WHERE p.organization_id = $1
+  AND p.status = 'active'
+  AND p.approval_status = 'approved'
+  AND p.deleted_at IS NULL
+ORDER BY p.name
 LIMIT $2 OFFSET $3;
 
 -- SuggestProducts powers the storefront search typeahead: name/SKU substring

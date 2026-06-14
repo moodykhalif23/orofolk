@@ -142,8 +142,11 @@ type storefrontProduct struct {
 	SoldBy      *string         `json:"sold_by,omitempty"`
 	// Image is the primary gallery photo (list views); Images is the full
 	// gallery (detail view). Both omitted when the product has no photos.
-	Image  string             `json:"image,omitempty"`
-	Images []storefrontImage  `json:"images,omitempty"`
+	Image  string            `json:"image,omitempty"`
+	Images []storefrontImage `json:"images,omitempty"`
+	// Approved-only aggregate rating (list views show stars when count > 0).
+	RatingAvg   string `json:"rating_avg,omitempty"`
+	RatingCount int64  `json:"rating_count,omitempty"`
 }
 
 type storefrontImage struct {
@@ -237,7 +240,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
-				Image: p.ImageUrl,
+				Image: p.ImageUrl, RatingAvg: p.RatingAvg, RatingCount: p.RatingCount,
 			})
 		}
 
@@ -264,7 +267,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
-				Image: p.ImageUrl,
+				Image: p.ImageUrl, RatingAvg: p.RatingAvg, RatingCount: p.RatingCount,
 			})
 		}
 
@@ -289,7 +292,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
-				Image: p.ImageUrl,
+				Image: p.ImageUrl, RatingAvg: p.RatingAvg, RatingCount: p.RatingCount,
 			})
 		}
 
@@ -308,7 +311,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
-				Image: p.ImageUrl,
+				Image: p.ImageUrl, RatingAvg: p.RatingAvg, RatingCount: p.RatingCount,
 			})
 		}
 	}
@@ -770,6 +773,7 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 		items = append(items, storefrontProduct{
 			PublicID: p.PublicID.String(), SKU: p.Sku, Name: name, Slug: p.Slug,
 			Description: desc, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+			Image: p.ImageUrl, RatingAvg: p.RatingAvg, RatingCount: p.RatingCount,
 		})
 	}
 	if total < 0 {

@@ -2,11 +2,13 @@ package demo
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/money"
 	"b2bcommerce/internal/store/gen"
 )
@@ -78,6 +80,22 @@ func seed(ctx context.Context, pool *pgxpool.Pool, orgID, websiteID int64) {
 		}
 	}
 
+	// One buyer login per company — the author for seeded reviews (password unused).
+	pwHash, _ := auth.HashPassword("demo-buyer-1234")
+	custUserIDs := make([]int64, len(demoCustomers))
+	for i := range demoCustomers {
+		if custIDs[i] == 0 {
+			continue
+		}
+		cu, err := q.CreateCustomerUser(ctx, gen.CreateCustomerUserParams{
+			CustomerID: custIDs[i], Email: fmt.Sprintf("buyer%d@demo.test", i+1), PasswordHash: pwHash,
+			FullName: demoCustomers[i] + " Buyer", Role: "buyer",
+		})
+		if err == nil {
+			custUserIDs[i] = cu.ID
+		}
+	}
+
 	for _, o := range demoOrders {
 		if o.customer >= len(custIDs) || custIDs[o.customer] == 0 {
 			continue
@@ -120,6 +138,32 @@ func seed(ctx context.Context, pool *pgxpool.Pool, orgID, websiteID int64) {
 		if o.ageDays > 0 {
 			_, _ = pool.Exec(ctx, `UPDATE orders SET created_at = now() - make_interval(days => $2) WHERE id = $1`, ord.ID, o.ageDays)
 		}
+	}
+
+	// A few approved reviews so the storefront shows ratings out of the box.
+	demoReviews := []struct {
+		product, customer, rating int
+		title, body               string
+	}{
+		{0, 0, 5, "Excellent pump", "Quiet and powerful — exceeded expectations."},
+		{0, 1, 4, "Solid choice", "Works well; delivery was quick."},
+		{1, 0, 5, "Great motor", "Runs cool under sustained load."},
+		{2, 2, 4, "Accurate sensor", "Readings have been spot-on so far."},
+		{4, 1, 5, "Reliable bearings", "No complaints after weeks of use."},
+		{3, 3, 4, "Good valve", "Seals well and easy to fit."},
+	}
+	for _, rv := range demoReviews {
+		if rv.product >= len(prodIDs) || prodIDs[rv.product] == 0 {
+			continue
+		}
+		if rv.customer >= len(custUserIDs) || custUserIDs[rv.customer] == 0 {
+			continue
+		}
+		_, _ = pool.Exec(ctx, `INSERT INTO product_reviews
+			(organization_id, product_id, customer_id, customer_user_id, rating, title, body, status, verified, reviewed_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, 'approved', true, now())
+			ON CONFLICT (product_id, customer_user_id) DO NOTHING`,
+			orgID, prodIDs[rv.product], custIDs[rv.customer], custUserIDs[rv.customer], rv.rating, rv.title, rv.body)
 	}
 }
 

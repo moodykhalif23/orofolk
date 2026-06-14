@@ -377,7 +377,11 @@ const filterActiveProductsByAttributes = `-- name: FilterActiveProductsByAttribu
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -404,6 +408,8 @@ type FilterActiveProductsByAttributesRow struct {
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
 	ImageUrl    string    `json:"image_url"`
+	RatingAvg   string    `json:"rating_avg"`
+	RatingCount int64     `json:"rating_count"`
 }
 
 // FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
@@ -434,6 +440,8 @@ func (q *Queries) FilterActiveProductsByAttributes(ctx context.Context, arg Filt
 			&i.Attributes,
 			&i.Unit,
 			&i.ImageUrl,
+			&i.RatingAvg,
+			&i.RatingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -608,7 +616,11 @@ SELECT DISTINCT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)
@@ -636,6 +648,8 @@ type ListActiveProductsInCategoryRow struct {
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
 	ImageUrl    string    `json:"image_url"`
+	RatingAvg   string    `json:"rating_avg"`
+	RatingCount int64     `json:"rating_count"`
 }
 
 // ListActiveProductsInCategory returns active products in a category's whole
@@ -665,6 +679,8 @@ func (q *Queries) ListActiveProductsInCategory(ctx context.Context, arg ListActi
 			&i.Attributes,
 			&i.Unit,
 			&i.ImageUrl,
+			&i.RatingAvg,
+			&i.RatingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1017,7 +1033,11 @@ SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -1044,6 +1064,8 @@ type SearchActiveProductsRow struct {
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
 	ImageUrl    string    `json:"image_url"`
+	RatingAvg   string    `json:"rating_avg"`
+	RatingCount int64     `json:"rating_count"`
 }
 
 // SearchActiveProducts: full-text product search (PRD §14, Postgres FTS).
@@ -1074,6 +1096,8 @@ func (q *Queries) SearchActiveProducts(ctx context.Context, arg SearchActiveProd
 			&i.Attributes,
 			&i.Unit,
 			&i.ImageUrl,
+			&i.RatingAvg,
+			&i.RatingCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1151,7 +1175,14 @@ func (q *Queries) SearchProductsAdmin(ctx context.Context, arg SearchProductsAdm
 
 const searchProductsFaceted = `-- name: SearchProductsFaceted :many
 
-SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit
+SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
@@ -1191,6 +1222,9 @@ type SearchProductsFacetedRow struct {
 	Status      string    `json:"status"`
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
+	ImageUrl    string    `json:"image_url"`
+	RatingAvg   string    `json:"rating_avg"`
+	RatingCount int64     `json:"rating_count"`
 }
 
 // ===== Faceted search (PRD §14 V1) =========================================
@@ -1228,6 +1262,9 @@ func (q *Queries) SearchProductsFaceted(ctx context.Context, arg SearchProductsF
 			&i.Status,
 			&i.Attributes,
 			&i.Unit,
+			&i.ImageUrl,
+			&i.RatingAvg,
+			&i.RatingCount,
 		); err != nil {
 			return nil, err
 		}

@@ -205,6 +205,8 @@ components:
         unit: { type: string }
         sold_by: { type: string, nullable: true, description: 'Marketplace vendor name when the product is vendor-owned; absent for operator (house) products.' }
         image: { type: string, description: 'Primary gallery image URL (list views); omitted when the product has no photos.' }
+        rating_avg: { type: string, description: 'Approved-only average rating; omitted when there are no reviews.' }
+        rating_count: { type: integer, format: int64, description: 'Number of approved reviews; omitted when zero.' }
         images:
           type: array
           description: 'Full gallery (detail view); omitted when the product has no photos.'

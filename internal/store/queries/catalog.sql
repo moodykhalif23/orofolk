@@ -81,7 +81,11 @@ SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -96,7 +100,14 @@ LIMIT $3 OFFSET $4;
 -- resolved in Go). $5 sort: 'relevance' | 'newest' | else name.
 
 -- name: SearchProductsFaceted :many
-SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit
+SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
@@ -146,7 +157,11 @@ ORDER BY kv.key, count DESC, kv.value;
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -194,7 +209,11 @@ SELECT DISTINCT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
        p.status, p.attributes, p.unit,
        COALESCE((SELECT pm.url FROM product_media pm
         WHERE pm.product_id = p.id AND pm.type = 'image'
-        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url,
+       COALESCE((SELECT ROUND(AVG(pr.rating), 2) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::numeric AS rating_avg,
+       COALESCE((SELECT count(*) FROM product_reviews pr
+        WHERE pr.product_id = p.id AND pr.status = 'approved'), 0)::bigint AS rating_count
 FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)

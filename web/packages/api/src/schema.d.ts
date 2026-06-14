@@ -4779,6 +4779,13 @@ export interface components {
             sold_by?: string | null;
             /** @description Primary gallery image URL (list views); omitted when the product has no photos. */
             image?: string;
+            /** @description Approved-only average rating; omitted when there are no reviews. */
+            rating_avg?: string;
+            /**
+             * Format: int64
+             * @description Number of approved reviews; omitted when zero.
+             */
+            rating_count?: number;
             /** @description Full gallery (detail view); omitted when the product has no photos. */
             images?: {
                 url: string;
