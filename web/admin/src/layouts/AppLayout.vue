@@ -282,6 +282,7 @@ function logout() {
 .menu-item--pinned { margin-top: auto; }
 /* Rail item: icon stacked over its label, centred. */
 .menu-link {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -302,8 +303,21 @@ function logout() {
   flex-shrink: 0;
 }
 .menu-text { display: block; width: 100%; }
-.menu-link.active { background: var(--p-primary-50, #eef2ff); color: var(--p-primary-color, #6366f1); }
+/* Active marker: a VS Code–style vertical pill flush to the rail's left edge,
+   plus the icon + label in brand colour — no full-cell highlight. */
+.menu-link.active { color: var(--p-primary-color, #6366f1); }
 .menu-link.active .menu-icon { color: var(--p-primary-color, #6366f1); }
+.menu-link.active::before {
+  content: '';
+  position: absolute;
+  left: -0.4rem; /* cancels .menu's 0.4rem inset → sits on the rail edge */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 26px;
+  border-radius: 0 3px 3px 0;
+  background: var(--p-primary-color, #6366f1);
+}
 
 /* --- Main column --- */
 .main {
@@ -463,6 +477,8 @@ function logout() {
   }
   .menu-icon { font-size: 1rem; width: 1.2rem; text-align: center; }
   .menu-text { width: auto; flex: 1; min-width: 0; }
+  /* Keep the active pill flush to the drawer edge (wider .menu inset here). */
+  .menu-link.active::before { left: -0.75rem; height: 22px; }
   .drawer-open .sidebar { transform: translateX(0); }
   .drawer-open .scrim {
     display: block;
