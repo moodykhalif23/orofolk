@@ -64,16 +64,6 @@ const leaves = computed(() =>
   gap: 1rem;
   margin-bottom: 1.75rem;
 }
-.hub-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  color: var(--p-text-color, #334155);
-  font-size: 1.7rem;
-}
 .hub-head h1 {
   margin: 0;
   font-size: 1.55rem;
