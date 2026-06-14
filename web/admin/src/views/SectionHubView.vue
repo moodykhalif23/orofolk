@@ -22,7 +22,6 @@ const leaves = computed(() =>
 <template>
   <div v-if="section" class="hub">
     <header class="hub-head">
-      <span class="hub-icon"><i :class="section.icon" /></span>
       <div>
         <h1>{{ section.label }}</h1>
         <p>{{ section.blurb }}</p>
