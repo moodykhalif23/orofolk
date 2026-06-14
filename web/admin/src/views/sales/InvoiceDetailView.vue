@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import SkeletonDetail from '@/components/SkeletonDetail.vue'
 import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
@@ -19,7 +21,6 @@ type Invoice = components['schemas']['InvoiceDetail']
 type Payment = components['schemas']['Payment']
 
 const route = useRoute()
-const router = useRouter()
 const toast = useToast()
 const id = Number(route.params.id)
 
@@ -112,8 +113,9 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <Button icon="pi pi-arrow-left" label="Back" text severity="secondary" @click="router.back()" />
+    <AppBreadcrumb :items="[{ label: 'Invoices', route: { name: 'invoices' } }, { label: invoice ? `Invoice ${invoice.public_id.slice(0, 8)}…` : 'Invoice' }]" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+    <SkeletonDetail v-if="!invoice && !error" :cards="2" />
 
     <template v-if="invoice">
       <div class="head">

@@ -18,6 +18,8 @@ import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import SkeletonDetail from '@/components/SkeletonDetail.vue'
 
 type Order = components['schemas']['OrderDetail']
 type Shipment = components['schemas']['Shipment']
@@ -163,8 +165,9 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <Button icon="pi pi-arrow-left" label="Orders" text severity="secondary" @click="router.push({ name: 'orders' })" />
+    <AppBreadcrumb :items="[{ label: 'Orders', route: { name: 'orders' } }, { label: order ? `Order ${order.public_id.slice(0, 8)}…` : 'Order' }]" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+    <SkeletonDetail v-if="!order && !error" :cards="2" />
 
     <template v-if="order">
       <div class="head">

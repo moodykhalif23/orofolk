@@ -243,15 +243,15 @@ await loadCurrencies()
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0.2rem 0.4rem 0.6rem;
-  border: 1px dashed var(--p-primary-color, #16a34a);
+  border: 1px dashed var(--p-primary-color, #6366f1);
   border-radius: 8px;
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
   font-weight: 600;
   font-size: 0.9rem;
 }
 .coupon-error { color: var(--p-red-500, #ef4444); font-size: 0.8rem; }
 .totals .row { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
-.totals .discount { color: var(--p-primary-color, #16a34a); }
+.totals .discount { color: var(--p-primary-color, #6366f1); }
 .totals .grand { font-size: 1.15rem; padding-top: 0.4rem; border-top: 1px solid var(--p-surface-200, #e2e8f0); }
 .ccy-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.5rem; }
 .ccy-row span { font-size: 0.85rem; color: var(--p-text-muted-color, #64748b); }

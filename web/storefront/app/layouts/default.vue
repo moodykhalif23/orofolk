@@ -200,9 +200,9 @@ function signOut() {
   color: var(--p-text-color, #0f172a);
 }
 .nav a.router-link-active {
-  background: var(--p-primary-50, #ecfdf5);
-  border-color: var(--p-primary-200, #a7f3d0);
-  color: var(--p-primary-700, #047857);
+  background: var(--p-primary-50, #eef2ff);
+  border-color: var(--p-primary-200, #c7d2fe);
+  color: var(--p-primary-700, #4338ca);
   font-weight: 600;
 }
 .spacer {
@@ -307,7 +307,7 @@ function signOut() {
     cursor: pointer;
   }
   .mobile-menu a.router-link-active {
-    color: var(--p-primary-color, #0ea5e9);
+    color: var(--p-primary-color, #6366f1);
     font-weight: 600;
   }
   .mm-search {

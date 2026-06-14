@@ -127,7 +127,7 @@ function relTime(iso: string): string {
 .notif-link {
   background: none;
   border: none;
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0;
@@ -150,7 +150,7 @@ function relTime(iso: string): string {
   background: var(--p-surface-50, #f8fafc);
 }
 .notif-item.unread {
-  background: var(--p-primary-50, #f0fdf4);
+  background: var(--p-primary-50, #eef2ff);
 }
 .sev {
   flex: 0 0 8px;

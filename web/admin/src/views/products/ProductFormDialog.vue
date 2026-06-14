@@ -426,7 +426,7 @@ async function save() {
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.img-add:hover:not(:disabled) { border-color: var(--p-primary-color, #16a34a); color: var(--p-primary-color, #16a34a); }
+.img-add:hover:not(:disabled) { border-color: var(--p-primary-color, #6366f1); color: var(--p-primary-color, #6366f1); }
 .img-add:disabled { cursor: progress; opacity: 0.7; }
 .i18n { border-top: 1px solid var(--p-surface-200, #e2e8f0); padding-top: 0.8rem; }
 .tr-list { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-direction: column; gap: 0.25rem; }

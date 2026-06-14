@@ -163,7 +163,7 @@ async function submit() {
 }
 .done-icon {
   font-size: 2rem;
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 .done h3 {
   margin: 0;

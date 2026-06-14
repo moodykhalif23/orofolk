@@ -102,7 +102,7 @@ onMounted(load)
             <label>Brand color</label>
             <div class="color-row">
               <input v-model="branding.brand_color" type="color" class="swatch" aria-label="Pick brand color" />
-              <InputText v-model="branding.brand_color" placeholder="#16a34a" fluid />
+              <InputText v-model="branding.brand_color" placeholder="#4f46e5" fluid />
             </div>
           </div>
           <div class="field">

@@ -82,6 +82,6 @@ async function addToCart(s: Suggestion) {
 .muted { color: var(--p-text-muted-color, #64748b); margin-bottom: 1rem; }
 .mb { margin-bottom: 1rem; }
 .sku { font-size: 0.78rem; color: var(--p-text-muted-color, #64748b); }
-.lnk { color: var(--p-primary-color, #0ea5e9); text-decoration: none; }
+.lnk { color: var(--p-primary-color, #6366f1); text-decoration: none; }
 .foot { margin-top: 1rem; }
 </style>

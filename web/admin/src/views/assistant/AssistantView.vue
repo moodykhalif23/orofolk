@@ -158,8 +158,8 @@ async function scroll() {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--p-primary-color, #16a34a) 14%, transparent);
-  color: var(--p-primary-color, #16a34a);
+  background: color-mix(in srgb, var(--p-primary-color, #6366f1) 14%, transparent);
+  color: var(--p-primary-color, #6366f1);
   font-size: 1.4rem;
   margin-bottom: 0.75rem;
 }
@@ -190,14 +190,14 @@ async function scroll() {
   transition: border-color 0.15s, background 0.15s;
 }
 .chip:hover {
-  border-color: var(--p-primary-color, #16a34a);
+  border-color: var(--p-primary-color, #6366f1);
   background: var(--p-surface-50, #f8fafc);
 }
 .chip > span {
   flex: 1;
 }
 .chip > .pi:first-child {
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 .chip-go {
   color: var(--p-text-muted-color, #94a3b8);

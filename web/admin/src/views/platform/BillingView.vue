@@ -157,7 +157,7 @@ onMounted(() => billing.load())
   gap: 0.55rem;
 }
 .features .on {
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 .features .off {
   color: var(--p-text-muted-color, #94a3b8);

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import SkeletonDetail from '@/components/SkeletonDetail.vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import Card from 'primevue/card'
@@ -27,7 +29,6 @@ type Price = components['schemas']['Price']
 type Assignment = components['schemas']['PriceListAssignment']
 
 const route = useRoute()
-const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const id = Number(route.params.id)
@@ -147,8 +148,9 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <Button icon="pi pi-arrow-left" label="Price lists" text severity="secondary" @click="router.push({ name: 'pricing' })" />
+    <AppBreadcrumb :items="[{ label: 'Price lists', route: { name: 'pricing' } }, { label: list?.name ?? 'Price list' }]" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+    <SkeletonDetail v-if="!list && !error" :cards="2" />
 
     <template v-if="list">
       <h1 class="title">{{ list.name }} <Tag :value="list.currency" severity="secondary" /></h1>

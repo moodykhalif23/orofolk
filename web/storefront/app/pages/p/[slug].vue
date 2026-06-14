@@ -85,6 +85,7 @@ useSeoMeta({
 
 <template>
   <section>
+    <StoreBreadcrumb :items="[{ label: 'Catalog', to: '/c/all' }, { label: product?.name ?? 'Product' }]" />
     <Message v-if="error" severity="error" :closable="false">
       Product not found, or the API is unavailable.
     </Message>

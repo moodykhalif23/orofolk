@@ -136,7 +136,7 @@ function isSelected(attr: string, value: string) {
   text-align: left; font-size: 0.9rem; color: inherit;
 }
 .facet-value:hover { background: var(--p-surface-100, #f1f5f9); }
-.facet-value.on { background: var(--p-primary-100, #e0f2fe); font-weight: 600; }
+.facet-value.on { background: var(--p-primary-100, #e0e7ff); font-weight: 600; }
 .facet-value .n { color: var(--p-text-muted-color, #64748b); }
 .results .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
 @media (max-width: 720px) {

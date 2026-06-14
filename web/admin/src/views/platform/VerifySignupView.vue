@@ -79,7 +79,7 @@ onMounted(async () => {
   font-size: 2.2rem;
 }
 .icon.ok {
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 .icon.err {
   color: var(--p-red-500, #ef4444);

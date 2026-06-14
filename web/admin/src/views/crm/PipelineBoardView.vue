@@ -75,7 +75,7 @@ onMounted(load)
 
 <style scoped>
 .forecast { text-align: right; }
-.f-val { font-size: 1.8rem; font-weight: 800; line-height: 1; color: var(--p-primary-color, #0ea5e9); }
+.f-val { font-size: 1.8rem; font-weight: 800; line-height: 1; color: var(--p-primary-color, #6366f1); }
 .f-lbl { font-size: 0.8rem; color: var(--p-text-muted-color, #64748b); }
 .mb { margin-bottom: 1rem; }
 .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: start; }

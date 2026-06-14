@@ -7,6 +7,10 @@
   --teggo-radius: 6px; /* polished, gently-rounded — not fully sharp */
   --teggo-surface: #ffffff;
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
+  /* ULTIMA-style brand accent (amber) — for selective highlights alongside the
+     indigo primary. Use sparingly; the primary stays the dominant brand colour. */
+  --teggo-accent: #f59e0b; /* amber-500 */
+  --teggo-accent-contrast: #ffffff;
 }
 
 * {
@@ -63,7 +67,7 @@ body {
 .p-card .p-card-caption {
   /* Filled brand-green header section, full-bleed to the card edges (cancels the
      body padding) with the top corners rounded to match the card. */
-  background: var(--p-primary-color, #16a34a);
+  background: var(--p-primary-color, #6366f1);
   margin: -1.15rem -1.35rem 0.9rem;
   padding: 0.8rem 1.35rem;
   border-top-left-radius: var(--teggo-radius, 6px);
@@ -126,7 +130,7 @@ body {
 }
 /* Filled brand-green dialog header section, white title + close button. */
 .p-dialog .p-dialog-header {
-  background: var(--p-primary-color, #16a34a);
+  background: var(--p-primary-color, #6366f1);
   border-top-left-radius: var(--teggo-radius, 6px);
   border-top-right-radius: var(--teggo-radius, 6px);
 }

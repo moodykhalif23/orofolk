@@ -10,6 +10,8 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
 import type { components } from '@teggo/api/schema'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import SkeletonDetail from '@/components/SkeletonDetail.vue'
 
 type Rfq = components['schemas']['RfqDetail']
 
@@ -49,8 +51,9 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <Button icon="pi pi-arrow-left" label="RFQs" text severity="secondary" @click="router.push({ name: 'rfqs' })" />
+    <AppBreadcrumb :items="[{ label: 'RFQs', route: { name: 'rfqs' } }, { label: rfq ? `RFQ ${rfq.public_id.slice(0, 8)}…` : 'RFQ' }]" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+    <SkeletonDetail v-if="!rfq && !error" :cards="2" />
 
     <template v-if="rfq">
       <div class="head">

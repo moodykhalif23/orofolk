@@ -88,8 +88,8 @@ onMounted(load)
       <Column field="data_type" header="Type" />
       <Column header="Flags">
         <template #body="{ data }">
-          <Tag v-if="data.is_filterable" value="filterable" severity="info" class="flag" />
-          <Tag v-if="data.is_variant_axis" value="variant axis" severity="warn" class="flag" />
+          <Tag v-if="data.is_filterable" v-tooltip.top="'Buyers can filter the catalog by this attribute (shows as a storefront facet).'" value="filterable" severity="info" class="flag" />
+          <Tag v-if="data.is_variant_axis" v-tooltip.top="'Distinguishes variants of the same product (e.g. size, colour).'" value="variant axis" severity="warn" class="flag" />
         </template>
       </Column>
     </DataTable>

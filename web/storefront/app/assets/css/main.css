@@ -16,7 +16,7 @@ body {
 }
 
 a {
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 
 /* ===========================================================================
@@ -29,6 +29,9 @@ a {
   --teggo-radius: 6px;
   --teggo-surface: #ffffff;
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
+  /* ULTIMA-style brand accent (amber), kept in sync with the admin app. */
+  --teggo-accent: #f59e0b; /* amber-500 */
+  --teggo-accent-contrast: #ffffff;
 }
 
 /* Cards: bordered, subtle elevation, slightly-sharp corner. */

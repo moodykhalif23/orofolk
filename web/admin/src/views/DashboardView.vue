@@ -514,7 +514,7 @@ onMounted(load)
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--p-primary-color, #16a34a);
+  color: var(--p-primary-color, #6366f1);
 }
 .sub {
   margin: 0.3rem 0 0;
@@ -628,7 +628,7 @@ onMounted(load)
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .stat:hover {
-  border-color: var(--p-primary-color, #16a34a);
+  border-color: var(--p-primary-color, #6366f1);
   box-shadow: 0 1px 6px rgba(15, 23, 42, 0.06);
 }
 .stat-ic {
@@ -639,8 +639,8 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   border-radius: var(--teggo-radius, 6px);
-  background: color-mix(in srgb, var(--p-primary-color, #16a34a) 12%, transparent);
-  color: var(--p-primary-color, #16a34a);
+  background: color-mix(in srgb, var(--p-primary-color, #6366f1) 12%, transparent);
+  color: var(--p-primary-color, #6366f1);
   font-size: 1.2rem;
 }
 .stat-main {
@@ -779,8 +779,8 @@ onMounted(load)
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--p-primary-color, #16a34a) 14%, transparent);
-  color: var(--p-primary-color, #16a34a);
+  background: color-mix(in srgb, var(--p-primary-color, #6366f1) 14%, transparent);
+  color: var(--p-primary-color, #6366f1);
   font-size: 1.15rem;
   font-weight: 700;
 }

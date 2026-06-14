@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
+import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+import SkeletonDetail from '@/components/SkeletonDetail.vue'
 import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import Tabs from 'primevue/tabs'
@@ -27,7 +29,6 @@ type CustomerUser = components['schemas']['CustomerUser']
 type CustomerAddress = components['schemas']['CustomerAddress']
 
 const route = useRoute()
-const router = useRouter()
 const toast = useToast()
 const id = Number(route.params.id)
 
@@ -231,8 +232,9 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <Button icon="pi pi-arrow-left" label="Customers" text severity="secondary" @click="router.push({ name: 'customers' })" />
+    <AppBreadcrumb :items="[{ label: 'Customers', route: { name: 'customers' } }, { label: customer?.name ?? 'Customer' }]" />
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
+    <SkeletonDetail v-if="!customer && !error" :cards="2" />
 
     <template v-if="customer">
       <h1 class="title">{{ customer.name }}</h1>

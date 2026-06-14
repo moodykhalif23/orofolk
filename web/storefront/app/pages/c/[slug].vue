@@ -23,10 +23,20 @@ useSeoMeta({
   title: () => `Catalog — ${route.params.slug}`,
   description: 'Browse products in the Teggo Store catalog.',
 })
+
+// Breadcrumb: Home › Catalog (› category, when filtered to a specific subtree).
+const crumbs = computed(() => {
+  const slug = String(route.params.slug ?? '')
+  if (slug && slug !== 'all') {
+    return [{ label: 'Catalog', to: '/c/all' }, { label: slug.replace(/-/g, ' ') }]
+  }
+  return [{ label: 'Catalog' }]
+})
 </script>
 
 <template>
   <section>
+    <StoreBreadcrumb :items="crumbs" />
     <h1 class="title">Catalog</h1>
 
     <Message v-if="error" severity="error" :closable="false">

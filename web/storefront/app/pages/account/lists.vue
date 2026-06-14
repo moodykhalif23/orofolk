@@ -233,7 +233,7 @@ await loadLists()
   padding: 0.5rem 0.6rem; border-radius: 8px; cursor: pointer;
   border: 1px solid var(--p-surface-200, #e2e8f0);
 }
-.lists li.active { border-color: var(--p-primary-color, #0ea5e9); background: var(--p-surface-50, #f8fafc); }
+.lists li.active { border-color: var(--p-primary-color, #6366f1); background: var(--p-surface-50, #f8fafc); }
 .lists li.empty { cursor: default; border-style: dashed; }
 .name { display: flex; align-items: center; gap: 0.4rem; }
 .items-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
