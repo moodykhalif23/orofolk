@@ -16,7 +16,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/billing"
+	"b2bcommerce/internal/demo"
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
@@ -36,6 +38,7 @@ type Handler struct {
 	mailer     Emailer
 	statuses   *tenant.StatusCache
 	billing    *billing.Service
+	issuer     *auth.Issuer
 	baseDomain string
 	verifyURL  string // page the email links to; the token rides as ?token=
 }
@@ -50,11 +53,19 @@ func New(pool *pgxpool.Pool, mailer Emailer, statuses *tenant.StatusCache, baseD
 	return &Handler{pool: pool, q: gen.New(pool), mailer: mailer, statuses: statuses, baseDomain: baseDomain, verifyURL: verifyURL}
 }
 
+// WithIssuer enables instant demo provisioning (POST /demo): the issuer mints the
+// admin token the landing page uses to log the prospect straight in. Without it,
+// the demo endpoint is not mounted.
+func (h *Handler) WithIssuer(issuer *auth.Issuer) *Handler { h.issuer = issuer; return h }
+
 // Routes mounts public signup endpoints (rate-limited — they're unauthenticated
 // writes) and the operator surface.
 func (h *Handler) Routes(r chi.Router, authMW, limiter func(http.Handler) http.Handler) {
 	r.With(limiter).Post("/signup", h.signup)
 	r.With(limiter).Post("/signup/verify", h.verify)
+	if h.issuer != nil {
+		r.With(limiter).Post("/demo", h.demo)
+	}
 
 	r.Group(func(ar chi.Router) {
 		ar.Use(authMW)
@@ -156,6 +167,42 @@ func (h *Handler) verify(w http.ResponseWriter, r *http.Request) {
 		h.statuses.Invalidate(ver.OrganizationID)
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"message": "organization verified — you can sign in now"})
+}
+
+// ---- Instant demo ----------------------------------------------------------
+
+type demoRequest struct {
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Company string `json:"company"`
+}
+
+// demo provisions an instant, isolated, pre-seeded demo org and returns an admin
+// token so the landing page can log the prospect straight in.
+func (h *Handler) demo(w http.ResponseWriter, r *http.Request) {
+	var req demoRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid body")
+		return
+	}
+	res, err := demo.Provision(r.Context(), h.pool, h.issuer, demo.Input{
+		Name: req.Name, Email: req.Email, Company: req.Company,
+	})
+	var ve tenant.ValidationError
+	switch {
+	case errors.As(err, &ve):
+		response.Fail(w, http.StatusBadRequest, "invalid", ve.Error())
+		return
+	case err != nil:
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not create the demo")
+		return
+	}
+	response.JSON(w, http.StatusCreated, map[string]any{
+		"token":      res.Token,
+		"domain":     res.Domain,
+		"email":      res.Email,
+		"expires_at": res.ExpiresAt.Format(time.RFC3339),
+	})
 }
 
 // ---- Platform operator -----------------------------------------------------

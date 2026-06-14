@@ -47,7 +47,7 @@ func (q *Queries) CreateWebsite(ctx context.Context, arg CreateWebsiteParams) (W
 }
 
 const getOrganization = `-- name: GetOrganization :one
-SELECT id, name, is_active, created_at, updated_at, status FROM organizations WHERE id = $1
+SELECT id, name, is_active, created_at, updated_at, status, is_demo, demo_expires_at FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganization(ctx context.Context, id int64) (Organization, error) {
@@ -60,6 +60,8 @@ func (q *Queries) GetOrganization(ctx context.Context, id int64) (Organization, 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Status,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 	)
 	return i, err
 }

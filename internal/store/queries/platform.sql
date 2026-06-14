@@ -6,6 +6,21 @@ INSERT INTO organizations (name, status) VALUES ($1, $2) RETURNING *;
 -- name: SetOrganizationStatus :one
 UPDATE organizations SET status = $2 WHERE id = $1 RETURNING *;
 
+-- ActivateDemoOrg flips a freshly-provisioned org live (skipping email
+-- verification) and stamps its demo expiry.
+-- name: ActivateDemoOrg :exec
+UPDATE organizations
+SET status = 'active', is_demo = true, demo_expires_at = $2
+WHERE id = $1;
+
+-- SuspendExpiredDemoOrgs shuts off demo tenants past their expiry (the org gate
+-- then blocks them). Returns the number suspended.
+-- name: SuspendExpiredDemoOrgs :execrows
+UPDATE organizations
+SET status = 'suspended'
+WHERE is_demo AND status <> 'suspended'
+  AND demo_expires_at IS NOT NULL AND demo_expires_at < now();
+
 -- ListOrganizationsWithCounts is the platform-operator overview.
 -- name: ListOrganizationsWithCounts :many
 SELECT o.*,

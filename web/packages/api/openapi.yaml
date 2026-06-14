@@ -3130,6 +3130,21 @@ components:
       properties:
         domain: { type: string, description: 'The storefront domain that was provisioned.' }
         message: { type: string }
+    DemoRequest:
+      type: object
+      required: [email]
+      properties:
+        name: { type: string, description: "The prospect's name (optional)." }
+        email: { type: string, format: email }
+        company: { type: string, description: 'Company name (optional); used to label the demo org.' }
+    DemoResponse:
+      type: object
+      required: [token, domain, email, expires_at]
+      properties:
+        token: { type: string, description: 'Admin token for the freshly-provisioned demo org — log straight in with it.' }
+        domain: { type: string }
+        email: { type: string }
+        expires_at: { type: string, format: date-time, description: 'When the demo org is suspended.' }
     SignupVerifyRequest:
       type: object
       required: [token]
@@ -6649,6 +6664,18 @@ paths:
         '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/SignupResponse' } } } }
         '400': { $ref: '#/components/responses/ErrorResponse' }
         '409': { $ref: '#/components/responses/ErrorResponse' }
+  /demo:
+    post:
+      tags: [Platform]
+      operationId: requestDemo
+      summary: Provision an instant, isolated, pre-seeded demo organization and return an admin token (auto-login).
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DemoRequest' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/DemoResponse' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
   /signup/verify:
     post:
       tags: [Platform]

@@ -53,6 +53,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.MaterializeSubscriptionsWorker{Pool: pool, Mailer: enq})
 	river.AddWorker(workers, &jobs.RunInsightDigestsWorker{Pool: pool, Enq: enq})
 	river.AddWorker(workers, &jobs.InsightDigestWorker{Pool: pool, Narrator: narrator, Mailer: enq})
+	river.AddWorker(workers, &jobs.ExpireDemosWorker{Pool: pool})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -92,6 +93,14 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 			river.PeriodicInterval(7*24*time.Hour),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return jobs.RunInsightDigestsArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false},
+		),
+		// Daily: suspend expired demo organizations.
+		river.NewPeriodicJob(
+			river.PeriodicInterval(24*time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.ExpireDemosArgs{}, nil
 			},
 			&river.PeriodicJobOpts{RunOnStart: false},
 		),

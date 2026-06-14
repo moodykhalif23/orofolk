@@ -12,6 +12,7 @@ const sidebars: SidebarsConfig = {
     'auth-rbac',
     'data-layer',
     'background-jobs',
+    'data-platform',
     'integrations',
     'marketplace',
     'frontend',

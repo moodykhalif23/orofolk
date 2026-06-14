@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.1
+	github.com/pusher/pusher-http-go/v5 v5.1.1
 	github.com/riverqueue/river v0.14.1
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.14.1
 	github.com/russellhaering/gosaml2 v0.11.0
@@ -67,7 +68,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/pusher/pusher-http-go/v5 v5.1.1 // indirect
 	github.com/riverqueue/river/riverdriver v0.14.1 // indirect
 	github.com/riverqueue/river/rivershared v0.14.1 // indirect
 	github.com/riverqueue/river/rivertype v0.14.1 // indirect

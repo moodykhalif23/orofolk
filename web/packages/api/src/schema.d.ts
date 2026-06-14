@@ -4369,6 +4369,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Provision an instant, isolated, pre-seeded demo organization and return an admin token (auto-login). */
+        post: operations["requestDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/signup/verify": {
         parameters: {
             query?: never;
@@ -7418,6 +7435,25 @@ export interface components {
             /** @description The storefront domain that was provisioned. */
             domain?: string;
             message?: string;
+        };
+        DemoRequest: {
+            /** @description The prospect's name (optional). */
+            name?: string;
+            /** Format: email */
+            email: string;
+            /** @description Company name (optional); used to label the demo org. */
+            company?: string;
+        };
+        DemoResponse: {
+            /** @description Admin token for the freshly-provisioned demo org — log straight in with it. */
+            token: string;
+            domain: string;
+            email: string;
+            /**
+             * Format: date-time
+             * @description When the demo org is suspended.
+             */
+            expires_at: string;
         };
         SignupVerifyRequest: {
             /** Format: uuid */
@@ -15403,6 +15439,31 @@ export interface operations {
             };
             400: components["responses"]["ErrorResponse"];
             409: components["responses"]["ErrorResponse"];
+        };
+    };
+    requestDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoResponse"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
         };
     };
     signupVerify: {

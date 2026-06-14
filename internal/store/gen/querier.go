@@ -17,6 +17,9 @@ type Querier interface {
 	// cancelled) into the signals a rep needs to spot a slipping account: lifetime
 	// value, first/last order, and recent vs prior 90-day order counts.
 	AccountHealth(ctx context.Context, organizationID int64) ([]AccountHealthRow, error)
+	// ActivateDemoOrg flips a freshly-provisioned org live (skipping email
+	// verification) and stamps its demo expiry.
+	ActivateDemoOrg(ctx context.Context, arg ActivateDemoOrgParams) error
 	AddConfiguredQuoteItem(ctx context.Context, arg AddConfiguredQuoteItemParams) (QuoteItem, error)
 	// ===== Movements ===========================================================
 	AddInventoryMovement(ctx context.Context, arg AddInventoryMovementParams) (InventoryMovement, error)
@@ -881,6 +884,9 @@ type Querier interface {
 	// SumReturnedForOrderItem totals quantity already returned for an order line
 	// across non-rejected returns (the returnable cap).
 	SumReturnedForOrderItem(ctx context.Context, orderItemID int64) (string, error)
+	// SuspendExpiredDemoOrgs shuts off demo tenants past their expiry (the org gate
+	// then blocks them). Returns the number suspended.
+	SuspendExpiredDemoOrgs(ctx context.Context) (int64, error)
 	// TopProducts ranks products by revenue in a calendar month, joined to product
 	// names. The month is the first day of the target month.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)

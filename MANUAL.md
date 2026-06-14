@@ -31,7 +31,7 @@ A proper product catalog with categories (browsable as a tree), attributes and a
 - **Price lists** with tiered (volume‑break) pricing, assigned to a customer, a customer group, or a website default.
 - **Hierarchy inheritance** — a child company can inherit its parent's negotiated pricing.
 - **Rule‑based adjustments** — percent or fixed markups/markdowns scoped by customer group and/or product attribute, applied on top of the resolved price.
-- A precomputed **combined‑prices cache** keeps storefront pricing fast, and buyers see their **contract price tiers** ("buy 100+ at X") right on the product page.
+- Prices are **resolved at read time** by a recursive precedence walk (customer › ancestor › group › website), so a price change is live immediately — no cache to rebuild or invalidate — and the same path scales to industrial catalogs. Buyers see their **contract price tiers** ("buy 100+ at X") right on the product page.
 - No price for a buyer? It cleanly becomes a **"price on request" → RFQ**.
 
 ### 3. The B2B sales motion: RFQ → Quote → Order → Invoice → Payment
@@ -68,6 +68,9 @@ The layer that protects cash and revenue:
 - **Replenishment** — reorder reminders inferred from each buyer's cadence.
 - **Quote follow‑up & cart recovery** — automated nudges before quotes expire / carts go cold.
 - **Procurement budgets** — per cost‑center spend caps, enforced at checkout, visible to the buyer.
+- **Subscriptions / standing orders** — recurring orders materialise on a cadence (a daily job turns due subscriptions into real orders and notifies the buyer).
+- **Volume rebates** — tiered rebate programs accrue against customer spend over a period and **settle** into credit notes; settlement runs off the request path so a program can fan out to tens of thousands of credit notes without blocking.
+- **Multi‑currency (FX)** — admin‑managed exchange rates let websites and price lists trade in their own currency; revenue rolls up per currency.
 
 ### 11. Integrations
 - **Punchout (cXML/OCI)** — buyers shop from inside their procurement system and transfer the cart back.
@@ -78,14 +81,27 @@ The layer that protects cash and revenue:
 - **DAM** — asset uploads with an image‑transformation pipeline and signed delivery URLs.
 - **Field sales** — an offline‑sync protocol (cursor + idempotency + change‑log outbox) for reps in the field.
 
-### 12. Reporting
-A safe report builder (pick entities, dimensions, measures, filters), scheduled CSV exports, and dashboard metrics.
+### 12. Reporting, insights & data
+This is where modern B2B lives — funding, budgeting and planning all run on data, so Teggo treats it as a first‑class layer, not an afterthought.
+- **Live dashboards** — revenue, orders, AOV and top products aggregate **on read** (no hourly materialized‑view lag); a freshly placed order shows immediately.
+- **Custom report builder** — pick an entity, dimensions, measures and filters; the definition compiles to safe parameterised SQL, runs on demand or on a schedule, and emails CSV artifacts.
+- **Data‑export center** — full‑record CSV / **Excel (XLSX)** exports of orders, line items, customers and invoices, streamed straight from a cursor so even industrial‑size datasets export with bounded memory. Each dataset is gated by its own view permission.
+- **Gross margin / profitability** — products carry a unit cost, so the insights layer reports gross margin and flags **margin erosion** period‑over‑period.
 
-### 13. Multi‑vendor marketplace
+### 13. Executive insights — AI woven into the workflow
+The differentiator. Beyond the question‑and‑answer copilot (§16), an **insights engine** runs **proactively** on a weekly schedule: it computes period‑over‑period metrics (revenue growth, gross margin, AR aging, churn‑risk accounts, revenue concentration, new‑logo acquisition, low stock), detects anomalies with **explainable rules**, and turns them into a written **executive briefing** with **recommended actions** that deep‑link straight into the relevant screen. The narrative is **AI‑authored** when a provider is configured, with a deterministic template as the always‑on fallback — so it works with or without an API key. The briefing lands on the dashboard **and** in the inbox; the operator never has to ask.
+
+### 14. Audit trail — who changed what, when
+Built for the governance, SOC‑2 and funding‑diligence questions multinational buyers and investors ask. A single middleware **automatically records every state‑changing admin/vendor action** — actor, action, target entity, result, IP, user‑agent and request id — so coverage doesn't depend on instrumenting each handler. Sensitive entities (customers, products) additionally capture a **before/after diff**; **login attempts** (success, failed, blocked) and **data exports** are recorded too. A filterable, paginated viewer plus CSV export gives auditors a complete, append‑only record. Tenant isolation is enforced in the database itself via **row‑level security**.
+
+### 15. Multi‑vendor marketplace
 Run the platform as a **marketplace**, not just a single seller. Vendors are first‑class: each has a profile, a commission rate, payout terms, and **its own self‑service portal** (a third login audience alongside admin and buyer). Vendors **list their own products**, which the operator **moderates** before they go live — unapproved listings never appear in catalog, search, or cart. A single buyer order **splits automatically into per‑vendor sub‑orders**, each with a frozen **commission snapshot** (gross → operator commission → net payable); vendors advance their own fulfilment (accept → ship → deliver). The operator **batches delivered sub‑orders into payouts** and marks them paid; vendors track their dashboard (orders, gross, commission, net) and payout history. Buyers see **"Sold by ‹vendor›"** on the product page. Operator‑owned ("house") products coexist untouched, so it's a marketplace and a first‑party store at once.
 
-### 14. AI assistant (copilot)
+### 16. AI assistant (copilot)
 A **deterministic, tool‑calling assistant** built into both experiences — a buyer copilot in the storefront and an ops copilot in the admin. **Safety is structural**, not aspirational: the agent can only ever invoke a **fixed catalog of typed, permission‑gated tools** that wrap the existing services, each running under the *caller's own* org/audience/permission scope — it never writes free‑form to the database and can do nothing the caller couldn't already do. Buyers ask "where's my order?", "what do I owe?", "what should I reorder?", "how's my budget?"; staff ask "show the receivables aging", "which accounts are at risk?", "look up order …" (each gated by the matching permission). The decision engine is **pluggable**: a local **deterministic** engine (intent + slots, fully reproducible, zero external calls — the default) or the **Anthropic Claude** API behind the same interface and the same tool guards, switched on only when an API key is configured. Same architecture as every other external seam.
+
+### 17. Multi‑tenant platform & self‑serve onboarding
+Teggo runs as a **multi‑tenant platform**, not just a single in‑house deploy. New organizations **self‑serve sign up** (company, subdomain, currency, admin user) with email verification, and each tenant is isolated at the database level by **row‑level security** keyed on the org in the JWT. A **plan + metering** layer gates premium features and enforces usage quotas per plan. Prospects can **request an instant demo** from the marketing landing page: a fresh, isolated demo organization is provisioned on the spot, pre‑seeded with representative catalog/customers/orders and logged straight in — time‑limited and auto‑suspended when it expires, so the demo shows the full system without manual setup.
 
 ---
 
@@ -100,16 +116,16 @@ A **deterministic, tool‑calling assistant** built into both experiences — a 
 ## Architecture (for the technical evaluator)
 
 - **Backend:** Go — `chi` HTTP router, `sqlc`‑generated type‑safe queries over `pgx`, a `river` background‑job queue, a custom workflow engine, and a domain‑event/automation dispatcher.
-- **Database:** PostgreSQL. Money is exact decimal (no float drift). Schema evolves through ordered SQL migrations (currently 0001–0039).
-- **Front‑ends:** a Vue 3 + PrimeVue admin SPA and a Nuxt storefront — both consuming a **single OpenAPI contract** from which the TypeScript client is generated, so the API and UI can never silently drift.
-- **Multi‑tenancy & security:** organization‑scoped data taken from JWT claims (never the request body), audience‑gated tokens (admin vs storefront), permission‑gated admin routes, rate‑limited credential and public endpoints, signed capability URLs for documents, and HMAC‑signed integration webhooks.
+- **Database:** PostgreSQL. Money is exact decimal (no float drift). Schema evolves through ordered SQL migrations (currently 0001–0061).
+- **Front‑ends:** a Vue 3 + PrimeVue admin SPA and a Nuxt storefront (plus a Vue vendor portal) — all consuming a **single OpenAPI contract** from which the TypeScript client is generated, so the API and UI can never silently drift.
+- **Multi‑tenancy & security:** organization‑scoped data taken from JWT claims (never the request body), with a **row‑level‑security net** in Postgres (FORCEd `org_isolation` policy armed per request) as a hard backstop behind the explicit org filters; audience‑gated tokens (admin / storefront / vendor), permission‑gated admin routes, an **automatic audit trail** of every staff mutation, rate‑limited credential and public endpoints, signed capability URLs for documents, and HMAC‑signed integration webhooks.
 - **Quality:** the Go suite runs against real Postgres via testcontainers; every feature lands with tests; the API client and both front‑ends typecheck clean.
 
 ---
 
 ## Status & roadmap
 
-**Built and tested today:** everything above — the full buyer‑self‑service experience, the data‑model depth (catalog visibility, multi‑warehouse, rule‑based pricing, hierarchical config), the integration surfaces (EDI, punchout, ERP webhook, OIDC+SAML, DAM, field sync), the revenue‑ops layer (AR/dunning, replenishment, quote/cart recovery, returns, account health, budgets), the **full multi‑vendor marketplace** (vendor portal, order splitting, commission ledger, payouts, catalog moderation), and the **deterministic AI copilot** (buyer + staff, permission‑gated tool catalog, deterministic engine with an optional Claude adapter).
+**Built and tested today:** everything above — the full buyer‑self‑service experience, the data‑model depth (catalog visibility, multi‑warehouse, read‑time pricing resolution, hierarchical config), the integration surfaces (EDI, punchout, ERP webhook, OIDC+SAML, DAM, field sync), the revenue‑ops layer (AR/dunning, replenishment, quote/cart recovery, returns, account health, budgets, subscriptions, volume rebates, multi‑currency), the **full multi‑vendor marketplace** (vendor portal, order splitting, commission ledger, payouts, catalog moderation), the **data layer** (live dashboards, custom report builder, CSV/XLSX export center, gross‑margin analytics, the weekly **AI‑authored executive insights** engine, and a comprehensive **audit trail**), the **multi‑tenant platform** (self‑serve signup, plan + usage metering, RLS isolation, instant self‑provisioned demos), and the **deterministic AI copilot** (buyer + staff, permission‑gated tool catalog, deterministic engine with an optional Claude / OpenAI‑compatible adapter).
 
 **Adapter seams ready, real provider pending credentials:** external tax (Avalara/TaxJar), carriers (FedEx/UPS/DHL), and bespoke ERPs ship as tested sandbox/mock adapters behind stable interfaces — wire a live account and they slot in.
 

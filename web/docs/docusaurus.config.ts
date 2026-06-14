@@ -6,8 +6,9 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs'
 // is generated from the OpenAPI 3.1 contract in @teggo/api so it never drifts
 // from the generated TypeScript client.
 
-// Where "Get started" sends people: the admin dashboard of the deployment this
-// site fronts. Override per environment (e.g. https://admin.teggo.example).
+// Link to the admin dashboard of the deployment this site fronts (the product's
+// marketing landing now lives in the admin app itself; this docs site is purely
+// the developer reference). Override per environment (e.g. https://admin.teggo.example).
 const ADMIN_URL = process.env.TEGGO_ADMIN_URL ?? 'http://localhost:5173'
 
 const config: Config = {
@@ -103,7 +104,7 @@ const config: Config = {
       items: [
         { type: 'docSidebar', sidebarId: 'guides', position: 'left', label: 'Guides' },
         { type: 'docSidebar', sidebarId: 'api', position: 'left', label: 'API reference' },
-        { href: ADMIN_URL, label: 'Get started', position: 'right', className: 'navbar-cta' },
+        { href: ADMIN_URL, label: 'Admin dashboard', position: 'right', className: 'navbar-cta' },
       ],
     },
     // Light, minimal footer — a single row of links, no developer-guide columns.
@@ -111,7 +112,7 @@ const config: Config = {
       style: 'light',
       links: [
         { label: 'Admin dashboard', href: ADMIN_URL },
-        { label: 'Documentation', to: '/intro' },
+        { label: 'Documentation', to: '/' },
         { label: 'API reference', to: '/api' },
       ],
       copyright: `© ${new Date().getFullYear()} Teggo — self-hosted B2B commerce.`,

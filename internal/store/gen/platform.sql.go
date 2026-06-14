@@ -10,7 +10,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const activateDemoOrg = `-- name: ActivateDemoOrg :exec
+UPDATE organizations
+SET status = 'active', is_demo = true, demo_expires_at = $2
+WHERE id = $1
+`
+
+type ActivateDemoOrgParams struct {
+	ID            int64              `json:"id"`
+	DemoExpiresAt pgtype.Timestamptz `json:"demo_expires_at"`
+}
+
+// ActivateDemoOrg flips a freshly-provisioned org live (skipping email
+// verification) and stamps its demo expiry.
+func (q *Queries) ActivateDemoOrg(ctx context.Context, arg ActivateDemoOrgParams) error {
+	_, err := q.db.Exec(ctx, activateDemoOrg, arg.ID, arg.DemoExpiresAt)
+	return err
+}
 
 const assignUserRole = `-- name: AssignUserRole :exec
 INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING
@@ -41,7 +60,7 @@ func (q *Queries) ConsumeSignupVerification(ctx context.Context, id int64) (int6
 
 const createOrganization = `-- name: CreateOrganization :one
 
-INSERT INTO organizations (name, status) VALUES ($1, $2) RETURNING id, name, is_active, created_at, updated_at, status
+INSERT INTO organizations (name, status) VALUES ($1, $2) RETURNING id, name, is_active, created_at, updated_at, status, is_demo, demo_expires_at
 `
 
 type CreateOrganizationParams struct {
@@ -60,6 +79,8 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Status,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 	)
 	return i, err
 }
@@ -162,7 +183,7 @@ func (q *Queries) GetSignupVerification(ctx context.Context, token uuid.UUID) (S
 }
 
 const listOrganizationsWithCounts = `-- name: ListOrganizationsWithCounts :many
-SELECT o.id, o.name, o.is_active, o.created_at, o.updated_at, o.status,
+SELECT o.id, o.name, o.is_active, o.created_at, o.updated_at, o.status, o.is_demo, o.demo_expires_at,
   (SELECT count(*) FROM users u    WHERE u.organization_id = o.id) AS user_count,
   (SELECT count(*) FROM websites w WHERE w.organization_id = o.id) AS website_count,
   COALESCE(p.code, '') AS plan_code
@@ -173,15 +194,17 @@ ORDER BY o.id
 `
 
 type ListOrganizationsWithCountsRow struct {
-	ID           int64     `json:"id"`
-	Name         string    `json:"name"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Status       string    `json:"status"`
-	UserCount    int64     `json:"user_count"`
-	WebsiteCount int64     `json:"website_count"`
-	PlanCode     string    `json:"plan_code"`
+	ID            int64              `json:"id"`
+	Name          string             `json:"name"`
+	IsActive      bool               `json:"is_active"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+	Status        string             `json:"status"`
+	IsDemo        bool               `json:"is_demo"`
+	DemoExpiresAt pgtype.Timestamptz `json:"demo_expires_at"`
+	UserCount     int64              `json:"user_count"`
+	WebsiteCount  int64              `json:"website_count"`
+	PlanCode      string             `json:"plan_code"`
 }
 
 // ListOrganizationsWithCounts is the platform-operator overview.
@@ -201,6 +224,8 @@ func (q *Queries) ListOrganizationsWithCounts(ctx context.Context) ([]ListOrgani
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Status,
+			&i.IsDemo,
+			&i.DemoExpiresAt,
 			&i.UserCount,
 			&i.WebsiteCount,
 			&i.PlanCode,
@@ -244,7 +269,7 @@ func (q *Queries) SeedRolePermissionsFromTemplate(ctx context.Context, arg SeedR
 }
 
 const setOrganizationStatus = `-- name: SetOrganizationStatus :one
-UPDATE organizations SET status = $2 WHERE id = $1 RETURNING id, name, is_active, created_at, updated_at, status
+UPDATE organizations SET status = $2 WHERE id = $1 RETURNING id, name, is_active, created_at, updated_at, status, is_demo, demo_expires_at
 `
 
 type SetOrganizationStatusParams struct {
@@ -262,6 +287,25 @@ func (q *Queries) SetOrganizationStatus(ctx context.Context, arg SetOrganization
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Status,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 	)
 	return i, err
+}
+
+const suspendExpiredDemoOrgs = `-- name: SuspendExpiredDemoOrgs :execrows
+UPDATE organizations
+SET status = 'suspended'
+WHERE is_demo AND status <> 'suspended'
+  AND demo_expires_at IS NOT NULL AND demo_expires_at < now()
+`
+
+// SuspendExpiredDemoOrgs shuts off demo tenants past their expiry (the org gate
+// then blocks them). Returns the number suspended.
+func (q *Queries) SuspendExpiredDemoOrgs(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, suspendExpiredDemoOrgs)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

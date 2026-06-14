@@ -634,12 +634,14 @@ type OrgSubscription struct {
 }
 
 type Organization struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Status    string    `json:"status"`
+	ID            int64              `json:"id"`
+	Name          string             `json:"name"`
+	IsActive      bool               `json:"is_active"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+	Status        string             `json:"status"`
+	IsDemo        bool               `json:"is_demo"`
+	DemoExpiresAt pgtype.Timestamptz `json:"demo_expires_at"`
 }
 
 type Payment struct {

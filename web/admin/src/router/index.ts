@@ -6,6 +6,12 @@ import AppLayout from '@/layouts/AppLayout.vue'
 // and the sidebar (AppLayout) filters its items by the same permission keys.
 const routes: RouteRecordRaw[] = [
   {
+    path: '/welcome',
+    name: 'landing',
+    component: () => import('@/views/LandingView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),
@@ -356,11 +362,17 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
 
   if (to.meta.public) {
-    return auth.isAuthenticated && to.name === 'login' ? { name: 'dashboard' } : true
+    // Signed-in users don't need the marketing/login pages — send them to the app.
+    const marketing = to.name === 'login' || to.name === 'landing'
+    return auth.isAuthenticated && marketing ? { name: 'dashboard' } : true
   }
 
   if (!auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    // Anonymous visitors to the app root land on the marketing page; deep links
+    // go to login carrying their destination so it's honored after sign-in.
+    return to.path === '/'
+      ? { name: 'landing' }
+      : { name: 'login', query: { redirect: to.fullPath } }
   }
 
   const required = to.meta.permission as string | undefined
