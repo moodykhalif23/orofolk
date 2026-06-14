@@ -5,6 +5,7 @@
   --teggo-border: #e2e8f0; /* slate-200 — the single, normal border tone */
   --teggo-radius: 3px; /* the single UI radius — slightly sharp, not razor-square */
   --teggo-surface: #ffffff;
+  --teggo-fill: #013440; /* dark teal filled surfaces — sidebar, card & dialog headers */
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
   --teggo-accent: #f59e0b; /* amber-500 — selective highlights alongside indigo */
   --teggo-accent-contrast: #ffffff;
@@ -69,7 +70,7 @@ a {
 .p-card .p-card-caption {
   /* Filled brand header section, full-bleed to the card edges (cancels the
      body padding) with the top corners rounded to match the card. */
-  background: var(--p-primary-color, #6366f1);
+  background: var(--teggo-fill, #0f172a);
   margin: -1.15rem -1.35rem 0.7rem;
   padding: 0.45rem 1.35rem;
   border-top-left-radius: var(--teggo-radius, 3px);
@@ -134,7 +135,7 @@ a {
 }
 /* Filled brand dialog header — a slim indigo strip, white title + close button. */
 .p-dialog .p-dialog-header {
-  background: var(--p-primary-color, #6366f1);
+  background: var(--teggo-fill, #0f172a);
   border-top-left-radius: var(--teggo-radius, 3px);
   border-top-right-radius: var(--teggo-radius, 3px);
   padding: 0.75rem 1.25rem;

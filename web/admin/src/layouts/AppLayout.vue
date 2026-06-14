@@ -218,8 +218,8 @@ function logout() {
   width: 108px;
   flex-shrink: 0;
   height: 100%;
-  /* Brand indigo rail (deep gradient); nav text/icons go light for contrast. */
-  background: linear-gradient(180deg, var(--p-primary-700, #4338ca) 0%, var(--p-primary-900, #312e81) 100%);
+  /* Deep navy rail (VS Code-style); nav text/icons go light for contrast. */
+  background: var(--teggo-fill, #0f172a);
   border-top-right-radius: 22px; /* smooth top-right curve on the desktop rail */
   display: flex;
   flex-direction: column;
@@ -410,8 +410,8 @@ function logout() {
   color: var(--p-text-muted-color, #94a3b8);
   transition: color 0.12s ease;
 }
-.sub-link.active { background: var(--p-primary-50, #eef2ff); color: var(--p-primary-color, #6366f1); }
-.sub-link.active i { color: var(--p-primary-color, #6366f1); }
+.sub-link.active { background: var(--p-surface-100, #f1f5f9); color: var(--p-text-color, #0f172a); }
+.sub-link.active i { color: var(--p-text-color, #334155); }
 
 /* --- Content --- */
 .content {

@@ -69,7 +69,7 @@ function logout() {
 <style scoped>
 .shell { display: grid; grid-template-columns: var(--teggo-sidebar-width) 1fr; height: 100%; }
 .sidebar {
-  background: #0f172a; color: #e2e8f0; display: flex; flex-direction: column;
+  background: var(--teggo-fill, #0f172a); color: #e2e8f0; display: flex; flex-direction: column;
   padding: 1rem 0.75rem;
 }
 .brand { font-weight: 700; font-size: 1.05rem; padding: 0.5rem 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; }

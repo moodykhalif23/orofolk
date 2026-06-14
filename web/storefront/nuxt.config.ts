@@ -1,23 +1,23 @@
 import Aura from '@primeuix/themes/aura'
 import { definePreset } from '@primeuix/themes'
 
-// Teggo brand preset: ULTIMA-style indigo primary (success/danger stay
-// semantic). Keep this palette in sync with the admin & vendor apps. Tenants
-// can still white-label by overriding --p-primary-color at runtime.
+// Teggo brand preset: deep teal primary (success/danger stay semantic). Keep
+// this palette in sync with the admin & vendor apps. Tenants can still
+// white-label by overriding --p-primary-color at runtime.
 const Teggo = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '#eef2ff',
-      100: '#e0e7ff',
-      200: '#c7d2fe',
-      300: '#a5b4fc',
-      400: '#818cf8',
-      500: '#6366f1',
-      600: '#4f46e5',
-      700: '#4338ca',
-      800: '#3730a3',
-      900: '#312e81',
-      950: '#1e1b4b',
+      50: '#eef9fb',
+      100: '#d3eff4',
+      200: '#ade0e9',
+      300: '#79cad9',
+      400: '#3fa6bd',
+      500: '#0e7490',
+      600: '#0c6178',
+      700: '#0a4e60',
+      800: '#083e4c',
+      900: '#013440',
+      950: '#01242d',
     },
   },
 })

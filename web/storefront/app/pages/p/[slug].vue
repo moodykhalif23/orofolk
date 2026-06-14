@@ -349,10 +349,6 @@ useSeoMeta({
 .reviews h2 { margin: 0 0 1rem; }
 .muted { color: var(--p-text-muted-color, #64748b); }
 .review-form {
-  background: var(--p-surface-50, #f8fafc);
-  border: 1px solid var(--p-surface-200, #e2e8f0);
-  border-radius: 10px;
-  padding: 1.1rem 1.25rem;
   margin-bottom: 1.5rem;
   max-width: 36rem;
   display: flex;

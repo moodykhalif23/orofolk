@@ -29,6 +29,7 @@ a {
   --teggo-border: #e2e8f0; /* slate-200 */
   --teggo-radius: 3px; /* the single UI radius — slightly sharp, not razor-square */
   --teggo-surface: #ffffff;
+  --teggo-fill: #013440; /* dark teal filled surfaces — dialog headers */
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
   /* ULTIMA-style brand accent (amber), kept in sync with the admin app. */
   --teggo-accent: #f59e0b; /* amber-500 */
@@ -99,7 +100,7 @@ a {
   overflow: hidden;
 }
 .p-dialog .p-dialog-header {
-  background: var(--p-primary-color, #6366f1);
+  background: var(--teggo-fill, #0f172a);
   border-top-left-radius: var(--teggo-radius, 3px);
   border-top-right-radius: var(--teggo-radius, 3px);
   padding: 0.75rem 1.25rem;

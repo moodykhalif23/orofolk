@@ -15,23 +15,23 @@ import { router } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { configureClient } from '@/lib/client'
 
-// Teggo brand preset: ULTIMA-style indigo primary. Success/danger/warn stay
-// semantic (green/red/amber) — only the brand `primary.*` ramp changes.
-// Keep this palette in sync with the storefront (nuxt.config.ts) and vendor app.
+// Teggo brand preset: deep teal primary. Success/danger/warn stay semantic
+// (green/red/amber) — only the brand `primary.*` ramp changes. 900 = #013440,
+// the dark-teal fill colour. Keep in sync with the storefront & vendor apps.
 const Teggo = definePreset(Aura, {
   semantic: {
     primary: {
-      50: '#eef2ff',
-      100: '#e0e7ff',
-      200: '#c7d2fe',
-      300: '#a5b4fc',
-      400: '#818cf8',
-      500: '#6366f1',
-      600: '#4f46e5',
-      700: '#4338ca',
-      800: '#3730a3',
-      900: '#312e81',
-      950: '#1e1b4b',
+      50: '#eef9fb',
+      100: '#d3eff4',
+      200: '#ade0e9',
+      300: '#79cad9',
+      400: '#3fa6bd',
+      500: '#0e7490',
+      600: '#0c6178',
+      700: '#0a4e60',
+      800: '#083e4c',
+      900: '#013440',
+      950: '#01242d',
     },
   },
 })
