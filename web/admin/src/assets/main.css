@@ -5,6 +5,7 @@
      another) + slightly-sharp edges. */
   --teggo-border: #e2e8f0; /* slate-200 — the single, normal border tone */
   --teggo-radius: 6px; /* polished, gently-rounded — not fully sharp */
+  --teggo-radius-card: 3px; /* cards: slightly sharper than the default, still not razor-square */
   --teggo-surface: #ffffff;
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
   /* ULTIMA-style brand accent (amber) — for selective highlights alongside the
@@ -32,16 +33,10 @@ body {
   color: var(--p-text-color, #1e293b);
 }
 
-/* ===========================================================================
-   Enterprise UI layer — visual only, no behaviour change.
-   Flat, bordered surfaces with slightly-sharp edges and no decorative hover.
-   =========================================================================== */
-
-/* Cards: bordered with a subtle Aura-style elevation and a slightly-sharp 6px
-   corner (not the softer fully-rounded default, not razor-square). */
-.p-card {
+.p-card.p-card {
+  --p-card-border-radius: var(--teggo-radius-card);
   border: 1px solid var(--teggo-border);
-  border-radius: var(--teggo-radius);
+  border-radius: var(--teggo-radius-card);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
   background: var(--teggo-surface);
 }
@@ -72,8 +67,8 @@ body {
   background: var(--p-primary-color, #6366f1);
   margin: -1.15rem -1.35rem 0.7rem;
   padding: 0.45rem 1.35rem;
-  border-top-left-radius: var(--teggo-radius, 6px);
-  border-top-right-radius: var(--teggo-radius, 6px);
+  border-top-left-radius: var(--teggo-radius-card, 3px);
+  border-top-right-radius: var(--teggo-radius-card, 3px);
 }
 
 /* Sharp edges across the common controls. */
