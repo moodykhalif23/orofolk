@@ -348,7 +348,7 @@ function logout() {
   letter-spacing: -0.01em;
   color: var(--p-text-color, #0f172a);
 }
-.topbar-context i { color: var(--p-primary-color, #6366f1); font-size: 0.95rem; }
+.topbar-context i { color: var(--p-text-color, #334155); font-size: 0.95rem; }
 .spacer { flex: 1; }
 /* NotificationBell is a multi-root component, so a class on it doesn't fall
    through — space the cluster from the account button (a real element) instead. */

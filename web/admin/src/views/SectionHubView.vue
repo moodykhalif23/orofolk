@@ -72,7 +72,7 @@ const leaves = computed(() =>
   width: 48px;
   height: 48px;
   flex-shrink: 0;
-  color: var(--p-primary-color, #6366f1);
+  color: var(--p-text-color, #334155);
   font-size: 1.7rem;
 }
 .hub-head h1 {
@@ -109,7 +109,7 @@ const leaves = computed(() =>
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  color: var(--p-primary-color, #6366f1);
+  color: var(--p-text-color, #334155);
   font-size: 1.4rem;
 }
 .hub-card__body {

@@ -634,8 +634,7 @@ onMounted(load)
   align-items: center;
   justify-content: center;
   border-radius: var(--teggo-radius, 6px);
-  color: var(--p-primary-color, #6366f1);
-  font-size: 1.5rem;
+  color: var(--p-text-color, #334155);
   font-size: 1.2rem;
 }
 .stat-main {
