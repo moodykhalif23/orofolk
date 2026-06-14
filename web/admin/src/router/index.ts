@@ -39,6 +39,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/DashboardView.vue'),
       },
       {
+        // Section hub ("brief page"): a generic overview of one section's pages,
+        // driven by :key against the shared nav model (src/nav/sections.ts).
+        path: 'section/:key',
+        name: 'section',
+        component: () => import('@/views/SectionHubView.vue'),
+      },
+      {
         path: 'customers',
         name: 'customers',
         component: () => import('@/views/customers/CustomerListView.vue'),
