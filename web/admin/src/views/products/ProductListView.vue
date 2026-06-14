@@ -29,6 +29,8 @@ const error = ref('')
 const dialogOpen = ref(false)
 const editing = ref<AdminProduct | null>(null)
 const term = ref('')
+// Row-expansion reveals the fields not worth a column (description, attributes, cost).
+const expandedRows = ref<Record<string, boolean>>({})
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -36,6 +38,7 @@ const confirm = useConfirm()
 // ---- Bulk CSV import / export ----
 const auth = useAuthStore()
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
+const src = (u?: string | null) => (u ? `${apiBase}${u}` : '')
 const importInput = ref<HTMLInputElement | null>(null)
 const importing = ref(false)
 const exporting = ref(false)
@@ -185,6 +188,7 @@ onMounted(() => { if (route.query.new) openCreate() })
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
     <DataTable
+      v-model:expandedRows="expandedRows"
       :value="products"
       :loading="loading"
       paginator
@@ -199,6 +203,24 @@ onMounted(() => { if (route.query.new) openCreate() })
           <Button icon="pi pi-plus" label="New product" @click="openCreate" />
         </EmptyState>
       </template>
+      <template #expansion="{ data }">
+        <div class="expand">
+          <div v-if="data.description" class="ex-row"><span class="ex-k">Description</span><span>{{ data.description }}</span></div>
+          <div class="ex-row"><span class="ex-k">Slug</span><span>{{ data.slug }}</span></div>
+          <div v-if="data.cost_price && data.cost_price !== '0'" class="ex-row"><span class="ex-k">Cost price</span><span>{{ data.cost_price }}</span></div>
+          <div v-if="Object.keys(data.attributes ?? {}).length" class="ex-row">
+            <span class="ex-k">Attributes</span>
+            <span class="ex-tags"><Tag v-for="(v, k) in data.attributes" :key="k" :value="`${k}: ${v}`" severity="secondary" /></span>
+          </div>
+        </div>
+      </template>
+      <Column expander style="width: 3rem" />
+      <Column header="" style="width: 3.5rem">
+        <template #body="{ data }">
+          <img v-if="data.image" :src="src(data.image)" :alt="data.name" class="thumb" loading="lazy" />
+          <span v-else class="thumb-ph"><i class="pi pi-image" /></span>
+        </template>
+      </Column>
       <Column field="sku" header="SKU" sortable />
       <Column field="name" header="Name" sortable />
       <Column field="type" header="Type" sortable />
@@ -244,5 +266,46 @@ onMounted(() => { if (route.query.new) openCreate() })
 }
 .muted {
   color: var(--p-text-muted-color, #64748b);
+}
+.thumb {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+.thumb-ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 6px;
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-surface-300, #cbd5e1);
+}
+.expand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0.25rem;
+}
+.ex-row {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+.ex-k {
+  flex: 0 0 8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--p-text-muted-color, #94a3b8);
+}
+.ex-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 </style>

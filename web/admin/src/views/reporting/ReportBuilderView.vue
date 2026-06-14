@@ -5,6 +5,11 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import InputText from 'primevue/inputtext'
+import Stepper from 'primevue/stepper'
+import StepList from 'primevue/steplist'
+import Step from 'primevue/step'
+import StepPanels from 'primevue/steppanels'
+import StepPanel from 'primevue/steppanel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -225,82 +230,119 @@ onMounted(load)
         </ul>
       </aside>
 
-      <!-- Editor -->
+      <!-- Editor — a guided wizard (steps are clickable, so editing can jump). -->
       <section class="editor">
-        <div class="row2">
-          <div class="field"><label>Name</label><InputText v-model="form.name" /></div>
-          <div class="field"><label>Entity</label><Select v-model="form.entity" :options="entityNames" placeholder="Select entity" /></div>
-        </div>
+        <Stepper value="entity" class="rb-stepper">
+          <StepList>
+            <Step value="entity">Entity</Step>
+            <Step value="dimensions">Dimensions</Step>
+            <Step value="measures">Measures</Step>
+            <Step value="filters">Filters</Step>
+            <Step value="run">Run</Step>
+          </StepList>
+          <StepPanels>
+            <StepPanel v-slot="{ activateCallback }" value="entity">
+              <div class="row2">
+                <div class="field"><label>Name</label><InputText v-model="form.name" /></div>
+                <div class="field"><label>Entity</label><Select v-model="form.entity" :options="entityNames" placeholder="Select entity" /></div>
+              </div>
+              <div class="step-nav step-nav--end">
+                <Button label="Dimensions" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('dimensions')" />
+              </div>
+            </StepPanel>
 
-        <div class="field">
-          <label>Dimensions (group by)</label>
-          <MultiSelect v-model="form.dimensions" :options="entityDims" placeholder="None (single total row)" display="chip" />
-        </div>
+            <StepPanel v-slot="{ activateCallback }" value="dimensions">
+              <div class="field">
+                <label>Dimensions (group by)</label>
+                <MultiSelect v-model="form.dimensions" :options="entityDims" placeholder="None (single total row)" display="chip" />
+              </div>
+              <div class="step-nav">
+                <Button label="Back" text severity="secondary" @click="activateCallback('entity')" />
+                <Button label="Measures" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('measures')" />
+              </div>
+            </StepPanel>
 
-        <div class="field">
-          <div class="lbl-row"><label>Measures</label><Button icon="pi pi-plus" label="Add" text size="small" @click="addMeasure" /></div>
-          <div v-for="(m, i) in form.measures" :key="i" class="mrow">
-            <Select v-model="m.field" :options="['count', ...entityMeasures]" @change="onMeasureField(m)" />
-            <Select v-if="m.field !== 'count'" v-model="m.agg" :options="aggOptions" />
-            <span v-else class="muted">count(*)</span>
-            <Button icon="pi pi-times" text rounded size="small" @click="form.measures.splice(i, 1)" />
-          </div>
-        </div>
+            <StepPanel v-slot="{ activateCallback }" value="measures">
+              <div class="field">
+                <div class="lbl-row"><label>Measures</label><Button icon="pi pi-plus" label="Add" text size="small" @click="addMeasure" /></div>
+                <div v-for="(m, i) in form.measures" :key="i" class="mrow">
+                  <Select v-model="m.field" :options="['count', ...entityMeasures]" @change="onMeasureField(m)" />
+                  <Select v-if="m.field !== 'count'" v-model="m.agg" :options="aggOptions" />
+                  <span v-else class="muted">count(*)</span>
+                  <Button icon="pi pi-times" text rounded size="small" @click="form.measures.splice(i, 1)" />
+                </div>
+              </div>
+              <div class="step-nav">
+                <Button label="Back" text severity="secondary" @click="activateCallback('dimensions')" />
+                <Button label="Filters" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('filters')" />
+              </div>
+            </StepPanel>
 
-        <div class="field">
-          <div class="lbl-row"><label>Filters</label><Button icon="pi pi-plus" label="Add" text size="small" @click="addFilter" /></div>
-          <div v-for="(f, i) in form.filters" :key="i" class="mrow">
-            <Select v-model="f.field" :options="entityFilters" />
-            <Select v-model="f.op" :options="opOptions" />
-            <InputText v-model="f.value as string" placeholder="value" />
-            <Button icon="pi pi-times" text rounded size="small" @click="form.filters.splice(i, 1)" />
-          </div>
-        </div>
+            <StepPanel v-slot="{ activateCallback }" value="filters">
+              <div class="field">
+                <div class="lbl-row"><label>Filters</label><Button icon="pi pi-plus" label="Add" text size="small" @click="addFilter" /></div>
+                <div v-for="(f, i) in form.filters" :key="i" class="mrow">
+                  <Select v-model="f.field" :options="entityFilters" />
+                  <Select v-model="f.op" :options="opOptions" />
+                  <InputText v-model="f.value as string" placeholder="value" />
+                  <Button icon="pi pi-times" text rounded size="small" @click="form.filters.splice(i, 1)" />
+                </div>
+              </div>
+              <div class="step-nav">
+                <Button label="Back" text severity="secondary" @click="activateCallback('measures')" />
+                <Button label="Review &amp; run" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('run')" />
+              </div>
+            </StepPanel>
 
-        <div class="actions">
-          <Button label="Save" icon="pi pi-save" :loading="saving" @click="save" />
-          <Button label="Run" icon="pi pi-play" severity="secondary" :disabled="editing == null" :loading="running" @click="run" />
-          <Button label="Download CSV" icon="pi pi-download" severity="secondary" text :disabled="editing == null" @click="runCsv" />
-        </div>
+            <StepPanel v-slot="{ activateCallback }" value="run">
+              <div class="actions">
+                <Button label="Save" icon="pi pi-save" :loading="saving" @click="save" />
+                <Button label="Run" icon="pi pi-play" severity="secondary" :disabled="editing == null" :loading="running" @click="run" />
+                <Button label="Download CSV" icon="pi pi-download" severity="secondary" text :disabled="editing == null" @click="runCsv" />
+                <Button label="Back" text severity="secondary" @click="activateCallback('filters')" />
+              </div>
 
-        <!-- Run result -->
-        <div v-if="runResult" class="result">
-          <h3>Result <span class="muted">· {{ runResult.row_count }} rows</span></h3>
-          <DataTable :value="runRows" stripedRows scrollable scrollHeight="320px">
-            <Column v-for="c in runResult.columns" :key="c" :field="c" :header="c" />
-          </DataTable>
-        </div>
+              <!-- Run result -->
+              <div v-if="runResult" class="result">
+                <h3>Result <span class="muted">· {{ runResult.row_count }} rows</span></h3>
+                <DataTable :value="runRows" stripedRows scrollable scrollHeight="320px">
+                  <Column v-for="c in runResult.columns" :key="c" :field="c" :header="c" />
+                </DataTable>
+              </div>
 
-        <!-- Runs + schedules -->
-        <div v-if="editing != null" class="row2 mt">
-          <div>
-            <h3>Recent runs</h3>
-            <ul class="runs">
-              <li v-for="r in runs" :key="r.id">
-                <Tag :value="r.status" :severity="r.status === 'ok' ? 'success' : r.status === 'error' ? 'danger' : 'warn'" />
-                <span class="muted">{{ r.trigger }}</span>
-                <span v-if="r.row_count != null">· {{ r.row_count }} rows</span>
-                <a v-if="r.file_url" href="#" @click.prevent="download(r.file_url!)">download</a>
-              </li>
-              <li v-if="!runs.length" class="muted">No runs yet.</li>
-            </ul>
-          </div>
-          <div>
-            <h3>Schedules</h3>
-            <ul class="runs">
-              <li v-for="s in schedules" :key="s.id">
-                <Tag :value="s.cadence" /> <span class="muted">{{ (s.recipients ?? []).join(', ') || 'no recipients' }}</span>
-                <Button icon="pi pi-times" text rounded size="small" @click="removeSchedule(s.id)" />
-              </li>
-              <li v-if="!schedules.length" class="muted">No schedules.</li>
-            </ul>
-            <div class="mrow">
-              <Select v-model="sched.cadence" :options="cadences" />
-              <InputText v-model="sched.recipients" placeholder="emails, comma-sep" />
-              <Button icon="pi pi-plus" label="Add" size="small" @click="addSchedule" />
-            </div>
-          </div>
-        </div>
+              <!-- Runs + schedules -->
+              <div v-if="editing != null" class="row2 mt">
+                <div>
+                  <h3>Recent runs</h3>
+                  <ul class="runs">
+                    <li v-for="r in runs" :key="r.id">
+                      <Tag :value="r.status" :severity="r.status === 'ok' ? 'success' : r.status === 'error' ? 'danger' : 'warn'" />
+                      <span class="muted">{{ r.trigger }}</span>
+                      <span v-if="r.row_count != null">· {{ r.row_count }} rows</span>
+                      <a v-if="r.file_url" href="#" @click.prevent="download(r.file_url!)">download</a>
+                    </li>
+                    <li v-if="!runs.length" class="muted">No runs yet.</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3>Schedules</h3>
+                  <ul class="runs">
+                    <li v-for="s in schedules" :key="s.id">
+                      <Tag :value="s.cadence" /> <span class="muted">{{ (s.recipients ?? []).join(', ') || 'no recipients' }}</span>
+                      <Button icon="pi pi-times" text rounded size="small" @click="removeSchedule(s.id)" />
+                    </li>
+                    <li v-if="!schedules.length" class="muted">No schedules.</li>
+                  </ul>
+                  <div class="mrow">
+                    <Select v-model="sched.cadence" :options="cadences" />
+                    <InputText v-model="sched.recipients" placeholder="emails, comma-sep" />
+                    <Button icon="pi pi-plus" label="Add" size="small" @click="addSchedule" />
+                  </div>
+                </div>
+              </div>
+            </StepPanel>
+          </StepPanels>
+        </Stepper>
       </section>
     </div>
   </div>
@@ -323,7 +365,9 @@ h1 { margin: 0 0 0.25rem; }
 .lbl-row { display: flex; align-items: center; justify-content: space-between; }
 .mrow { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
 .mrow :deep(.p-select), .mrow :deep(.p-inputtext) { min-width: 8rem; }
-.actions { display: flex; gap: 0.5rem; margin: 1rem 0; }
+.actions { display: flex; gap: 0.5rem; margin: 0.5rem 0 1rem; flex-wrap: wrap; align-items: center; }
+.step-nav { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 1.25rem; }
+.step-nav--end { justify-content: flex-end; }
 .result { margin-top: 1rem; }
 .runs { list-style: none; padding: 0; margin: 0; }
 .runs li { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.9rem; }

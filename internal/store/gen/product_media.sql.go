@@ -260,3 +260,37 @@ func (q *Queries) MaxProductImageSort(ctx context.Context, productID int64) (int
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const primaryImagesForProducts = `-- name: PrimaryImagesForProducts :many
+SELECT DISTINCT ON (pm.product_id) pm.product_id, pm.url
+FROM product_media pm
+WHERE pm.product_id = ANY($1::bigint[]) AND pm.type = 'image'
+ORDER BY pm.product_id, pm.sort_order, pm.id
+`
+
+type PrimaryImagesForProductsRow struct {
+	ProductID int64  `json:"product_id"`
+	Url       string `json:"url"`
+}
+
+// PrimaryImagesForProducts returns the first gallery image per product for a set
+// of products (admin list thumbnails) — one round-trip, no N+1.
+func (q *Queries) PrimaryImagesForProducts(ctx context.Context, dollar_1 []int64) ([]PrimaryImagesForProductsRow, error) {
+	rows, err := q.db.Query(ctx, primaryImagesForProducts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PrimaryImagesForProductsRow
+	for rows.Next() {
+		var i PrimaryImagesForProductsRow
+		if err := rows.Scan(&i.ProductID, &i.Url); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

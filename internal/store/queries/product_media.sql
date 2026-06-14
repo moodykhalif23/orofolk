@@ -21,6 +21,14 @@ WHERE p.organization_id = $1 AND p.slug = $2
   AND pm.type = 'image'
 ORDER BY pm.sort_order, pm.id;
 
+-- PrimaryImagesForProducts returns the first gallery image per product for a set
+-- of products (admin list thumbnails) — one round-trip, no N+1.
+-- name: PrimaryImagesForProducts :many
+SELECT DISTINCT ON (pm.product_id) pm.product_id, pm.url
+FROM product_media pm
+WHERE pm.product_id = ANY($1::bigint[]) AND pm.type = 'image'
+ORDER BY pm.product_id, pm.sort_order, pm.id;
+
 -- name: CountProductImages :one
 SELECT count(*) FROM product_media WHERE product_id = $1 AND type = 'image';
 

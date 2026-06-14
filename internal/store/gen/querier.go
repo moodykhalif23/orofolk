@@ -752,6 +752,9 @@ type Querier interface {
 	// PipelineBoard: per-stage open count, total and probability-weighted amounts
 	// (Pack 2 §1.4). Sums cast to text via the numeric override; count is bigint.
 	PipelineBoard(ctx context.Context, pipelineID int64) ([]PipelineBoardRow, error)
+	// PrimaryImagesForProducts returns the first gallery image per product for a set
+	// of products (admin list thumbnails) — one round-trip, no N+1.
+	PrimaryImagesForProducts(ctx context.Context, dollar_1 []int64) ([]PrimaryImagesForProductsRow, error)
 	// ProductAvailabilityByWarehouse lists per-warehouse available qty (on_hand -
 	// reserved) for a product, for storefront per-location availability display.
 	ProductAvailabilityByWarehouse(ctx context.Context, arg ProductAvailabilityByWarehouseParams) ([]ProductAvailabilityByWarehouseRow, error)

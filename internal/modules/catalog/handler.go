@@ -169,6 +169,7 @@ type adminProduct struct {
 	ParentID          *int64          `json:"parent_id"`
 	AttributeFamilyID *int64          `json:"attribute_family_id"`
 	CostPrice         string          `json:"cost_price"`
+	Image             string          `json:"image,omitempty"` // primary gallery thumbnail (list)
 }
 
 func rawJSON(b []byte) json.RawMessage {
@@ -886,9 +887,24 @@ func (h *Handler) adminList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Primary thumbnail per product (one batch round-trip).
+	ids := make([]int64, len(rows))
+	for i, p := range rows {
+		ids[i] = p.ID
+	}
+	imgByID := map[int64]string{}
+	if len(ids) > 0 {
+		if imgs, e := h.q.PrimaryImagesForProducts(r.Context(), ids); e == nil {
+			for _, im := range imgs {
+				imgByID[im.ProductID] = im.Url
+			}
+		}
+	}
 	items := make([]adminProduct, 0, len(rows))
 	for _, p := range rows {
-		items = append(items, toAdminProduct(p))
+		ap := toAdminProduct(p)
+		ap.Image = imgByID[p.ID]
+		items = append(items, ap)
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"items": items, "page": page, "total": total})
 }

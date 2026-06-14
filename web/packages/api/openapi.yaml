@@ -95,6 +95,7 @@ components:
         parent_id: { type: integer, format: int64, nullable: true }
         attribute_family_id: { type: integer, format: int64, nullable: true }
         cost_price: { type: string, description: "Unit cost for margin/profitability (decimal string)" }
+        image: { type: string, description: "Primary gallery thumbnail URL; omitted when the product has no photos." }
 
     ProductInput:
       type: object

@@ -4684,6 +4684,8 @@ export interface components {
             attribute_family_id?: number | null;
             /** @description Unit cost for margin/profitability (decimal string) */
             cost_price?: string;
+            /** @description Primary gallery thumbnail URL; omitted when the product has no photos. */
+            image?: string;
         };
         ProductInput: {
             sku: string;
