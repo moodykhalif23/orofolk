@@ -83,6 +83,25 @@ func (q *Queries) GetProductBySlug(ctx context.Context, arg GetProductBySlugPara
 	return i, err
 }
 
+const getProductIDBySlug = `-- name: GetProductIDBySlug :one
+SELECT id FROM products
+WHERE organization_id = $1 AND slug = $2 AND approval_status = 'approved' AND deleted_at IS NULL
+`
+
+type GetProductIDBySlugParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Slug           string `json:"slug"`
+}
+
+// GetProductIDBySlug resolves a visible product's internal id from its slug
+// (storefront reviews: list/create keyed on slug).
+func (q *Queries) GetProductIDBySlug(ctx context.Context, arg GetProductIDBySlugParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getProductIDBySlug, arg.OrganizationID, arg.Slug)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getProductVendorBySlug = `-- name: GetProductVendorBySlug :one
 SELECT v.name AS vendor_name
 FROM products p
@@ -105,7 +124,10 @@ func (q *Queries) GetProductVendorBySlug(ctx context.Context, arg GetProductVend
 }
 
 const listActiveProducts = `-- name: ListActiveProducts :many
-SELECT id, public_id, sku, name, slug, description, status, attributes, unit
+SELECT id, public_id, sku, name, slug, description, status, attributes, unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = products.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products
 WHERE organization_id = $1
   AND status = 'active'
@@ -131,6 +153,7 @@ type ListActiveProductsRow struct {
 	Status      string    `json:"status"`
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
+	ImageUrl    string    `json:"image_url"`
 }
 
 func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProductsParams) ([]ListActiveProductsRow, error) {
@@ -152,7 +175,52 @@ func (q *Queries) ListActiveProducts(ctx context.Context, arg ListActiveProducts
 			&i.Status,
 			&i.Attributes,
 			&i.Unit,
+			&i.ImageUrl,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const suggestProducts = `-- name: SuggestProducts :many
+SELECT name, slug, sku
+FROM products
+WHERE organization_id = $1
+  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
+  AND (name ILIKE '%' || $2 || '%' OR sku ILIKE '%' || $2 || '%')
+ORDER BY name
+LIMIT $3
+`
+
+type SuggestProductsParams struct {
+	OrganizationID int64   `json:"organization_id"`
+	Column2        *string `json:"column_2"`
+	Limit          int32   `json:"limit"`
+}
+
+type SuggestProductsRow struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+	Sku  string `json:"sku"`
+}
+
+// SuggestProducts powers the storefront search typeahead: name/SKU substring
+// matches on visible products. $2 is the raw term; $3 the result cap.
+func (q *Queries) SuggestProducts(ctx context.Context, arg SuggestProductsParams) ([]SuggestProductsRow, error) {
+	rows, err := q.db.Query(ctx, suggestProducts, arg.OrganizationID, arg.Column2, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SuggestProductsRow
+	for rows.Next() {
+		var i SuggestProductsRow
+		if err := rows.Scan(&i.Name, &i.Slug, &i.Sku); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -119,6 +119,10 @@ func (h *Handler) branding(w http.ResponseWriter, r *http.Request) {
 		"store_name":  h.resolveString(r, org, "branding.store_name", website),
 		"brand_color": h.resolveString(r, org, "branding.brand_color", website),
 		"logo_url":    h.resolveString(r, org, "branding.logo_url", website),
+		// Cart subtotal that unlocks free shipping (store currency). Empty when
+		// the commerce.free_shipping_threshold setting is unset — the storefront
+		// then shows no free-shipping meter.
+		"free_shipping_threshold": h.resolveString(r, org, "commerce.free_shipping_threshold", website),
 	}
 	response.JSON(w, http.StatusOK, out)
 }

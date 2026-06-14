@@ -147,4 +147,4 @@ All belong to org `1`. Change or remove these seeds for production.
 
 ---
 
-*Teggo is in‑house, self‑hosted, and contract‑first: your catalog, your customers, your pricing, your data — running the way B2B actually sells.*
+*Teggo is in‑house, self‑hosted, and contract‑first: your catalog, your customers, your pricing, your data — running the way B2B actually sells(enjoy while it last lol).*

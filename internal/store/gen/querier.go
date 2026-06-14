@@ -189,6 +189,9 @@ type Querier interface {
 	CreateReportSchedule(ctx context.Context, arg CreateReportScheduleParams) (ReportSchedule, error)
 	// Returns / RMA + credit notes (migration 0038).
 	CreateReturn(ctx context.Context, arg CreateReturnParams) (Return, error)
+	// CreateReview writes (or re-submits) a buyer's review. A re-submission resets
+	// it to 'pending' so edits are re-moderated. One row per (product, author).
+	CreateReview(ctx context.Context, arg CreateReviewParams) (CreateReviewRow, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	// ===== Login state (CSRF/replay) ===========================================
 	CreateSSOState(ctx context.Context, arg CreateSSOStateParams) (SsoState, error)
@@ -224,6 +227,10 @@ type Querier interface {
 	// (cycle-safe recursive CTE — Pack 1 §12.2). Used to inherit price list /
 	// settings down the account tree.
 	CustomerAncestors(ctx context.Context, arg CustomerAncestorsParams) ([]CustomerAncestorsRow, error)
+	// Product reviews — verified-purchase, moderated buyer ratings (0062).
+	// CustomerHasDeliveredProduct gates who may review: true only when the buyer's
+	// company has a delivered/closed order containing the product.
+	CustomerHasDeliveredProduct(ctx context.Context, arg CustomerHasDeliveredProductParams) (bool, error)
 	// CustomerTimeline aggregates activities linked to a customer directly, via its
 	// contacts, or via its opportunities (Pack 2 §1.4), newest first.
 	CustomerTimeline(ctx context.Context, arg CustomerTimelineParams) ([]Activity, error)
@@ -274,7 +281,7 @@ type Querier interface {
 	// FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
 	// backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
 	// {"color":"red","voltage":"24"}.
-	FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]Product, error)
+	FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]FilterActiveProductsByAttributesRow, error)
 	// FindUserOrgsByEmail powers org-aware admin login: an email that exists in
 	// exactly one org resolves it implicitly.
 	FindUserOrgsByEmail(ctx context.Context, email string) ([]int64, error)
@@ -398,6 +405,9 @@ type Querier interface {
 	// GetProductIDByPublicIDGlobal resolves a product id from its (globally unique)
 	// public_id without org context, for the unauthenticated storefront configurator.
 	GetProductIDByPublicIDGlobal(ctx context.Context, publicID uuid.UUID) (int64, error)
+	// GetProductIDBySlug resolves a visible product's internal id from its slug
+	// (storefront reviews: list/create keyed on slug).
+	GetProductIDBySlug(ctx context.Context, arg GetProductIDBySlugParams) (int64, error)
 	// GetProductTaxClasses returns the tax class for a set of products (order tax).
 	GetProductTaxClasses(ctx context.Context, arg GetProductTaxClassesParams) ([]GetProductTaxClassesRow, error)
 	GetProductTranslation(ctx context.Context, arg GetProductTranslationParams) (GetProductTranslationRow, error)
@@ -430,6 +440,9 @@ type Querier interface {
 	GetReturn(ctx context.Context, arg GetReturnParams) (Return, error)
 	// GetReturnByPublicID loads a return by public id within the customer (storefront).
 	GetReturnByPublicID(ctx context.Context, publicID uuid.UUID) (Return, error)
+	// GetReviewAggregate returns the approved-only average + count for a product
+	// (storefront PDP/PLP stars).
+	GetReviewAggregate(ctx context.Context, arg GetReviewAggregateParams) (GetReviewAggregateRow, error)
 	GetSSOState(ctx context.Context, state string) (SsoState, error)
 	GetSearchRedirect(ctx context.Context, arg GetSearchRedirectParams) (string, error)
 	GetShipment(ctx context.Context, id int64) (Shipment, error)
@@ -511,6 +524,8 @@ type Querier interface {
 	ListActiveVendorUserIDs(ctx context.Context, vendorID int64) ([]int64, error)
 	// Approval routing rules (migration 0033).
 	ListApprovalRoutingRules(ctx context.Context, organizationID int64) ([]ApprovalRoutingRule, error)
+	// ListApprovedReviews powers the storefront PDP reviews list.
+	ListApprovedReviews(ctx context.Context, arg ListApprovedReviewsParams) ([]ListApprovedReviewsRow, error)
 	ListAssignmentsForList(ctx context.Context, priceListID int64) ([]PriceListAssignment, error)
 	ListAttributeFamilies(ctx context.Context, organizationID int64) ([]AttributeFamily, error)
 	ListAttributes(ctx context.Context, organizationID int64) ([]Attribute, error)
@@ -656,6 +671,8 @@ type Querier interface {
 	ListReturnsAdmin(ctx context.Context, arg ListReturnsAdminParams) ([]Return, error)
 	ListReturnsForCustomer(ctx context.Context, customerID int64) ([]Return, error)
 	ListReturnsForOrder(ctx context.Context, orderID int64) ([]Return, error)
+	// ListReviewsByStatus is the admin moderation queue (status = pending, etc.).
+	ListReviewsByStatus(ctx context.Context, arg ListReviewsByStatusParams) ([]ListReviewsByStatusRow, error)
 	// ===== Redirects ===========================================================
 	ListSearchRedirects(ctx context.Context, organizationID int64) ([]SearchRedirect, error)
 	// Search merchandising (Roadmap Tier 2 #6).
@@ -675,6 +692,9 @@ type Querier interface {
 	ListShippingRatesByCountry(ctx context.Context, arg ListShippingRatesByCountryParams) ([]ShippingRate, error)
 	ListShoppingListItems(ctx context.Context, shoppingListID int64) ([]ListShoppingListItemsRow, error)
 	ListShoppingLists(ctx context.Context, customerID int64) ([]ShoppingList, error)
+	// ListStorefrontProductImagesBySlug returns a product's gallery images for the
+	// storefront PDP, keyed on slug+org so the internal id never leaves the API.
+	ListStorefrontProductImagesBySlug(ctx context.Context, arg ListStorefrontProductImagesBySlugParams) ([]ListStorefrontProductImagesBySlugRow, error)
 	ListSubscriptionItems(ctx context.Context, subscriptionID int64) ([]ListSubscriptionItemsRow, error)
 	ListSubscriptionRuns(ctx context.Context, subscriptionID int64) ([]SubscriptionRun, error)
 	ListSubscriptionsAdmin(ctx context.Context, organizationID int64) ([]Subscription, error)
@@ -724,6 +744,8 @@ type Querier interface {
 	// MaxScopedCursor is the current high-water mark for the rep's scope (used when
 	// a pull returns no rows so the client still advances its cursor).
 	MaxScopedCursor(ctx context.Context, arg MaxScopedCursorParams) (int64, error)
+	// ModerateReview approves/rejects a pending review.
+	ModerateReview(ctx context.Context, arg ModerateReviewParams) (ModerateReviewRow, error)
 	// NewCustomerCountWindow counts accounts whose FIRST ever non-cancelled order
 	// falls inside the window — new-logo acquisition for the period.
 	NewCustomerCountWindow(ctx context.Context, arg NewCustomerCountWindowParams) (int64, error)
@@ -875,6 +897,9 @@ type Querier interface {
 	SpendForCustomerPeriod(ctx context.Context, arg SpendForCustomerPeriodParams) (string, error)
 	// SubmitVendorProduct re-submits a draft/rejected vendor product for moderation.
 	SubmitVendorProduct(ctx context.Context, arg SubmitVendorProductParams) (SubmitVendorProductRow, error)
+	// SuggestProducts powers the storefront search typeahead: name/SKU substring
+	// matches on visible products. $2 is the raw term; $3 the result cap.
+	SuggestProducts(ctx context.Context, arg SuggestProductsParams) ([]SuggestProductsRow, error)
 	// SumCapturedForInvoice totals captured payments against an invoice.
 	SumCapturedForInvoice(ctx context.Context, invoiceID *int64) (string, error)
 	// SumOpenInvoices totals a customer's unpaid (issued/overdue) invoices, used to

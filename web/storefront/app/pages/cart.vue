@@ -17,6 +17,23 @@ const error = ref('')
 const notice = ref('')
 const busy = ref(false)
 
+// Free-shipping progress: the threshold comes from store config (empty when
+// unset → no meter). Shared 'branding' fetch dedupes with the layout's.
+const { data: branding } = await useAsyncData('branding', async () => {
+  const { data } = await client.GET('/storefront/branding')
+  return data ?? null
+})
+const freeShip = computed(() => {
+  const t = Number(branding.value?.free_shipping_threshold || 0)
+  const sub = Number(cart.value?.subtotal)
+  if (!t || t <= 0 || !isFinite(sub)) return null
+  return {
+    remaining: Math.max(0, t - sub),
+    pct: Math.min(100, Math.round((sub / t) * 100)),
+    unlocked: sub >= t,
+  }
+})
+
 // Display currency (indicative). Empty = the store's base currency.
 const displayCurrency = ref('')
 const currencyOptions = ref<{ label: string; value: string }[]>([])
@@ -140,6 +157,16 @@ await loadCurrencies()
           <Button label="Re-check prices" icon="pi pi-refresh" severity="secondary" outlined :loading="busy" @click="revalidate" />
 
           <div class="totals">
+            <!-- Free-shipping progress -->
+            <div v-if="freeShip" class="freeship" :class="{ unlocked: freeShip.unlocked }">
+              <div class="freeship-msg">
+                <i :class="freeShip.unlocked ? 'pi pi-check-circle' : 'pi pi-truck'" />
+                <span v-if="freeShip.unlocked">You've unlocked <strong>free shipping</strong>!</span>
+                <span v-else>Add <strong>{{ freeShip.remaining.toFixed(2) }} {{ cart.currency }}</strong> more for free shipping</span>
+              </div>
+              <ProgressBar :value="freeShip.pct" :show-value="false" class="freeship-bar" />
+            </div>
+
             <!-- Coupon -->
             <div v-if="cart.coupon_code" class="coupon-applied">
               <span><i class="pi pi-tag" /> {{ cart.coupon_code }}<template v-if="cart.discount_label"> — {{ cart.discount_label }}</template></span>
@@ -235,6 +262,29 @@ await loadCurrencies()
   min-width: 18rem;
   margin-left: auto;
 }
+.freeship {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--p-surface-200, #e2e8f0);
+  border-radius: var(--teggo-radius, 6px);
+  background: var(--p-surface-50, #f8fafc);
+}
+.freeship.unlocked {
+  border-color: var(--p-green-200, #bbf7d0);
+  background: var(--p-green-50, #f0fdf4);
+}
+.freeship-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+}
+.freeship-msg i { color: var(--p-primary-color, #6366f1); }
+.freeship.unlocked .freeship-msg i { color: var(--p-green-600, #16a34a); }
+.freeship-bar { height: 6px; }
 .coupon-entry { display: flex; gap: 0.5rem; }
 .coupon-entry :deep(input) { flex: 1; }
 .coupon-applied {

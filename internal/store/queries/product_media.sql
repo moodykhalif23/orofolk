@@ -10,6 +10,17 @@ LEFT JOIN media_assets ma ON ma.id = pm.media_asset_id
 WHERE pm.product_id = $1 AND pm.type = 'image'
 ORDER BY pm.sort_order, pm.id;
 
+-- ListStorefrontProductImagesBySlug returns a product's gallery images for the
+-- storefront PDP, keyed on slug+org so the internal id never leaves the API.
+-- name: ListStorefrontProductImagesBySlug :many
+SELECT pm.url, pm.alt
+FROM product_media pm
+JOIN products p ON p.id = pm.product_id
+WHERE p.organization_id = $1 AND p.slug = $2
+  AND p.approval_status = 'approved' AND p.deleted_at IS NULL
+  AND pm.type = 'image'
+ORDER BY pm.sort_order, pm.id;
+
 -- name: CountProductImages :one
 SELECT count(*) FROM product_media WHERE product_id = $1 AND type = 'image';
 

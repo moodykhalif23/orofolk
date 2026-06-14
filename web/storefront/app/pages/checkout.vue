@@ -21,6 +21,8 @@ const router = useRouter()
 const cart = ref<Cart | null>(null)
 const error = ref('')
 const placing = ref(false)
+// Checkout flow: Details → Shipping → Review.
+const step = ref('1')
 
 const poNumber = ref('')
 const costCenter = ref('')
@@ -144,80 +146,118 @@ await load()
     <template v-if="cart && cart.items.length">
       <div class="grid">
         <div class="form">
-          <Card>
-            <template #title>Order details</template>
-            <template #content>
-              <div class="field">
-                <label for="po">PO number <span class="muted">(optional)</span></label>
-                <InputText id="po" v-model="poNumber" placeholder="e.g. PO-1234" />
-              </div>
-              <div class="field">
-                <label for="cc">Cost center <span class="muted">(optional)</span></label>
-                <InputText id="cc" v-model="costCenter" placeholder="e.g. marketing" />
-              </div>
-              <div class="field">
-                <label for="dd">Requested delivery date <span class="muted">(optional)</span></label>
-                <DatePicker id="dd" v-model="deliveryDate" dateFormat="yy-mm-dd" showIcon :minDate="new Date()" />
-              </div>
-            </template>
-          </Card>
-
-          <Card>
-            <template #title>Shipping</template>
-            <template #content>
-              <div class="check">
-                <Checkbox v-model="customAddress" inputId="custom" binary />
-                <label for="custom">Ship to a different address than my default</label>
-              </div>
-
-              <template v-if="customAddress">
-                <div v-if="savedShipping.length" class="field">
-                  <label>Choose a saved address</label>
-                  <Select v-model="shipSel" :options="options(savedShipping)" optionLabel="label" optionValue="value" />
+          <Stepper v-model:value="step" linear>
+            <StepList>
+              <Step value="1">Details</Step>
+              <Step value="2">Shipping</Step>
+              <Step value="3">Review</Step>
+            </StepList>
+            <StepPanels>
+              <StepPanel v-slot="{ activateCallback }" value="1">
+                <Card>
+                  <template #title>Order details</template>
+                  <template #content>
+                    <div class="field">
+                      <label for="po">PO number <span class="muted">(optional)</span></label>
+                      <InputText id="po" v-model="poNumber" placeholder="e.g. PO-1234" />
+                    </div>
+                    <div class="field">
+                      <label for="cc">Cost center <span class="muted">(optional)</span></label>
+                      <InputText id="cc" v-model="costCenter" placeholder="e.g. marketing" />
+                    </div>
+                    <div class="field">
+                      <label for="dd">Requested delivery date <span class="muted">(optional)</span></label>
+                      <DatePicker id="dd" v-model="deliveryDate" dateFormat="yy-mm-dd" showIcon :minDate="new Date()" />
+                    </div>
+                  </template>
+                </Card>
+                <div class="step-nav step-nav--end">
+                  <Button label="Continue to shipping" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('2')" />
                 </div>
+              </StepPanel>
 
-                <div v-if="shipSel === 'new'" class="addr">
-                  <div class="field"><label>Address line 1</label><InputText v-model="shipping.line1" /></div>
-                  <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="shipping.line2 ?? ''" @update:modelValue="shipping.line2 = ($event as string) || null" /></div>
-                  <div class="row">
-                    <div class="field"><label>City</label><InputText v-model="shipping.city" /></div>
-                    <div class="field"><label>Region <span class="muted">(optional)</span></label><InputText :modelValue="shipping.region ?? ''" @update:modelValue="shipping.region = ($event as string) || null" /></div>
-                  </div>
-                  <div class="row">
-                    <div class="field"><label>Postal code <span class="muted">(optional)</span></label><InputText :modelValue="shipping.postal_code ?? ''" @update:modelValue="shipping.postal_code = ($event as string) || null" /></div>
-                    <div class="field"><label>Country</label><InputText v-model="shipping.country" maxlength="2" placeholder="KE" /></div>
-                  </div>
+              <StepPanel v-slot="{ activateCallback }" value="2">
+                <Card>
+                  <template #title>Shipping</template>
+                  <template #content>
+                    <div class="check">
+                      <Checkbox v-model="customAddress" inputId="custom" binary />
+                      <label for="custom">Ship to a different address than my default</label>
+                    </div>
+
+                    <template v-if="customAddress">
+                      <div v-if="savedShipping.length" class="field">
+                        <label>Choose a saved address</label>
+                        <Select v-model="shipSel" :options="options(savedShipping)" optionLabel="label" optionValue="value" />
+                      </div>
+
+                      <div v-if="shipSel === 'new'" class="addr">
+                        <div class="field"><label>Address line 1</label><InputText v-model="shipping.line1" /></div>
+                        <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="shipping.line2 ?? ''" @update:modelValue="shipping.line2 = ($event as string) || null" /></div>
+                        <div class="row">
+                          <div class="field"><label>City</label><InputText v-model="shipping.city" /></div>
+                          <div class="field"><label>Region <span class="muted">(optional)</span></label><InputText :modelValue="shipping.region ?? ''" @update:modelValue="shipping.region = ($event as string) || null" /></div>
+                        </div>
+                        <div class="row">
+                          <div class="field"><label>Postal code <span class="muted">(optional)</span></label><InputText :modelValue="shipping.postal_code ?? ''" @update:modelValue="shipping.postal_code = ($event as string) || null" /></div>
+                          <div class="field"><label>Country</label><InputText v-model="shipping.country" maxlength="2" placeholder="KE" /></div>
+                        </div>
+                      </div>
+
+                      <div class="check">
+                        <Checkbox v-model="billingSameAsShipping" inputId="samebill" binary />
+                        <label for="samebill">Billing address is the same as shipping</label>
+                      </div>
+
+                      <template v-if="!billingSameAsShipping">
+                        <div v-if="savedBilling.length" class="field">
+                          <label>Choose a saved billing address</label>
+                          <Select v-model="billSel" :options="options(savedBilling)" optionLabel="label" optionValue="value" />
+                        </div>
+                      </template>
+
+                      <div v-if="!billingSameAsShipping && billSel === 'new'" class="addr">
+                        <h4>Billing address</h4>
+                        <div class="field"><label>Address line 1</label><InputText v-model="billing.line1" /></div>
+                        <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="billing.line2 ?? ''" @update:modelValue="billing.line2 = ($event as string) || null" /></div>
+                        <div class="row">
+                          <div class="field"><label>City</label><InputText v-model="billing.city" /></div>
+                          <div class="field"><label>Region <span class="muted">(optional)</span></label><InputText :modelValue="billing.region ?? ''" @update:modelValue="billing.region = ($event as string) || null" /></div>
+                        </div>
+                        <div class="row">
+                          <div class="field"><label>Postal code <span class="muted">(optional)</span></label><InputText :modelValue="billing.postal_code ?? ''" @update:modelValue="billing.postal_code = ($event as string) || null" /></div>
+                          <div class="field"><label>Country</label><InputText v-model="billing.country" maxlength="2" placeholder="KE" /></div>
+                        </div>
+                      </div>
+                    </template>
+                    <p v-else class="muted small">Your order will ship to your default address on file.</p>
+                  </template>
+                </Card>
+                <div class="step-nav">
+                  <Button label="Back" text severity="secondary" @click="activateCallback('1')" />
+                  <Button label="Review order" icon="pi pi-arrow-right" icon-pos="right" @click="activateCallback('3')" />
                 </div>
+              </StepPanel>
 
-                <div class="check">
-                  <Checkbox v-model="billingSameAsShipping" inputId="samebill" binary />
-                  <label for="samebill">Billing address is the same as shipping</label>
+              <StepPanel v-slot="{ activateCallback }" value="3">
+                <Card>
+                  <template #title>Review &amp; place</template>
+                  <template #content>
+                    <dl class="recap">
+                      <div><dt>PO number</dt><dd>{{ poNumber || '—' }}</dd></div>
+                      <div><dt>Cost center</dt><dd>{{ costCenter || '—' }}</dd></div>
+                      <div><dt>Requested delivery</dt><dd>{{ deliveryDate ? deliveryDate.toISOString().slice(0, 10) : 'Not specified' }}</dd></div>
+                      <div><dt>Ship to</dt><dd>{{ customAddress ? [shipping.line1, shipping.city, shipping.country].filter(Boolean).join(', ') : 'Default address on file' }}</dd></div>
+                    </dl>
+                  </template>
+                </Card>
+                <div class="step-nav">
+                  <Button label="Back" text severity="secondary" @click="activateCallback('2')" />
+                  <Button label="Place order" icon="pi pi-check" :loading="placing" @click="placeOrder" />
                 </div>
-
-                <template v-if="!billingSameAsShipping">
-                  <div v-if="savedBilling.length" class="field">
-                    <label>Choose a saved billing address</label>
-                    <Select v-model="billSel" :options="options(savedBilling)" optionLabel="label" optionValue="value" />
-                  </div>
-                </template>
-
-                <div v-if="!billingSameAsShipping && billSel === 'new'" class="addr">
-                  <h4>Billing address</h4>
-                  <div class="field"><label>Address line 1</label><InputText v-model="billing.line1" /></div>
-                  <div class="field"><label>Address line 2 <span class="muted">(optional)</span></label><InputText :modelValue="billing.line2 ?? ''" @update:modelValue="billing.line2 = ($event as string) || null" /></div>
-                  <div class="row">
-                    <div class="field"><label>City</label><InputText v-model="billing.city" /></div>
-                    <div class="field"><label>Region <span class="muted">(optional)</span></label><InputText :modelValue="billing.region ?? ''" @update:modelValue="billing.region = ($event as string) || null" /></div>
-                  </div>
-                  <div class="row">
-                    <div class="field"><label>Postal code <span class="muted">(optional)</span></label><InputText :modelValue="billing.postal_code ?? ''" @update:modelValue="billing.postal_code = ($event as string) || null" /></div>
-                    <div class="field"><label>Country</label><InputText v-model="billing.country" maxlength="2" placeholder="KE" /></div>
-                  </div>
-                </div>
-              </template>
-              <p v-else class="muted small">Your order will ship to your default address on file.</p>
-            </template>
-          </Card>
+              </StepPanel>
+            </StepPanels>
+          </Stepper>
         </div>
 
         <Card class="summary">
@@ -231,13 +271,6 @@ await load()
               <span>Total</span>
               <strong>{{ cart.subtotal }} {{ cart.currency }}</strong>
             </div>
-            <Button
-              label="Place order"
-              icon="pi pi-check"
-              class="place"
-              :loading="placing"
-              @click="placeOrder"
-            />
             <p class="muted small">Taxes and shipping are calculated by your sales rep after the order is placed.</p>
           </template>
         </Card>
@@ -275,6 +308,11 @@ await load()
 .sn { min-width: 0; }
 .sr { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .total { display: flex; justify-content: space-between; align-items: baseline; margin: 0.75rem 0; padding-top: 0.75rem; border-top: 1px solid var(--p-surface-200, #e2e8f0); font-size: 1.15rem; }
-.place { width: 100%; margin-top: 0.5rem; }
+.step-nav { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 1.25rem; }
+.step-nav--end { justify-content: flex-end; }
+.recap { margin: 0; display: flex; flex-direction: column; gap: 0.65rem; }
+.recap > div { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+.recap dt { color: var(--p-text-muted-color, #64748b); font-size: 0.9rem; }
+.recap dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; }
 .empty { text-align: center; padding: 3rem 0; }
 </style>

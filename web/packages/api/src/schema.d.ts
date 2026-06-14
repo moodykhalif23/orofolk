@@ -3014,6 +3014,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/storefront/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search typeahead — product name/SKU suggestions */
+        get: operations["storefrontSuggest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/storefront/products/{slug}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A product's approved reviews + aggregate rating */
+        get: operations["storefrontListReviews"];
+        put?: never;
+        /** Write a review (verified purchasers only; enters moderation) */
+        post: operations["storefrontCreateReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Review moderation queue */
+        get: operations["adminListReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reviews/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Approve or reject a review */
+        patch: operations["adminModerateReview"];
+        trace?: never;
+    };
     "/admin/reports/summary": {
         parameters: {
             query?: never;
@@ -4708,6 +4777,13 @@ export interface components {
             unit: string;
             /** @description Marketplace vendor name when the product is vendor-owned; absent for operator (house) products. */
             sold_by?: string | null;
+            /** @description Primary gallery image URL (list views); omitted when the product has no photos. */
+            image?: string;
+            /** @description Full gallery (detail view); omitted when the product has no photos. */
+            images?: {
+                url: string;
+                alt?: string | null;
+            }[];
         };
         StorefrontProductList: {
             items: components["schemas"]["StorefrontProduct"][];
@@ -6515,6 +6591,61 @@ export interface components {
             attr: string;
             values: components["schemas"]["FacetValue"][];
         };
+        SuggestItem: {
+            name: string;
+            slug: string;
+            sku: string;
+        };
+        SuggestResult: {
+            items: components["schemas"]["SuggestItem"][];
+        };
+        ReviewItem: {
+            /** Format: int64 */
+            id: number;
+            rating: number;
+            title: string;
+            body: string;
+            verified: boolean;
+            author: string;
+            created_at: string;
+        };
+        ProductReviews: {
+            /** @description Approved-only average rating (0 when none). */
+            average: string;
+            /** Format: int64 */
+            total: number;
+            items: components["schemas"]["ReviewItem"][];
+        };
+        CreateReviewRequest: {
+            rating: number;
+            title?: string;
+            body?: string;
+        };
+        ReviewMutation: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+        };
+        AdminReview: {
+            /** Format: int64 */
+            id: number;
+            rating: number;
+            title: string;
+            body: string;
+            status: string;
+            verified: boolean;
+            author: string;
+            product_name: string;
+            product_slug: string;
+            created_at: string;
+        };
+        AdminReviewList: {
+            items: components["schemas"]["AdminReview"][];
+        };
+        ModerateReviewRequest: {
+            /** @enum {string} */
+            status: "approved" | "rejected";
+        };
         FacetedSearchResult: {
             items: components["schemas"]["StorefrontProduct"][];
             /** Format: int64 */
@@ -7506,6 +7637,8 @@ export interface components {
             store_name?: string;
             brand_color?: string;
             logo_url?: string;
+            /** @description Cart subtotal (store currency) that unlocks free shipping; empty when not configured. */
+            free_shipping_threshold?: string;
         };
         Plan: {
             code?: string;
@@ -12997,6 +13130,8 @@ export interface operations {
                 category?: string;
                 /** @description JSON object of attribute equalities */
                 filter?: string;
+                /** @description Numeric range on one attribute: {"attr","min","max"} */
+                range?: string;
                 sort?: "relevance" | "newest" | "name";
                 page?: number;
                 page_size?: number;
@@ -13019,6 +13154,126 @@ export interface operations {
                 };
             };
             400: components["responses"]["ErrorResponse"];
+        };
+    };
+    storefrontSuggest: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestResult"];
+                };
+            };
+        };
+    };
+    storefrontListReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductReviews"];
+                };
+            };
+        };
+    };
+    storefrontCreateReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewMutation"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            403: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListReviews: {
+        parameters: {
+            query?: {
+                status?: "pending" | "approved" | "rejected";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewList"];
+                };
+            };
+        };
+    };
+    adminModerateReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerateReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewMutation"];
+                };
+            };
         };
     };
     adminReportSummary: {

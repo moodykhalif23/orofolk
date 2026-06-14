@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
+import type { components } from '@teggo/api/schema'
+
+type SuggestItem = components['schemas']['SuggestItem']
 
 const { isAuthenticated, logout } = useAuth()
 const router = useRouter()
@@ -35,8 +37,25 @@ const term = ref((route.query.q as string) ?? '')
 const mobileOpen = ref(false)
 watch(() => route.fullPath, () => { mobileOpen.value = false })
 
+// Search typeahead: fetch suggestions while typing; selecting one jumps
+// straight to that product, while Enter runs a full search.
+const suggestions = ref<SuggestItem[]>([])
+async function onComplete(e: { query: string }) {
+  const t = e.query.trim()
+  if (t.length < 2) {
+    suggestions.value = []
+    return
+  }
+  const { data } = await client.GET('/storefront/suggest', { params: { query: { q: t } } })
+  suggestions.value = data?.items ?? []
+}
+function onSelect(e: { value: SuggestItem }) {
+  mobileOpen.value = false
+  term.value = ''
+  router.push(`/p/${e.value.slug}`)
+}
 function search() {
-  const q = term.value.trim()
+  const q = (typeof term.value === 'string' ? term.value : '').trim()
   mobileOpen.value = false
   if (q) router.push({ path: '/search', query: { q } })
 }
@@ -63,12 +82,24 @@ function signOut() {
         <span class="spacer" />
         <span class="search">
           <i class="pi pi-search" />
-          <InputText
+          <AutoComplete
             v-model="term"
+            :suggestions="suggestions"
+            option-label="name"
             placeholder="Search products…"
             class="search-input"
+            :complete-on-focus="false"
+            @complete="onComplete"
+            @item-select="onSelect"
             @keyup.enter="search"
-          />
+          >
+            <template #option="{ option }">
+              <div class="sug">
+                <span class="sug-name">{{ option.name }}</span>
+                <span class="sug-sku">{{ option.sku }}</span>
+              </div>
+            </template>
+          </AutoComplete>
         </span>
         <select v-if="localeOptions.length" v-model="locale" class="locale-select" aria-label="Language">
           <option value="">{{ localeDefault || 'Default' }}</option>
@@ -110,7 +141,16 @@ function signOut() {
     <nav v-show="mobileOpen" class="mobile-menu">
       <span class="mm-search">
         <i class="pi pi-search" />
-        <InputText v-model="term" placeholder="Search products…" @keyup.enter="search" />
+        <AutoComplete
+          v-model="term"
+          :suggestions="suggestions"
+          option-label="name"
+          placeholder="Search products…"
+          :complete-on-focus="false"
+          @complete="onComplete"
+          @item-select="onSelect"
+          @keyup.enter="search"
+        />
       </span>
       <NuxtLink to="/">Home</NuxtLink>
       <NuxtLink to="/c/all">Catalog</NuxtLink>
@@ -232,6 +272,9 @@ function signOut() {
   width: 16rem;
   max-width: 30vw;
 }
+.search-input :deep(input) { width: 100%; }
+.sug { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+.sug-sku { color: var(--p-text-muted-color, #64748b); font-size: 0.82rem; }
 .content {
   flex: 1;
   padding: 1.5rem;
@@ -317,7 +360,8 @@ function signOut() {
     padding: 0.5rem 0;
     color: var(--p-text-muted-color, #64748b);
   }
-  .mm-search :deep(.p-inputtext) {
+  .mm-search :deep(.p-autocomplete),
+  .mm-search :deep(input) {
     width: 100%;
   }
   .content {

@@ -105,13 +105,20 @@ WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'ap
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))
+  AND ($5::text IS NULL OR
+       (CASE WHEN p.attributes->>$5 ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>$5)::numeric END)
+         BETWEEN $6::numeric AND $7::numeric)
 `
 
 type CountProductsFacetedParams struct {
-	Org    int64   `json:"org"`
-	Q      *string `json:"q"`
-	Attrs  []byte  `json:"attrs"`
-	CatIds []int64 `json:"cat_ids"`
+	Org      int64   `json:"org"`
+	Q        *string `json:"q"`
+	Attrs    []byte  `json:"attrs"`
+	CatIds   []int64 `json:"cat_ids"`
+	RangeKey *string `json:"range_key"`
+	RangeMin *string `json:"range_min"`
+	RangeMax *string `json:"range_max"`
 }
 
 func (q *Queries) CountProductsFaceted(ctx context.Context, arg CountProductsFacetedParams) (int64, error) {
@@ -120,6 +127,9 @@ func (q *Queries) CountProductsFaceted(ctx context.Context, arg CountProductsFac
 		arg.Q,
 		arg.Attrs,
 		arg.CatIds,
+		arg.RangeKey,
+		arg.RangeMin,
+		arg.RangeMax,
 	)
 	var count int64
 	err := row.Scan(&count)
@@ -364,11 +374,15 @@ func (q *Queries) DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalog
 }
 
 const filterActiveProductsByAttributes = `-- name: FilterActiveProductsByAttributes :many
-SELECT id, public_id, organization_id, sku, type, name, slug, description, status, attributes, unit, created_at, updated_at, deleted_at, parent_id, attribute_family_id, search_vector, tax_class, vendor_id, approval_status, cost_price FROM products
-WHERE organization_id = $1
-  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
-  AND attributes @> $2
-ORDER BY name
+SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+FROM products p
+WHERE p.organization_id = $1
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
+  AND p.attributes @> $2
+ORDER BY p.name
 LIMIT $3 OFFSET $4
 `
 
@@ -379,10 +393,23 @@ type FilterActiveProductsByAttributesParams struct {
 	Offset         int32  `json:"offset"`
 }
 
+type FilterActiveProductsByAttributesRow struct {
+	ID          int64     `json:"id"`
+	PublicID    uuid.UUID `json:"public_id"`
+	Sku         string    `json:"sku"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description *string   `json:"description"`
+	Status      string    `json:"status"`
+	Attributes  []byte    `json:"attributes"`
+	Unit        string    `json:"unit"`
+	ImageUrl    string    `json:"image_url"`
+}
+
 // FilterActiveProductsByAttributes: faceted filter over the JSONB attributes,
 // backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
 // {"color":"red","voltage":"24"}.
-func (q *Queries) FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]Product, error) {
+func (q *Queries) FilterActiveProductsByAttributes(ctx context.Context, arg FilterActiveProductsByAttributesParams) ([]FilterActiveProductsByAttributesRow, error) {
 	rows, err := q.db.Query(ctx, filterActiveProductsByAttributes,
 		arg.OrganizationID,
 		arg.Attributes,
@@ -393,31 +420,20 @@ func (q *Queries) FilterActiveProductsByAttributes(ctx context.Context, arg Filt
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Product
+	var items []FilterActiveProductsByAttributesRow
 	for rows.Next() {
-		var i Product
+		var i FilterActiveProductsByAttributesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PublicID,
-			&i.OrganizationID,
 			&i.Sku,
-			&i.Type,
 			&i.Name,
 			&i.Slug,
 			&i.Description,
 			&i.Status,
 			&i.Attributes,
 			&i.Unit,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DeletedAt,
-			&i.ParentID,
-			&i.AttributeFamilyID,
-			&i.SearchVector,
-			&i.TaxClass,
-			&i.VendorID,
-			&i.ApprovalStatus,
-			&i.CostPrice,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -589,7 +605,10 @@ WITH RECURSIVE subtree AS (
   SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
 )
 SELECT DISTINCT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
-       p.status, p.attributes, p.unit
+       p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)
@@ -616,6 +635,7 @@ type ListActiveProductsInCategoryRow struct {
 	Status      string    `json:"status"`
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
+	ImageUrl    string    `json:"image_url"`
 }
 
 // ListActiveProductsInCategory returns active products in a category's whole
@@ -644,6 +664,7 @@ func (q *Queries) ListActiveProductsInCategory(ctx context.Context, arg ListActi
 			&i.Status,
 			&i.Attributes,
 			&i.Unit,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -923,15 +944,22 @@ WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'ap
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))
+  AND ($5::text IS NULL OR
+       (CASE WHEN p.attributes->>$5 ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>$5)::numeric END)
+         BETWEEN $6::numeric AND $7::numeric)
 GROUP BY kv.key, kv.value
 ORDER BY kv.key, count DESC, kv.value
 `
 
 type ProductFacetsParams struct {
-	Org    int64   `json:"org"`
-	Q      *string `json:"q"`
-	Attrs  []byte  `json:"attrs"`
-	CatIds []int64 `json:"cat_ids"`
+	Org      int64   `json:"org"`
+	Q        *string `json:"q"`
+	Attrs    []byte  `json:"attrs"`
+	CatIds   []int64 `json:"cat_ids"`
+	RangeKey *string `json:"range_key"`
+	RangeMin *string `json:"range_min"`
+	RangeMax *string `json:"range_max"`
 }
 
 type ProductFacetsRow struct {
@@ -948,6 +976,9 @@ func (q *Queries) ProductFacets(ctx context.Context, arg ProductFacetsParams) ([
 		arg.Q,
 		arg.Attrs,
 		arg.CatIds,
+		arg.RangeKey,
+		arg.RangeMin,
+		arg.RangeMax,
 	)
 	if err != nil {
 		return nil, err
@@ -983,7 +1014,10 @@ func (q *Queries) RemoveProductFromCategory(ctx context.Context, arg RemoveProdu
 
 const searchActiveProducts = `-- name: SearchActiveProducts :many
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
-       p.status, p.attributes, p.unit
+       p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -1009,6 +1043,7 @@ type SearchActiveProductsRow struct {
 	Status      string    `json:"status"`
 	Attributes  []byte    `json:"attributes"`
 	Unit        string    `json:"unit"`
+	ImageUrl    string    `json:"image_url"`
 }
 
 // SearchActiveProducts: full-text product search (PRD §14, Postgres FTS).
@@ -1038,6 +1073,7 @@ func (q *Queries) SearchActiveProducts(ctx context.Context, arg SearchActiveProd
 			&i.Status,
 			&i.Attributes,
 			&i.Unit,
+			&i.ImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -1121,21 +1157,28 @@ WHERE p.organization_id = $1 AND p.status = 'active' AND p.approval_status = 'ap
   AND ($2::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', $2))
   AND ($3::jsonb IS NULL OR p.attributes @> $3)
   AND ($4::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY($4)))
+  AND ($5::text IS NULL OR
+       (CASE WHEN p.attributes->>$5 ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>$5)::numeric END)
+         BETWEEN $6::numeric AND $7::numeric)
 ORDER BY
-  (CASE WHEN $5::text = 'newest' THEN p.created_at END) DESC NULLS LAST,
-  (CASE WHEN $5::text = 'relevance' THEN ts_rank(p.search_vector, websearch_to_tsquery('english', COALESCE($2, ''))) END) DESC NULLS LAST,
+  (CASE WHEN $8::text = 'newest' THEN p.created_at END) DESC NULLS LAST,
+  (CASE WHEN $8::text = 'relevance' THEN ts_rank(p.search_vector, websearch_to_tsquery('english', COALESCE($2, ''))) END) DESC NULLS LAST,
   p.name
-LIMIT $7 OFFSET $6
+LIMIT $10 OFFSET $9
 `
 
 type SearchProductsFacetedParams struct {
-	Org    int64   `json:"org"`
-	Q      *string `json:"q"`
-	Attrs  []byte  `json:"attrs"`
-	CatIds []int64 `json:"cat_ids"`
-	Sort   string  `json:"sort"`
-	Off    int32   `json:"off"`
-	Lim    int32   `json:"lim"`
+	Org      int64   `json:"org"`
+	Q        *string `json:"q"`
+	Attrs    []byte  `json:"attrs"`
+	CatIds   []int64 `json:"cat_ids"`
+	RangeKey *string `json:"range_key"`
+	RangeMin *string `json:"range_min"`
+	RangeMax *string `json:"range_max"`
+	Sort     string  `json:"sort"`
+	Off      int32   `json:"off"`
+	Lim      int32   `json:"lim"`
 }
 
 type SearchProductsFacetedRow struct {
@@ -1161,6 +1204,9 @@ func (q *Queries) SearchProductsFaceted(ctx context.Context, arg SearchProductsF
 		arg.Q,
 		arg.Attrs,
 		arg.CatIds,
+		arg.RangeKey,
+		arg.RangeMin,
+		arg.RangeMax,
 		arg.Sort,
 		arg.Off,
 		arg.Lim,

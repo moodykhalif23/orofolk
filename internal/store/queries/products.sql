@@ -1,5 +1,8 @@
 -- name: ListActiveProducts :many
-SELECT id, public_id, sku, name, slug, description, status, attributes, unit
+SELECT id, public_id, sku, name, slug, description, status, attributes, unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = products.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products
 WHERE organization_id = $1
   AND status = 'active'
@@ -7,6 +10,23 @@ WHERE organization_id = $1
   AND deleted_at IS NULL
 ORDER BY name
 LIMIT $2 OFFSET $3;
+
+-- SuggestProducts powers the storefront search typeahead: name/SKU substring
+-- matches on visible products. $2 is the raw term; $3 the result cap.
+-- name: SuggestProducts :many
+SELECT name, slug, sku
+FROM products
+WHERE organization_id = $1
+  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
+  AND (name ILIKE '%' || $2 || '%' OR sku ILIKE '%' || $2 || '%')
+ORDER BY name
+LIMIT $3;
+
+-- GetProductIDBySlug resolves a visible product's internal id from its slug
+-- (storefront reviews: list/create keyed on slug).
+-- name: GetProductIDBySlug :one
+SELECT id FROM products
+WHERE organization_id = $1 AND slug = $2 AND approval_status = 'approved' AND deleted_at IS NULL;
 
 -- GetProductBySlug is a storefront read: only approved products are visible
 -- (operator products default to 'approved'; unapproved vendor listings are hidden).

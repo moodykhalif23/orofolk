@@ -208,6 +208,48 @@ func (q *Queries) ListProductImages(ctx context.Context, productID int64) ([]Lis
 	return items, nil
 }
 
+const listStorefrontProductImagesBySlug = `-- name: ListStorefrontProductImagesBySlug :many
+SELECT pm.url, pm.alt
+FROM product_media pm
+JOIN products p ON p.id = pm.product_id
+WHERE p.organization_id = $1 AND p.slug = $2
+  AND p.approval_status = 'approved' AND p.deleted_at IS NULL
+  AND pm.type = 'image'
+ORDER BY pm.sort_order, pm.id
+`
+
+type ListStorefrontProductImagesBySlugParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	Slug           string `json:"slug"`
+}
+
+type ListStorefrontProductImagesBySlugRow struct {
+	Url string  `json:"url"`
+	Alt *string `json:"alt"`
+}
+
+// ListStorefrontProductImagesBySlug returns a product's gallery images for the
+// storefront PDP, keyed on slug+org so the internal id never leaves the API.
+func (q *Queries) ListStorefrontProductImagesBySlug(ctx context.Context, arg ListStorefrontProductImagesBySlugParams) ([]ListStorefrontProductImagesBySlugRow, error) {
+	rows, err := q.db.Query(ctx, listStorefrontProductImagesBySlug, arg.OrganizationID, arg.Slug)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStorefrontProductImagesBySlugRow
+	for rows.Next() {
+		var i ListStorefrontProductImagesBySlugRow
+		if err := rows.Scan(&i.Url, &i.Alt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const maxProductImageSort = `-- name: MaxProductImageSort :one
 SELECT COALESCE(MAX(sort_order), -1)::int FROM product_media WHERE product_id = $1 AND type = 'image'
 `

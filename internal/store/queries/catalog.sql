@@ -78,7 +78,10 @@ WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL;
 -- `valve -plastic`); results are ranked by relevance, then name as a tiebreak.
 -- name: SearchActiveProducts :many
 SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
-       p.status, p.attributes, p.unit
+       p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products p
 WHERE p.organization_id = $1
   AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
@@ -99,6 +102,10 @@ WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
   AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))))
+  AND (sqlc.narg('range_key')::text IS NULL OR
+       (CASE WHEN p.attributes->>sqlc.narg('range_key') ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>sqlc.narg('range_key'))::numeric END)
+         BETWEEN sqlc.narg('range_min')::numeric AND sqlc.narg('range_max')::numeric)
 ORDER BY
   (CASE WHEN sqlc.arg('sort')::text = 'newest' THEN p.created_at END) DESC NULLS LAST,
   (CASE WHEN sqlc.arg('sort')::text = 'relevance' THEN ts_rank(p.search_vector, websearch_to_tsquery('english', COALESCE(sqlc.narg('q'), ''))) END) DESC NULLS LAST,
@@ -110,7 +117,11 @@ SELECT count(*) FROM products p
 WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
-  AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))));
+  AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))))
+  AND (sqlc.narg('range_key')::text IS NULL OR
+       (CASE WHEN p.attributes->>sqlc.narg('range_key') ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>sqlc.narg('range_key'))::numeric END)
+         BETWEEN sqlc.narg('range_min')::numeric AND sqlc.narg('range_max')::numeric);
 
 -- ProductFacets unnests the JSONB attributes of the filtered result set into
 -- (attribute, value, count) for the storefront filter sidebar.
@@ -121,6 +132,10 @@ WHERE p.organization_id = sqlc.arg('org') AND p.status = 'active' AND p.approval
   AND (sqlc.narg('q')::text IS NULL OR p.search_vector @@ websearch_to_tsquery('english', sqlc.narg('q')))
   AND (sqlc.narg('attrs')::jsonb IS NULL OR p.attributes @> sqlc.narg('attrs'))
   AND (sqlc.narg('cat_ids')::bigint[] IS NULL OR p.id IN (SELECT pc.product_id FROM product_categories pc WHERE pc.category_id = ANY(sqlc.narg('cat_ids'))))
+  AND (sqlc.narg('range_key')::text IS NULL OR
+       (CASE WHEN p.attributes->>sqlc.narg('range_key') ~ '^-?[0-9]+(\.[0-9]+)?$'
+             THEN (p.attributes->>sqlc.narg('range_key'))::numeric END)
+         BETWEEN sqlc.narg('range_min')::numeric AND sqlc.narg('range_max')::numeric)
 GROUP BY kv.key, kv.value
 ORDER BY kv.key, count DESC, kv.value;
 
@@ -128,11 +143,15 @@ ORDER BY kv.key, count DESC, kv.value;
 -- backed by idx_products_attrs_gin (Pack 1 §12.5). $2 is a JSONB object like
 -- {"color":"red","voltage":"24"}.
 -- name: FilterActiveProductsByAttributes :many
-SELECT * FROM products
-WHERE organization_id = $1
-  AND status = 'active' AND approval_status = 'approved' AND deleted_at IS NULL
-  AND attributes @> $2
-ORDER BY name
+SELECT p.id, p.public_id, p.sku, p.name, p.slug, p.description, p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
+FROM products p
+WHERE p.organization_id = $1
+  AND p.status = 'active' AND p.approval_status = 'approved' AND p.deleted_at IS NULL
+  AND p.attributes @> $2
+ORDER BY p.name
 LIMIT $3 OFFSET $4;
 
 -- ===== Categories ==========================================================
@@ -172,7 +191,10 @@ WITH RECURSIVE subtree AS (
   SELECT c.id FROM categories c JOIN subtree s ON c.parent_id = s.id
 )
 SELECT DISTINCT p.id, p.public_id, p.sku, p.name, p.slug, p.description,
-       p.status, p.attributes, p.unit
+       p.status, p.attributes, p.unit,
+       COALESCE((SELECT pm.url FROM product_media pm
+        WHERE pm.product_id = p.id AND pm.type = 'image'
+        ORDER BY pm.sort_order, pm.id LIMIT 1), '')::text AS image_url
 FROM products p
 JOIN product_categories pc ON pc.product_id = p.id
 WHERE pc.category_id IN (SELECT subtree.id FROM subtree)

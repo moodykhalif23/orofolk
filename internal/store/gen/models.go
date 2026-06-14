@@ -809,6 +809,22 @@ type ProductOptionGroup struct {
 	SortOrder int32  `json:"sort_order"`
 }
 
+type ProductReview struct {
+	ID             int64              `json:"id"`
+	OrganizationID int64              `json:"organization_id"`
+	ProductID      int64              `json:"product_id"`
+	CustomerID     int64              `json:"customer_id"`
+	CustomerUserID int64              `json:"customer_user_id"`
+	Rating         int32              `json:"rating"`
+	Title          string             `json:"title"`
+	Body           string             `json:"body"`
+	Status         string             `json:"status"`
+	Verified       bool               `json:"verified"`
+	CreatedAt      time.Time          `json:"created_at"`
+	ReviewedAt     pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy     *int64             `json:"reviewed_by"`
+}
+
 type ProductTranslation struct {
 	ProductID   int64   `json:"product_id"`
 	Locale      string  `json:"locale"`

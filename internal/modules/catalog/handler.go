@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -49,6 +50,9 @@ func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(ht
 		sr.Get("/storefront/products/{slug}", h.storefrontGet)
 		sr.Get("/storefront/products/{slug}/availability", h.storefrontAvailability)
 		sr.Get("/storefront/catalog", h.storefrontFacetedSearch)
+		sr.Get("/storefront/suggest", h.storefrontSuggest)
+		sr.Get("/storefront/products/{slug}/reviews", h.storefrontListReviews)
+		sr.Post("/storefront/products/{slug}/reviews", h.storefrontCreateReview)
 		sr.Get("/storefront/locales", h.storefrontLocales)
 	})
 
@@ -74,6 +78,10 @@ func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(ht
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/images", h.listImages)
 		ar.With(mw.RequirePermission("product.manage")).Post("/admin/products/{id}/images", h.addImage)
 		ar.With(mw.RequirePermission("product.manage")).Delete("/admin/products/{id}/images/{imageID}", h.deleteImage)
+
+		// Review moderation (verified-purchase buyer reviews enter 'pending').
+		ar.With(mw.RequirePermission("review.moderate")).Get("/admin/reviews", h.adminListReviews)
+		ar.With(mw.RequirePermission("review.moderate")).Patch("/admin/reviews/{id}", h.adminModerateReview)
 
 		// Product content translations (i18n).
 		ar.With(mw.RequirePermission("product.view")).Get("/admin/products/{id}/translations", h.listTranslations)
@@ -132,6 +140,15 @@ type storefrontProduct struct {
 	Attributes  json.RawMessage `json:"attributes"`
 	Unit        string          `json:"unit"`
 	SoldBy      *string         `json:"sold_by,omitempty"`
+	// Image is the primary gallery photo (list views); Images is the full
+	// gallery (detail view). Both omitted when the product has no photos.
+	Image  string             `json:"image,omitempty"`
+	Images []storefrontImage  `json:"images,omitempty"`
+}
+
+type storefrontImage struct {
+	URL string  `json:"url"`
+	Alt *string `json:"alt,omitempty"`
 }
 
 // adminProduct is the full back-office projection.
@@ -220,6 +237,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+				Image: p.ImageUrl,
 			})
 		}
 
@@ -246,6 +264,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+				Image: p.ImageUrl,
 			})
 		}
 
@@ -270,6 +289,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+				Image: p.ImageUrl,
 			})
 		}
 
@@ -288,6 +308,7 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 			items = append(items, storefrontProduct{
 				PublicID: p.PublicID.String(), SKU: p.Sku, Name: p.Name, Slug: p.Slug,
 				Description: p.Description, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
+				Image: p.ImageUrl,
 			})
 		}
 	}
@@ -296,6 +317,200 @@ func (h *Handler) storefrontList(w http.ResponseWriter, r *http.Request) {
 		items = []storefrontProduct{}
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"items": items, "page": page})
+}
+
+type suggestItem struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+	SKU  string `json:"sku"`
+}
+
+// storefrontSuggest powers the search typeahead: up to 8 name/SKU matches for
+// the partial term, each linking to its product page. Quiet for <2 chars.
+func (h *Handler) storefrontSuggest(w http.ResponseWriter, r *http.Request) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len([]rune(q)) < 2 {
+		response.JSON(w, http.StatusOK, map[string]any{"items": []suggestItem{}})
+		return
+	}
+	orgID := h.resolveOrg(r)
+	rows, err := h.q.SuggestProducts(r.Context(), gen.SuggestProductsParams{
+		OrganizationID: orgID, Column2: &q, Limit: 8,
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load suggestions")
+		return
+	}
+	items := make([]suggestItem, 0, len(rows))
+	for _, p := range rows {
+		items = append(items, suggestItem{Name: p.Name, Slug: p.Slug, SKU: p.Sku})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+type adminReview struct {
+	ID          int64  `json:"id"`
+	Rating      int32  `json:"rating"`
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	Status      string `json:"status"`
+	Verified    bool   `json:"verified"`
+	Author      string `json:"author"`
+	ProductName string `json:"product_name"`
+	ProductSlug string `json:"product_slug"`
+	CreatedAt   string `json:"created_at"`
+}
+
+// adminListReviews is the moderation queue (?status=pending|approved|rejected).
+func (h *Handler) adminListReviews(w http.ResponseWriter, r *http.Request) {
+	org, ok := orgID(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no organization")
+		return
+	}
+	status := r.URL.Query().Get("status")
+	if status == "" {
+		status = "pending"
+	}
+	rows, err := h.q.ListReviewsByStatus(r.Context(), gen.ListReviewsByStatusParams{
+		OrganizationID: org, Status: status, Limit: 100, Offset: 0,
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not list reviews")
+		return
+	}
+	items := make([]adminReview, 0, len(rows))
+	for _, rv := range rows {
+		items = append(items, adminReview{
+			ID: rv.ID, Rating: rv.Rating, Title: rv.Title, Body: rv.Body, Status: rv.Status,
+			Verified: rv.Verified, Author: rv.Author, ProductName: rv.ProductName, ProductSlug: rv.ProductSlug,
+			CreatedAt: rv.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// adminModerateReview approves or rejects a review.
+func (h *Handler) adminModerateReview(w http.ResponseWriter, r *http.Request) {
+	org, ok := orgID(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no organization")
+		return
+	}
+	id, err := pathID(r)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid id")
+		return
+	}
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (req.Status != "approved" && req.Status != "rejected") {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "status must be approved or rejected")
+		return
+	}
+	var by *int64
+	if c, okc := mw.ClaimsFrom(r.Context()); okc {
+		if uid, e := strconv.ParseInt(c.Subject, 10, 64); e == nil {
+			by = &uid
+		}
+	}
+	row, err := h.q.ModerateReview(r.Context(), gen.ModerateReviewParams{
+		ID: id, OrganizationID: org, Status: req.Status, ReviewedBy: by,
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not update review")
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"id": row.ID, "status": row.Status})
+}
+
+type reviewItem struct {
+	ID        int64  `json:"id"`
+	Rating    int32  `json:"rating"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	Verified  bool   `json:"verified"`
+	Author    string `json:"author"`
+	CreatedAt string `json:"created_at"`
+}
+
+// storefrontListReviews returns a product's approved reviews + aggregate rating.
+func (h *Handler) storefrontListReviews(w http.ResponseWriter, r *http.Request) {
+	orgID := h.resolveOrg(r)
+	pid, err := h.q.GetProductIDBySlug(r.Context(), gen.GetProductIDBySlugParams{OrganizationID: orgID, Slug: chi.URLParam(r, "slug")})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+		return
+	}
+	agg, err := h.q.GetReviewAggregate(r.Context(), gen.GetReviewAggregateParams{OrganizationID: orgID, ProductID: pid})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load reviews")
+		return
+	}
+	rows, err := h.q.ListApprovedReviews(r.Context(), gen.ListApprovedReviewsParams{OrganizationID: orgID, ProductID: pid, Limit: 50, Offset: 0})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load reviews")
+		return
+	}
+	items := make([]reviewItem, 0, len(rows))
+	for _, rv := range rows {
+		items = append(items, reviewItem{
+			ID: rv.ID, Rating: rv.Rating, Title: rv.Title, Body: rv.Body,
+			Verified: rv.Verified, Author: rv.Author, CreatedAt: rv.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"average": agg.Average, "total": agg.Total, "items": items})
+}
+
+// storefrontCreateReview lets a verified purchaser write (or re-submit) a review;
+// it enters moderation as 'pending'.
+func (h *Handler) storefrontCreateReview(w http.ResponseWriter, r *http.Request) {
+	c, ok := mw.ClaimsFrom(r.Context())
+	if !ok || c.CustomerID == 0 {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "sign in to write a review")
+		return
+	}
+	uid, perr := strconv.ParseInt(c.Subject, 10, 64)
+	if perr != nil || uid == 0 {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "sign in to write a review")
+		return
+	}
+	pid, err := h.q.GetProductIDBySlug(r.Context(), gen.GetProductIDBySlugParams{OrganizationID: c.OrgID, Slug: chi.URLParam(r, "slug")})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "product not found")
+		return
+	}
+	var req struct {
+		Rating int    `json:"rating"`
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Rating < 1 || req.Rating > 5 {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "a rating from 1 to 5 is required")
+		return
+	}
+	// Verified-purchase gate: the buyer's company must have received this product.
+	purchased, err := h.q.CustomerHasDeliveredProduct(r.Context(), gen.CustomerHasDeliveredProductParams{
+		OrganizationID: c.OrgID, CustomerID: c.CustomerID, ProductID: pid,
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not verify purchase")
+		return
+	}
+	if !purchased {
+		response.Fail(w, http.StatusForbidden, "forbidden", "you can review only products your company has received")
+		return
+	}
+	row, err := h.q.CreateReview(r.Context(), gen.CreateReviewParams{
+		OrganizationID: c.OrgID, ProductID: pid, CustomerID: c.CustomerID, CustomerUserID: uid,
+		Rating: int32(req.Rating), Title: strings.TrimSpace(req.Title), Body: strings.TrimSpace(req.Body),
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not save your review")
+		return
+	}
+	response.JSON(w, http.StatusCreated, map[string]any{"id": row.ID, "status": row.Status})
 }
 
 func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
@@ -332,10 +547,23 @@ func (h *Handler) storefrontGet(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// Gallery photos for the PDP (keyed on slug+org; empty when none).
+	var images []storefrontImage
+	if imgs, e := h.q.ListStorefrontProductImagesBySlug(r.Context(), gen.ListStorefrontProductImagesBySlugParams{
+		OrganizationID: orgID, Slug: chi.URLParam(r, "slug"),
+	}); e == nil {
+		for _, im := range imgs {
+			images = append(images, storefrontImage{URL: im.Url, Alt: im.Alt})
+		}
+	}
+	primary := ""
+	if len(images) > 0 {
+		primary = images[0].URL
+	}
 	response.JSON(w, http.StatusOK, storefrontProduct{
 		PublicID: p.PublicID.String(), SKU: p.Sku, Name: name, Slug: p.Slug,
 		Description: desc, Status: p.Status, Attributes: rawJSON(p.Attributes), Unit: p.Unit,
-		SoldBy: soldBy,
+		SoldBy: soldBy, Image: primary, Images: images,
 	})
 }
 
@@ -421,6 +649,22 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 		}
 		attrs = []byte(f)
 	}
+	// Optional numeric range on one attribute: ?range={"attr":"voltage","min":12,"max":48}.
+	// Filters products whose (numeric) attribute value falls in [min, max].
+	var rangeKey, rangeMin, rangeMax *string
+	if rg := q.Get("range"); rg != "" {
+		var rv struct {
+			Attr string   `json:"attr"`
+			Min  *float64 `json:"min"`
+			Max  *float64 `json:"max"`
+		}
+		if err := json.Unmarshal([]byte(rg), &rv); err == nil && rv.Attr != "" && rv.Min != nil && rv.Max != nil {
+			k := rv.Attr
+			lo := strconv.FormatFloat(*rv.Min, 'f', -1, 64)
+			hi := strconv.FormatFloat(*rv.Max, 'f', -1, 64)
+			rangeKey, rangeMin, rangeMax = &k, &lo, &hi
+		}
+	}
 	// Optional category → its subtree of category ids.
 	var catIDs []int64
 	if slug := q.Get("category"); slug != "" {
@@ -440,6 +684,7 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 
 	rows, err := h.q.SearchProductsFaceted(r.Context(), gen.SearchProductsFacetedParams{
 		Org: orgID, Q: qPtr, Attrs: attrs, CatIds: catIDs, Sort: sort, Lim: int32(limit), Off: int32(offset),
+		RangeKey: rangeKey, RangeMin: rangeMin, RangeMax: rangeMax,
 	})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not search catalog")
@@ -476,6 +721,7 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 	}
 	total, err := h.q.CountProductsFaceted(r.Context(), gen.CountProductsFacetedParams{
 		Org: orgID, Q: qPtr, Attrs: attrs, CatIds: catIDs,
+		RangeKey: rangeKey, RangeMin: rangeMin, RangeMax: rangeMax,
 	})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not count results")
@@ -483,6 +729,7 @@ func (h *Handler) storefrontFacetedSearch(w http.ResponseWriter, r *http.Request
 	}
 	facetRows, err := h.q.ProductFacets(r.Context(), gen.ProductFacetsParams{
 		Org: orgID, Q: qPtr, Attrs: attrs, CatIds: catIDs,
+		RangeKey: rangeKey, RangeMin: rangeMin, RangeMax: rangeMax,
 	})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not compute facets")
