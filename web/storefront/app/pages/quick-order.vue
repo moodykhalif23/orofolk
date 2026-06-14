@@ -55,7 +55,7 @@ async function submit() {
 <template>
   <section class="wrap">
     <h1 class="title">Quick order</h1>
-    <p class="muted">Paste one SKU per line. Add a quantity after a comma — for example <code>WIDGET-01, 10</code>. Blank quantities default to 1.</p>
+    <p class="muted">One SKU per line, with an optional quantity after a comma — e.g. <code>WIDGET-01, 10</code> (blank means 1).</p>
 
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
