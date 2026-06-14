@@ -10,19 +10,16 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  // @teggo/blocks ships .vue source — exclude it from dep pre-bundling so
-  // @vitejs/plugin-vue compiles it instead of esbuild trying to.
   optimizeDeps: {
     exclude: ['@teggo/blocks'],
   },
   server: {
     port: 5173,
     proxy: {
-      // Dev convenience: proxy API calls to the Go service so the SPA and API
-      // share an origin (no CORS). Override the target with VITE_API_BASE_URL
-      // for direct calls in other environments.
       '/admin': { target: 'http://localhost:8080', changeOrigin: true },
       '/storefront': { target: 'http://localhost:8080', changeOrigin: true },
+      '/signup': { target: 'http://localhost:8080', changeOrigin: true },
+      '/demo': { target: 'http://localhost:8080', changeOrigin: true },
       // Invoice PDF capability URLs are served by the API.
       '/files': { target: 'http://localhost:8080', changeOrigin: true },
       // DAM blobs + signed transforms are served by the API.
