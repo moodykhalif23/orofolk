@@ -35,7 +35,11 @@ onMounted(async () => {
 const term = ref((route.query.q as string) ?? '')
 // Mobile nav drawer (small screens only). Closes on navigation.
 const mobileOpen = ref(false)
-watch(() => route.fullPath, () => { mobileOpen.value = false })
+// Account dropdown (desktop): a single menu for all B2B/portal links so the
+// primary bar stays about shopping. Closes on navigation.
+const accountOp = ref()
+function toggleAccount(e: Event) { accountOp.value?.toggle(e) }
+watch(() => route.fullPath, () => { mobileOpen.value = false; accountOp.value?.hide() })
 
 // Search typeahead: fetch suggestions while typing; selecting one jumps
 // straight to that product, while Enter runs a full search.
@@ -61,6 +65,7 @@ function search() {
 }
 
 function signOut() {
+  accountOp.value?.hide()
   logout()
   router.push('/')
 }
@@ -114,27 +119,50 @@ function signOut() {
         <NuxtLink v-if="!isAuthenticated" to="/login" class="auth-link">
           <Button icon="pi pi-user" label="Sign in" text />
         </NuxtLink>
-        <Button v-else class="auth-link" icon="pi pi-sign-out" label="Sign out" text @click="signOut" />
       </div>
 
-      <!-- Bottom tier: primary navigation as pill-buttons (desktop only). -->
+      <!-- Bottom tier (desktop only): primary shopping nav. All B2B/portal links
+           live in the Account menu so the bar never overflows. -->
       <nav class="nav">
         <NuxtLink to="/">Home</NuxtLink>
         <NuxtLink to="/c/all">Catalog</NuxtLink>
-        <NuxtLink to="/contact">Contact</NuxtLink>
         <NuxtLink v-if="isAuthenticated" to="/quick-order">Quick order</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/reorder">Reorder</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/lists">Lists</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/rfqs">RFQs</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/quotes">Quotes</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/orders">Orders</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/subscriptions">Recurring</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/returns">Returns</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/invoices">Invoices</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/rebates">Rebates</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/budgets">Budgets</NuxtLink>
-        <NuxtLink v-if="isAuthenticated" to="/account/settings">Account</NuxtLink>
+        <NuxtLink to="/contact">Contact</NuxtLink>
+        <span class="spacer" />
+        <button
+          v-if="isAuthenticated"
+          type="button"
+          class="nav-account"
+          aria-haspopup="true"
+          @click="toggleAccount"
+        >
+          <i class="pi pi-user-edit" /> Account <i class="pi pi-chevron-down chev" />
+        </button>
       </nav>
+      <Popover ref="accountOp" class="account-pop">
+        <div class="acct-menu">
+          <div class="acct-col">
+            <span class="acct-h">Orders &amp; documents</span>
+            <NuxtLink to="/account/orders" class="acct-link"><i class="pi pi-box" /><span>Orders</span></NuxtLink>
+            <NuxtLink to="/account/quotes" class="acct-link"><i class="pi pi-file-edit" /><span>Quotes</span></NuxtLink>
+            <NuxtLink to="/account/rfqs" class="acct-link"><i class="pi pi-comments" /><span>RFQs</span></NuxtLink>
+            <NuxtLink to="/account/invoices" class="acct-link"><i class="pi pi-receipt" /><span>Invoices</span></NuxtLink>
+            <NuxtLink to="/account/returns" class="acct-link"><i class="pi pi-replay" /><span>Returns</span></NuxtLink>
+            <NuxtLink to="/account/subscriptions" class="acct-link"><i class="pi pi-sync" /><span>Recurring</span></NuxtLink>
+          </div>
+          <div class="acct-col">
+            <span class="acct-h">Buying tools</span>
+            <NuxtLink to="/account/reorder" class="acct-link"><i class="pi pi-history" /><span>Reorder</span></NuxtLink>
+            <NuxtLink to="/account/lists" class="acct-link"><i class="pi pi-list" /><span>Lists</span></NuxtLink>
+            <span class="acct-h">Programs</span>
+            <NuxtLink to="/account/rebates" class="acct-link"><i class="pi pi-percentage" /><span>Rebates</span></NuxtLink>
+            <NuxtLink to="/account/budgets" class="acct-link"><i class="pi pi-wallet" /><span>Budgets</span></NuxtLink>
+            <div class="acct-sep" />
+            <NuxtLink to="/account/settings" class="acct-link"><i class="pi pi-cog" /><span>Settings</span></NuxtLink>
+            <button type="button" class="acct-link acct-signout" @click="signOut"><i class="pi pi-sign-out" /><span>Sign out</span></button>
+          </div>
+        </div>
+      </Popover>
     </header>
 
     <!-- Mobile navigation drawer: shown only on small screens via the hamburger. -->
@@ -157,15 +185,21 @@ function signOut() {
       <NuxtLink to="/contact">Contact</NuxtLink>
       <template v-if="isAuthenticated">
         <NuxtLink to="/quick-order">Quick order</NuxtLink>
+        <span class="mm-group">Orders &amp; documents</span>
+        <NuxtLink to="/account/orders">Orders</NuxtLink>
+        <NuxtLink to="/account/quotes">Quotes</NuxtLink>
+        <NuxtLink to="/account/rfqs">RFQs</NuxtLink>
+        <NuxtLink to="/account/invoices">Invoices</NuxtLink>
+        <NuxtLink to="/account/returns">Returns</NuxtLink>
+        <NuxtLink to="/account/subscriptions">Recurring</NuxtLink>
+        <span class="mm-group">Buying tools</span>
         <NuxtLink to="/account/reorder">Reorder</NuxtLink>
         <NuxtLink to="/account/lists">Lists</NuxtLink>
-        <NuxtLink to="/account/rfqs">RFQs</NuxtLink>
-        <NuxtLink to="/account/quotes">Quotes</NuxtLink>
-        <NuxtLink to="/account/orders">Orders</NuxtLink>
-        <NuxtLink to="/account/returns">Returns</NuxtLink>
-        <NuxtLink to="/account/invoices">Invoices</NuxtLink>
+        <span class="mm-group">Programs</span>
+        <NuxtLink to="/account/rebates">Rebates</NuxtLink>
         <NuxtLink to="/account/budgets">Budgets</NuxtLink>
-        <NuxtLink to="/account/settings">Account</NuxtLink>
+        <span class="mm-group">Account</span>
+        <NuxtLink to="/account/settings">Settings</NuxtLink>
       </template>
       <NuxtLink v-if="!isAuthenticated" to="/login">Sign in</NuxtLink>
       <button v-else class="mm-signout" @click="signOut">Sign out</button>
@@ -244,6 +278,91 @@ function signOut() {
   border-color: var(--p-primary-200, #c7d2fe);
   color: var(--p-primary-700, #4338ca);
   font-weight: 600;
+}
+/* Account dropdown trigger — matches the nav pills. */
+.nav-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  color: var(--p-text-muted-color, #475569);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.nav-account:hover {
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-text-color, #0f172a);
+}
+.nav-account .chev {
+  font-size: 0.7rem;
+}
+/* Account popover — two balanced columns of grouped portal links. */
+.acct-menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(11rem, 1fr));
+  gap: 0 1.75rem;
+}
+.acct-col {
+  display: flex;
+  flex-direction: column;
+}
+.acct-h {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--p-text-muted-color, #94a3b8);
+  padding: 0.55rem 0.5rem 0.2rem;
+}
+.acct-col > .acct-h:first-child {
+  padding-top: 0.1rem;
+}
+.acct-link {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--p-text-color, #334155);
+  font: inherit;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.acct-link:hover {
+  background: var(--p-surface-100, #f1f5f9);
+}
+.acct-link i {
+  color: var(--p-text-muted-color, #94a3b8);
+  width: 1rem;
+  text-align: center;
+}
+.acct-link.router-link-active {
+  background: var(--p-primary-50, #eef2ff);
+  color: var(--p-primary-700, #4338ca);
+}
+.acct-link.router-link-active i {
+  color: var(--p-primary-600, #4f46e5);
+}
+.acct-sep {
+  border-top: 1px solid var(--p-surface-200, #e2e8f0);
+  margin: 0.4rem 0;
+}
+.acct-signout {
+  color: var(--p-red-600, #dc2626);
+}
+.acct-signout i {
+  color: var(--p-red-500, #ef4444);
 }
 .spacer {
   flex: 1;
@@ -352,6 +471,14 @@ function signOut() {
   .mobile-menu a.router-link-active {
     color: var(--p-primary-color, #6366f1);
     font-weight: 600;
+  }
+  .mm-group {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--p-text-muted-color, #94a3b8);
+    padding: 0.75rem 0.25rem 0.15rem;
   }
   .mm-search {
     display: flex;
