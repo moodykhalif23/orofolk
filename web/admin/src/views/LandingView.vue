@@ -487,7 +487,7 @@ const stats = [
 }
 .cap-icon {
   display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px;
-  border-radius: 11px; background: var(--brand-50); color: var(--brand-700); font-size: 1.15rem; margin-bottom: 0.9rem;
+  color: var(--brand-700); font-size: 1.5rem; margin-bottom: 0.9rem;
 }
 .cap h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
 .cap p { margin: 0; color: var(--muted); line-height: 1.58; font-size: 0.92rem; }

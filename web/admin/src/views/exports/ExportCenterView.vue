@@ -119,7 +119,7 @@ onMounted(load)
 .ds-icon {
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 38px; height: 38px; border-radius: 9px;
-  background: var(--p-primary-50, #eef2ff); color: var(--p-primary-color, #6366f1); font-size: 1.05rem;
+  color: var(--p-primary-color, #6366f1); font-size: 1.35rem;
 }
 .ds-id { min-width: 0; }
 .ds-label { font-weight: 700; }

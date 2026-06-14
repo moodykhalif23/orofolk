@@ -72,10 +72,8 @@ const leaves = computed(() =>
   width: 48px;
   height: 48px;
   flex-shrink: 0;
-  border-radius: 0 16px 0 0; /* echoes the brand corner motif */
-  background: var(--p-primary-50, #eef2ff);
   color: var(--p-primary-color, #6366f1);
-  font-size: 1.4rem;
+  font-size: 1.7rem;
 }
 .hub-head h1 {
   margin: 0;
@@ -111,10 +109,8 @@ const leaves = computed(() =>
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  border-radius: 11px;
-  background: var(--p-primary-50, #eef2ff);
   color: var(--p-primary-color, #6366f1);
-  font-size: 1.1rem;
+  font-size: 1.4rem;
 }
 .hub-card__body {
   display: flex;
