@@ -74,7 +74,7 @@ async function submit() {
 </template>
 
 <style scoped>
-.wrap { max-width: 640px; }
+.wrap { max-width: 640px; margin-inline: auto; }
 .title { margin: 0 0 0.4rem; }
 .muted { color: var(--p-text-muted-color, #64748b); font-weight: 400; }
 .mb { margin-bottom: 1rem; }

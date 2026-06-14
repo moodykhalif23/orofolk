@@ -34,7 +34,10 @@ import { configureClient } from '@/lib/client'
 
 const app = createApp(App)
 
-app.use(PrimeVue, { theme: { preset: Teggo } })
+// darkModeSelector is a class that's never applied, so the app stays light
+// regardless of the OS colour scheme (matches admin & storefront — otherwise
+// PrimeVue's default 'system' follows a dark OS and the viewport goes black).
+app.use(PrimeVue, { theme: { preset: Teggo, options: { darkModeSelector: '.app-dark' } } })
 app.use(ToastService)
 app.directive('tooltip', Tooltip)
 

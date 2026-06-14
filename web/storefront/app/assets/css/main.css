@@ -20,13 +20,14 @@ a {
 }
 
 /* ===========================================================================
-   Shared surface tokens — kept in sync with the admin app so the two frontends
-   read as one product. Aura theme, but cards/controls use a slightly-sharp 6px
-   corner (not Aura's softer fully-rounded default, not razor-square).
+   Shared surface tokens — kept in sync with the admin & vendor apps so the
+   frontends read as one product. Aura theme, but cards/controls use a
+   slightly-sharp 3px corner (not Aura's softer fully-rounded default, not
+   razor-square).
    =========================================================================== */
 :root {
   --teggo-border: #e2e8f0; /* slate-200 */
-  --teggo-radius: 6px;
+  --teggo-radius: 3px; /* the single UI radius — slightly sharp, not razor-square */
   --teggo-surface: #ffffff;
   --teggo-surface-muted: #f1f5f9; /* slate-100 — table headers, subtle fills */
   /* ULTIMA-style brand accent (amber), kept in sync with the admin app. */
@@ -34,14 +35,19 @@ a {
   --teggo-accent-contrast: #ffffff;
 }
 
-/* Cards: bordered, subtle elevation, slightly-sharp corner. */
-.p-card {
+/* Cards: bordered, subtle elevation, slightly-sharp corner. Kept deliberately
+   plain (no filled header) — storefront product/account cards put their own
+   content in the title/subtitle slots. The doubled class + token override beats
+   PrimeVue's own runtime-injected radius. */
+.p-card.p-card {
+  --p-card-border-radius: var(--teggo-radius);
   border: 1px solid var(--teggo-border);
   border-radius: var(--teggo-radius);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
-/* Tighten the common controls to the same slightly-sharp geometry as admin. */
+/* Sharp edges across the common controls (matches admin & vendor). */
+.p-panel,
 .p-inputtext,
 .p-textarea,
 .p-select,
@@ -51,8 +57,21 @@ a {
 .p-chip,
 .p-dialog,
 .p-datatable,
+.p-menu,
+.p-popover,
+.p-tabs,
 .p-message {
   border-radius: var(--teggo-radius) !important;
+}
+
+/* Panels: subtle border (the strong border is reserved for cards & tables). */
+.p-panel {
+  border: 1px solid var(--p-surface-200, #e2e8f0);
+  box-shadow: none;
+}
+.p-panel .p-panel-header {
+  background: var(--teggo-surface-muted);
+  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
 }
 
 /* DataTable: defined slate gridlines + flat uppercase header, matching admin. */
@@ -67,6 +86,56 @@ a {
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--p-text-muted-color, #475569);
+}
+.p-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--teggo-border);
+}
+
+/* Dialogs: slim brand header + full-bleed tables, matching admin & vendor.
+   overflow:hidden lets full-bleed content clip to the rounded corners. */
+.p-dialog {
+  border: 1px solid var(--p-surface-200, #e2e8f0);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+.p-dialog .p-dialog-header {
+  background: var(--p-primary-color, #6366f1);
+  border-top-left-radius: var(--teggo-radius, 3px);
+  border-top-right-radius: var(--teggo-radius, 3px);
+  padding: 0.75rem 1.25rem;
+}
+.p-dialog .p-dialog-title {
+  color: #fff;
+  font-size: 1.05rem;
+}
+.p-dialog .p-dialog-header .p-dialog-close-button {
+  color: #fff;
+  width: 2rem;
+  height: 2rem;
+}
+.p-dialog .p-dialog-header .p-dialog-close-button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+/* Tables inside dialogs run full-bleed so they read as one panel under the
+   header. Horizontal padding is zeroed; non-table content is re-padded. */
+.p-dialog .p-dialog-content:has(> .p-datatable) {
+  padding-left: 0;
+  padding-right: 0;
+}
+.p-dialog .p-dialog-content:has(> .p-datatable) > :not(.p-datatable) {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+.p-dialog .p-dialog-content > .p-datatable {
+  border: none;
+  border-radius: 0;
+}
+.p-dialog .p-dialog-content:has(> .p-datatable:only-child) {
+  padding: 0;
+}
+.p-dialog .p-dialog-footer {
+  justify-content: center;
 }
 
 /* ---------------------------------------------------------------------------
