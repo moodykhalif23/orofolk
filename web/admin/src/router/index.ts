@@ -350,6 +350,18 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'sso.view' },
       },
       {
+        path: 'api-keys',
+        name: 'api-keys',
+        component: () => import('@/views/developers/ApiKeysView.vue'),
+        meta: { permission: 'apikey.view' },
+      },
+      {
+        path: 'webhooks',
+        name: 'webhooks',
+        component: () => import('@/views/developers/WebhooksView.vue'),
+        meta: { permission: 'webhook.view' },
+      },
+      {
         path: 'configurator',
         name: 'configurator',
         component: () => import('@/views/cpq/ConfiguratorView.vue'),

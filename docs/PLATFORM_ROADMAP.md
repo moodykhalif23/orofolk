@@ -51,14 +51,14 @@ Phase 2  Generic data modeling ─┬──► supercharges P1 (score any model)
 
 ---
 
-## Phase 0 — Primitives (the unlock layer) · **Backend shipped · admin UI next**
+## Phase 0 — Primitives (the unlock layer) · **Shipped**
 
 Small, low-risk, high-leverage. Each reuses an existing pattern; nothing is greenfield.
 
 | Deliverable | Builds on | Effort | Status |
 |---|---|---|---|
-| **API keys / scoped service tokens** — hashed keys (`tgk_…`, only the SHA-256 hash stored), scopes drawn from the existing permission catalog so `RequirePermission` gates key traffic unchanged, rotation, revoke, debounced last-used. Presented as `Authorization: Bearer tgk_…`. | `internal/auth`, the permission middleware | M | Backend shipped · UI pending |
-| **Outbound event bus + webhook delivery** — endpoints subscribe to domain events; the existing `EmitEvent → dispatch_event` worker fans each event out to matching endpoints as river jobs, so retries/backoff and a per-attempt delivery log come for free. Signed `X-Teggo-Signature` (HMAC-SHA256). Replay supported. | `internal/automation` dispatcher (events already fire), River workers, HMAC pattern from `internal/erp` | M | Backend shipped · UI pending |
+| **API keys / scoped service tokens** — hashed keys (`tgk_…`, only the SHA-256 hash stored), scopes drawn from the existing permission catalog so `RequirePermission` gates key traffic unchanged, rotation, revoke, debounced last-used. Presented as `Authorization: Bearer tgk_…`. | `internal/auth`, the permission middleware | M | Shipped |
+| **Outbound event bus + webhook delivery** — endpoints subscribe to domain events; the existing `EmitEvent → dispatch_event` worker fans each event out to matching endpoints as river jobs, so retries/backoff and a per-attempt delivery log come for free. Signed `X-Teggo-Signature` (HMAC-SHA256). Replay supported. | `internal/automation` dispatcher (events already fire), River workers, HMAC pattern from `internal/erp` | M | Shipped |
 
 **Strategic payoff:** the moment webhooks exist, Zapier/n8n/Make integrate
 themselves — "keep large industries in sync" starts here, because event
@@ -82,8 +82,17 @@ the event fan-out + `deliver_webhook` river worker; admin modules
 `internal/modules/apikeys` + `internal/modules/webhooks`; authenticator + server +
 `cmd/api` wiring; OpenAPI paths + regenerated typed client. Verified: `sqlc generate`
 deterministic, `go build`/`go vet` clean, unit tests pass, client typecheck clean.
-**Remaining for Phase 0:** the admin UI screens (manage keys; manage webhooks +
-view deliveries) and a backfill of the new permissions onto existing (non-org-1) tenants.
+
+**Shipped this iteration (admin UI):** `web/admin/src/views/developers/ApiKeysView.vue`
+(list · create with scope picker drawn from the caller's own permissions · rotate ·
+revoke · secret revealed exactly once) and `WebhooksView.vue` (list · create/edit ·
+rotate signing secret · delete · delivery log with per-attempt status + replay).
+Both routed, added to the **Settings** nav, and gated by `apikey.*` / `webhook.*`.
+Verified: admin `vue-tsc --noEmit` clean against the regenerated client.
+
+**Remaining for Phase 0:** a one-line backfill of the new permissions onto
+existing (non-org-1) tenants (new tenants already inherit them via the
+provisioning template).
 
 ---
 

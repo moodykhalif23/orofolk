@@ -155,6 +155,8 @@ export const sections: NavSection[] = [
       { label: 'Configuration', icon: 'pi pi-cog', routeName: 'settings', permission: 'settings.view', blurb: 'Store identity and core settings.' },
       { label: 'Audit log', icon: 'pi pi-shield', routeName: 'audit-log', permission: 'audit.view', blurb: 'Every staff action, recorded.' },
       { label: 'Integrations', icon: 'pi pi-sync', routeName: 'integrations', permission: 'integration.view', blurb: 'Connect external systems.' },
+      { label: 'API keys', icon: 'pi pi-key', routeName: 'api-keys', permission: 'apikey.view', blurb: 'Programmatic access tokens for integrations.' },
+      { label: 'Webhooks', icon: 'pi pi-send', routeName: 'webhooks', permission: 'webhook.view', blurb: 'Push events to external systems in real time.' },
       { label: 'ERP sync', icon: 'pi pi-server', routeName: 'erp', permission: 'erp.view', blurb: 'Sync orders and inventory with your ERP.' },
       { label: 'SSO providers', icon: 'pi pi-id-card', routeName: 'identity-providers', permission: 'sso.view', blurb: 'Configure single sign-on.' },
     ],
