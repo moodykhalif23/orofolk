@@ -37,9 +37,9 @@ func (q *Queries) CreateImportRow(ctx context.Context, arg CreateImportRowParams
 
 const createImportRun = `-- name: CreateImportRun :one
 
-INSERT INTO import_runs (organization_id, target, format, source_filename, total_rows, create_rows, update_rows, error_rows, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at
+INSERT INTO import_runs (organization_id, target, format, source_filename, options, total_rows, create_rows, update_rows, error_rows, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at, options
 `
 
 type CreateImportRunParams struct {
@@ -47,6 +47,7 @@ type CreateImportRunParams struct {
 	Target         string `json:"target"`
 	Format         string `json:"format"`
 	SourceFilename string `json:"source_filename"`
+	Options        []byte `json:"options"`
 	TotalRows      int32  `json:"total_rows"`
 	CreateRows     int32  `json:"create_rows"`
 	UpdateRows     int32  `json:"update_rows"`
@@ -62,6 +63,7 @@ func (q *Queries) CreateImportRun(ctx context.Context, arg CreateImportRunParams
 		arg.Target,
 		arg.Format,
 		arg.SourceFilename,
+		arg.Options,
 		arg.TotalRows,
 		arg.CreateRows,
 		arg.UpdateRows,
@@ -84,12 +86,13 @@ func (q *Queries) CreateImportRun(ctx context.Context, arg CreateImportRunParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.CommittedAt,
+		&i.Options,
 	)
 	return i, err
 }
 
 const getImportRun = `-- name: GetImportRun :one
-SELECT id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at FROM import_runs WHERE organization_id = $1 AND id = $2
+SELECT id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at, options FROM import_runs WHERE organization_id = $1 AND id = $2
 `
 
 type GetImportRunParams struct {
@@ -115,6 +118,7 @@ func (q *Queries) GetImportRun(ctx context.Context, arg GetImportRunParams) (Imp
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.CommittedAt,
+		&i.Options,
 	)
 	return i, err
 }
@@ -198,7 +202,7 @@ func (q *Queries) ListImportRows(ctx context.Context, arg ListImportRowsParams) 
 }
 
 const listImportRuns = `-- name: ListImportRuns :many
-SELECT id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at FROM import_runs WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 100
+SELECT id, public_id, organization_id, target, format, source_filename, status, total_rows, create_rows, update_rows, error_rows, created_by, created_at, committed_at, options FROM import_runs WHERE organization_id = $1 ORDER BY created_at DESC LIMIT 100
 `
 
 func (q *Queries) ListImportRuns(ctx context.Context, organizationID int64) ([]ImportRun, error) {
@@ -225,6 +229,7 @@ func (q *Queries) ListImportRuns(ctx context.Context, organizationID int64) ([]I
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.CommittedAt,
+			&i.Options,
 		); err != nil {
 			return nil, err
 		}

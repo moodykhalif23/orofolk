@@ -16354,7 +16354,11 @@ export interface operations {
         parameters: {
             query: {
                 target: string;
-                format?: "csv" | "json";
+                format?: "csv" | "json" | "xlsx";
+                /** @description Field code to upsert custom-object records on (match existing → update). */
+                match?: string;
+                /** @description Comma-separated cleansing rules applied to string values: trim, lower, upper, collapse. */
+                normalize?: string;
             };
             header?: never;
             path?: never;

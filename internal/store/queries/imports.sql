@@ -2,8 +2,8 @@
 -- verdicts, applied on commit.
 
 -- name: CreateImportRun :one
-INSERT INTO import_runs (organization_id, target, format, source_filename, total_rows, create_rows, update_rows, error_rows, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO import_runs (organization_id, target, format, source_filename, options, total_rows, create_rows, update_rows, error_rows, created_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: GetImportRun :one

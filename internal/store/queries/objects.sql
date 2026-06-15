@@ -82,3 +82,12 @@ RETURNING *;
 UPDATE object_records
 SET deleted_at = now()
 WHERE organization_id = $1 AND id = $2 AND deleted_at IS NULL;
+
+-- GetObjectRecordIDByField finds a live record of a type whose data has a given
+-- value at a field code — the import engine's upsert match (slice 3).
+-- name: GetObjectRecordIDByField :one
+SELECT id FROM object_records
+WHERE organization_id = $1 AND object_type_id = $2 AND deleted_at IS NULL
+  AND data ->> sqlc.arg(field)::text = sqlc.arg(value)::text
+ORDER BY id
+LIMIT 1;

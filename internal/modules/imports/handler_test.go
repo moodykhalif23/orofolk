@@ -182,3 +182,59 @@ func TestImportObjectRecordsValidates(t *testing.T) {
 		t.Errorf("object records after commit=%d, want 1 (only the valid row)", n)
 	}
 }
+
+// TestImportObjectUpsertByMatchField proves slice-3 matching: importing the same
+// key twice updates the existing record instead of duplicating it.
+func TestImportObjectUpsertByMatchField(t *testing.T) {
+	h, token, pool := newServer(t)
+	ctx := context.Background()
+
+	var typeID int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO object_types (organization_id, code, label) VALUES (1, 'imp_cust', 'Customer') RETURNING id`).Scan(&typeID); err != nil {
+		t.Fatalf("seed type: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_fields (object_type_id, organization_id, code, label, data_type, sort_order)
+		 VALUES ($1, 1, 'email', 'Email', 'text', 0), ($1, 1, 'name', 'Name', 'text', 1)`, typeID); err != nil {
+		t.Fatalf("seed fields: %v", err)
+	}
+
+	commitRun := func(id int64) {
+		c := doJSON(t, h, http.MethodPost, "/admin/imports/runs/"+strconv.FormatInt(id, 10)+"/commit", token, nil)
+		if c.Code != http.StatusOK {
+			t.Fatalf("commit: status %d, body %s", c.Code, c.Body.String())
+		}
+	}
+
+	// First import creates the record.
+	up1 := doJSON(t, h, http.MethodPost, "/admin/imports?target=object:imp_cust&format=json&match=email", token,
+		[]map[string]any{{"email": "a@x.com", "name": "Acme"}})
+	var r1 runResp
+	_ = json.Unmarshal(up1.Body.Bytes(), &r1)
+	if r1.Run.CreateRows != 1 {
+		t.Fatalf("first import create=%d, want 1; body %s", r1.Run.CreateRows, up1.Body.String())
+	}
+	commitRun(r1.Run.ID)
+
+	// Second import with the same email upserts (update, not a duplicate).
+	up2 := doJSON(t, h, http.MethodPost, "/admin/imports?target=object:imp_cust&format=json&match=email", token,
+		[]map[string]any{{"email": "a@x.com", "name": "Acme Corp"}})
+	var r2 runResp
+	_ = json.Unmarshal(up2.Body.Bytes(), &r2)
+	if r2.Run.UpdateRows != 1 {
+		t.Fatalf("second import update=%d, want 1; body %s", r2.Run.UpdateRows, up2.Body.String())
+	}
+	commitRun(r2.Run.ID)
+
+	var n int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM object_records WHERE organization_id=1 AND object_type_id=$1 AND deleted_at IS NULL`, typeID).Scan(&n)
+	if n != 1 {
+		t.Errorf("records=%d after upsert, want 1 (matched, not duplicated)", n)
+	}
+	var name string
+	_ = pool.QueryRow(ctx, `SELECT data->>'name' FROM object_records WHERE organization_id=1 AND object_type_id=$1 AND deleted_at IS NULL`, typeID).Scan(&name)
+	if name != "Acme Corp" {
+		t.Errorf("name=%q, want updated to %q", name, "Acme Corp")
+	}
+}

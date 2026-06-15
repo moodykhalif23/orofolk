@@ -397,6 +397,7 @@ type ImportRun struct {
 	CreatedBy      *int64             `json:"created_by"`
 	CreatedAt      time.Time          `json:"created_at"`
 	CommittedAt    pgtype.Timestamptz `json:"committed_at"`
+	Options        []byte             `json:"options"`
 }
 
 type InsightDigest struct {

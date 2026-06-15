@@ -186,7 +186,7 @@ products and every custom object type, all on one engine. Next: **Phase 3
 
 ---
 
-## Phase 3 — Onboarding at scale · **Slices 1–2 shipped**
+## Phase 3 — Onboarding at scale · **Slices 1–3 shipped**
 
 | Deliverable | Builds on | Effort |
 |---|---|---|
@@ -214,9 +214,19 @@ with a recent-imports list. Wired in: the product screen's Import button and a n
 Import button on each custom object type route to it, so the UI runs on the engine
 (the legacy inline product importer is retired). Verified: admin `vue-tsc`.
 
-**Remaining for Phase 3:** slice 3 — **matching & cleansing** (configurable dedup
-keys, fuzzy match, normalisation) + **XLSX**; slice 4 — **supplier onboarding**
-(API-key-scoped import endpoints + templates for partners).
+**Shipped this iteration (slice 3 — matching, cleansing & XLSX):** custom-object
+records now **upsert** on a configurable **match field** (migration `0071` stores the
+run's options; a `data->>field` lookup decides create vs update, re-applied on
+commit); **cleansing** normalises string values on ingest (trim/lower/upper/collapse,
+configurable); and a **pure-Go XLSX reader** (inline + shared strings) lets uploads be
+`.xlsx` as well as CSV/JSON. The Import screen gained a match-field selector, clean-up
+options, and `.xlsx` acceptance. Verified: real-Postgres tests (object
+upsert-by-match; products + objects flow), an XLSX round-trip unit test, the
+isolation gate, and client + admin typechecks.
+
+**Remaining for Phase 3:** slice 4 — **supplier onboarding** (API-key-scoped import
+endpoints + per-target templates so external partners feed data directly, closing the
+loop with Phase-0 keys).
 
 ---
 

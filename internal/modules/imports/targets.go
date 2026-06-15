@@ -35,7 +35,7 @@ type Target interface {
 }
 
 // resolveTarget maps a target key — "products" or "object:<code>" — to a Target.
-func resolveTarget(ctx context.Context, q *gen.Queries, org int64, key string) (Target, error) {
+func resolveTarget(ctx context.Context, q *gen.Queries, org int64, key, matchField string) (Target, error) {
 	if key == "products" {
 		return &productTarget{}, nil
 	}
@@ -48,7 +48,7 @@ func resolveTarget(ctx context.Context, q *gen.Queries, org int64, key string) (
 		if err != nil {
 			return nil, err
 		}
-		return &objectTarget{typ: t, fields: fields}, nil
+		return &objectTarget{typ: t, fields: fields, matchField: matchField}, nil
 	}
 	return nil, errUnknownTarget
 }
@@ -168,8 +168,9 @@ func (p *productTarget) Apply(ctx context.Context, q *gen.Queries, org int64, da
 // ---- custom object records target ----------------------------------------
 
 type objectTarget struct {
-	typ    gen.ObjectType
-	fields []gen.ObjectField
+	typ        gen.ObjectType
+	fields     []gen.ObjectField
+	matchField string // when set, upsert: match an existing record on this field's value
 }
 
 func (o *objectTarget) Key() string   { return "object:" + o.typ.Code }
@@ -182,7 +183,7 @@ func (o *objectTarget) Columns() []string {
 	return cols
 }
 
-func (o *objectTarget) Plan(ctx context.Context, _ *gen.Queries, _ int64, row map[string]any) Verdict {
+func (o *objectTarget) Plan(ctx context.Context, q *gen.Queries, org int64, row map[string]any) Verdict {
 	data := map[string]any{}
 	defs := make(map[string]validation.AttrDef, len(o.fields))
 	for _, f := range o.fields {
@@ -200,15 +201,45 @@ func (o *objectTarget) Plan(ctx context.Context, _ *gen.Queries, _ int64, row ma
 	if vs := validation.ValidateAttributes(defs, jb); len(vs) > 0 {
 		return Verdict{Status: "error", Data: jb, Message: vs[0].Code + ": " + vs[0].Message}
 	}
-	// Insert-only in slice 1; matching existing records on a key is slice 3.
+	if o.findMatch(ctx, q, org, data) > 0 {
+		return Verdict{Status: "update", Data: jb}
+	}
 	return Verdict{Status: "create", Data: jb}
 }
 
-func (o *objectTarget) Apply(ctx context.Context, q *gen.Queries, org int64, data json.RawMessage, _ string) error {
+func (o *objectTarget) Apply(ctx context.Context, q *gen.Queries, org int64, data json.RawMessage, status string) error {
+	if status == "update" {
+		var m map[string]any
+		if json.Unmarshal(data, &m) == nil {
+			if id := o.findMatch(ctx, q, org, m); id > 0 {
+				_, err := q.UpdateObjectRecord(ctx, gen.UpdateObjectRecordParams{OrganizationID: org, ID: id, Data: []byte(data)})
+				return err
+			}
+		}
+	}
 	_, err := q.CreateObjectRecord(ctx, gen.CreateObjectRecordParams{
 		ObjectTypeID: o.typ.ID, OrganizationID: org, Data: []byte(data),
 	})
 	return err
+}
+
+// findMatch returns the id of an existing record whose match-field value equals
+// this row's, or 0 when there's no match field, no value, or no match.
+func (o *objectTarget) findMatch(ctx context.Context, q *gen.Queries, org int64, data map[string]any) int64 {
+	if o.matchField == "" {
+		return 0
+	}
+	v, ok := data[o.matchField]
+	if !ok {
+		return 0
+	}
+	id, err := q.GetObjectRecordIDByField(ctx, gen.GetObjectRecordIDByFieldParams{
+		OrganizationID: org, ObjectTypeID: o.typ.ID, Field: o.matchField, Value: fmt.Sprint(v),
+	})
+	if err != nil {
+		return 0
+	}
+	return id
 }
 
 // ---- shared helpers ------------------------------------------------------
@@ -313,6 +344,44 @@ func asString(v any) string {
 func orDefault(s, def string) string {
 	if s == "" {
 		return def
+	}
+	return s
+}
+
+// importOptions are per-run import settings, stored on the run so a commit
+// re-applies the same matching the dry run used.
+type importOptions struct {
+	MatchField string   `json:"match_field,omitempty"`
+	Normalize  []string `json:"normalize,omitempty"`
+}
+
+// normalizeRows cleanses string cell values in place per the configured rules,
+// before any target sees them.
+func normalizeRows(rows []map[string]any, ns []string) {
+	if len(ns) == 0 {
+		return
+	}
+	for _, row := range rows {
+		for k, v := range row {
+			if s, ok := v.(string); ok {
+				row[k] = applyNorm(ns, s)
+			}
+		}
+	}
+}
+
+func applyNorm(ns []string, s string) string {
+	for _, n := range ns {
+		switch n {
+		case "trim":
+			s = strings.TrimSpace(s)
+		case "lower":
+			s = strings.ToLower(s)
+		case "upper":
+			s = strings.ToUpper(s)
+		case "collapse":
+			s = strings.Join(strings.Fields(s), " ")
+		}
 	}
 	return s
 }

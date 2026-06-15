@@ -6,6 +6,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
@@ -31,9 +32,19 @@ const run = ref<ImportRun | null>(null)
 const preview = ref<ImportRow[]>([])
 const runs = ref<ImportRun[]>([])
 const error = ref('')
+const matchField = ref('')
+const normalize = ref<string[]>(['trim'])
+
+const normalizeOptions = [
+  { label: 'Trim spaces', value: 'trim' },
+  { label: 'Lowercase', value: 'lower' },
+  { label: 'Uppercase', value: 'upper' },
+  { label: 'Collapse spaces', value: 'collapse' },
+]
 
 const targetOptions = computed(() => targets.value.map((t) => ({ label: t.label, value: t.key })))
 const selected = computed(() => targets.value.find((t) => t.key === target.value) ?? null)
+const matchOptions = computed(() => (selected.value?.columns ?? []).map((c) => ({ label: c, value: c })))
 const canCommit = computed(
   () => !!run.value && run.value.status === 'validated' && ((run.value.create_rows ?? 0) + (run.value.update_rows ?? 0)) > 0,
 )
@@ -73,7 +84,11 @@ async function onFile(e: Event) {
   try {
     const fd = new FormData()
     fd.append('file', f)
-    const res = await fetch(`${apiBase}/admin/imports?target=${encodeURIComponent(target.value)}`, {
+    const params = new URLSearchParams({ target: target.value })
+    if (/\.xlsx$/i.test(f.name)) params.set('format', 'xlsx')
+    if (matchField.value) params.set('match', matchField.value)
+    if (normalize.value.length) params.set('normalize', normalize.value.join(','))
+    const res = await fetch(`${apiBase}/admin/imports?${params.toString()}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${auth.token ?? ''}` },
       body: fd,
@@ -154,8 +169,9 @@ onMounted(() => {
   <div class="page">
     <PageHeader title="Import data" />
     <p class="muted">
-      Upload a CSV to create or update records in bulk. Every row is validated against its target's
-      rules first, so you preview exactly what will happen — then commit. Nothing is saved until you do.
+      Upload a CSV or Excel file to create or update records in bulk. Choose a field to match on for
+      upserts, clean values on the way in, and preview every row against its target's rules before you
+      commit — nothing is saved until you do.
     </p>
     <Message v-if="error" severity="error" :closable="false" class="mb">{{ error }}</Message>
 
@@ -168,9 +184,28 @@ onMounted(() => {
         placeholder="What are you importing?"
         class="target-select"
       />
+      <Select
+        v-model="matchField"
+        :options="matchOptions"
+        optionLabel="label"
+        optionValue="value"
+        showClear
+        placeholder="Match on… (insert only)"
+        class="match-select"
+        :disabled="!target"
+      />
+      <MultiSelect
+        v-model="normalize"
+        :options="normalizeOptions"
+        optionLabel="label"
+        optionValue="value"
+        display="chip"
+        placeholder="Clean up"
+        class="norm-select"
+      />
       <Button icon="pi pi-download" label="Template" severity="secondary" outlined :disabled="!target" @click="downloadTemplate" />
-      <Button icon="pi pi-upload" label="Upload CSV" :loading="uploading" :disabled="!target" @click="pickFile" />
-      <input ref="fileInput" type="file" accept=".csv,text/csv" hidden @change="onFile" />
+      <Button icon="pi pi-upload" label="Upload" :loading="uploading" :disabled="!target" @click="pickFile" />
+      <input ref="fileInput" type="file" accept=".csv,.xlsx,text/csv" hidden @change="onFile" />
     </div>
     <p v-if="selected" class="muted small">Columns: <code>{{ (selected.columns ?? []).join(', ') }}</code></p>
 
@@ -217,6 +252,8 @@ onMounted(() => {
 h3 { margin: 1.75rem 0 0.5rem; }
 .toolbar { display: flex; align-items: center; gap: 0.6rem; margin: 0.75rem 0 0.35rem; flex-wrap: wrap; }
 .target-select { min-width: 16rem; }
+.match-select { min-width: 13rem; }
+.norm-select { min-width: 12rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin: 1rem 0 0.5rem; max-width: 36rem; }
 .stat { border: 1px solid var(--teggo-border, #e2e8f0); border-radius: var(--teggo-radius, 3px); background: var(--teggo-surface, #fff); padding: 0.7rem 0.9rem; }

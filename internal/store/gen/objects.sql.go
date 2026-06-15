@@ -242,6 +242,35 @@ func (q *Queries) GetObjectRecord(ctx context.Context, arg GetObjectRecordParams
 	return i, err
 }
 
+const getObjectRecordIDByField = `-- name: GetObjectRecordIDByField :one
+SELECT id FROM object_records
+WHERE organization_id = $1 AND object_type_id = $2 AND deleted_at IS NULL
+  AND data ->> $3::text = $4::text
+ORDER BY id
+LIMIT 1
+`
+
+type GetObjectRecordIDByFieldParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	ObjectTypeID   int64  `json:"object_type_id"`
+	Field          string `json:"field"`
+	Value          string `json:"value"`
+}
+
+// GetObjectRecordIDByField finds a live record of a type whose data has a given
+// value at a field code — the import engine's upsert match (slice 3).
+func (q *Queries) GetObjectRecordIDByField(ctx context.Context, arg GetObjectRecordIDByFieldParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getObjectRecordIDByField,
+		arg.OrganizationID,
+		arg.ObjectTypeID,
+		arg.Field,
+		arg.Value,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getObjectType = `-- name: GetObjectType :one
 SELECT id, organization_id, code, label, label_plural, description, is_active, created_at, updated_at FROM object_types WHERE organization_id = $1 AND id = $2
 `

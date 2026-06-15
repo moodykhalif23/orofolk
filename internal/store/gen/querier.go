@@ -416,6 +416,9 @@ type Querier interface {
 	GetMenuByCode(ctx context.Context, arg GetMenuByCodeParams) (Menu, error)
 	GetObjectField(ctx context.Context, arg GetObjectFieldParams) (ObjectField, error)
 	GetObjectRecord(ctx context.Context, arg GetObjectRecordParams) (ObjectRecord, error)
+	// GetObjectRecordIDByField finds a live record of a type whose data has a given
+	// value at a field code — the import engine's upsert match (slice 3).
+	GetObjectRecordIDByField(ctx context.Context, arg GetObjectRecordIDByFieldParams) (int64, error)
 	GetObjectType(ctx context.Context, arg GetObjectTypeParams) (ObjectType, error)
 	GetObjectTypeByCode(ctx context.Context, arg GetObjectTypeByCodeParams) (ObjectType, error)
 	GetOpportunity(ctx context.Context, arg GetOpportunityParams) (Opportunity, error)

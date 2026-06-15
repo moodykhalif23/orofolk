@@ -6,6 +6,7 @@
 package imports
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -75,7 +76,7 @@ func (h *Handler) template(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
 		return
 	}
-	target, err := resolveTarget(r.Context(), h.q, org, r.URL.Query().Get("target"))
+	target, err := resolveTarget(r.Context(), h.q, org, r.URL.Query().Get("target"), "")
 	if err != nil {
 		response.Fail(w, http.StatusNotFound, "not_found", "unknown import target")
 		return
@@ -95,7 +96,11 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := r.URL.Query().Get("target")
-	target, err := resolveTarget(r.Context(), h.q, org, key)
+	opts := importOptions{
+		MatchField: r.URL.Query().Get("match"),
+		Normalize:  splitParam(r.URL.Query().Get("normalize")),
+	}
+	target, err := resolveTarget(r.Context(), h.q, org, key, opts.MatchField)
 	if err != nil {
 		response.Fail(w, http.StatusBadRequest, "bad_request", "unknown import target")
 		return
@@ -103,29 +108,45 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	format := r.URL.Query().Get("format")
 	var rows []map[string]any
 	var filename string
-	switch format {
-	case "json":
+	if format == "json" {
 		if err := json.NewDecoder(r.Body).Decode(&rows); err != nil {
 			response.Fail(w, http.StatusBadRequest, "bad_request", "body must be a JSON array of objects")
 			return
 		}
-	default:
-		format = "csv"
+	} else {
 		file, hdr, ferr := r.FormFile("file")
 		if ferr != nil {
-			response.Fail(w, http.StatusBadRequest, "bad_request", "a CSV file is required (multipart field 'file')")
+			response.Fail(w, http.StatusBadRequest, "bad_request", "a CSV or XLSX file is required (multipart field 'file')")
 			return
 		}
 		defer file.Close()
 		if hdr != nil {
 			filename = hdr.Filename
 		}
-		rows, err = parseCSV(file)
+		raw, rerr := io.ReadAll(io.LimitReader(file, 25<<20))
+		if rerr != nil {
+			response.Fail(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
+			return
+		}
+		if format == "" { // infer from the filename when not given
+			if strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
+				format = "xlsx"
+			} else {
+				format = "csv"
+			}
+		}
+		if format == "xlsx" {
+			rows, err = parseXLSX(raw)
+		} else {
+			format = "csv"
+			rows, err = parseCSV(bytes.NewReader(raw))
+		}
 		if err != nil {
 			response.Fail(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 	}
+	normalizeRows(rows, opts.Normalize)
 	if len(rows) == 0 {
 		response.Fail(w, http.StatusBadRequest, "bad_request", "no rows found")
 		return
@@ -163,8 +184,9 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 	qtx := h.q.WithTx(tx)
+	optsJSON, _ := json.Marshal(opts)
 	run, err := qtx.CreateImportRun(r.Context(), gen.CreateImportRunParams{
-		OrganizationID: org, Target: key, Format: format, SourceFilename: filename,
+		OrganizationID: org, Target: key, Format: format, SourceFilename: filename, Options: optsJSON,
 		TotalRows: int32(len(out)), CreateRows: int32(create), UpdateRows: int32(update), ErrorRows: int32(errs),
 		CreatedBy: actorID(r),
 	})
@@ -269,7 +291,11 @@ func (h *Handler) commit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	org, _ := orgID(r)
-	target, err := resolveTarget(r.Context(), h.q, org, run.Target)
+	var opts importOptions
+	if len(run.Options) > 0 {
+		_ = json.Unmarshal(run.Options, &opts)
+	}
+	target, err := resolveTarget(r.Context(), h.q, org, run.Target, opts.MatchField)
 	if err != nil {
 		response.Fail(w, http.StatusConflict, "conflict", "the import target no longer exists")
 		return
@@ -411,4 +437,18 @@ func atoiDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+func splitParam(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }

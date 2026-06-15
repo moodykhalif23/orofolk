@@ -7023,7 +7023,9 @@ paths:
       security: [{ adminAuth: [] }]
       parameters:
         - { name: target, in: query, required: true, schema: { type: string } }
-        - { name: format, in: query, schema: { type: string, enum: [csv, json] } }
+        - { name: format, in: query, schema: { type: string, enum: [csv, json, xlsx] } }
+        - { name: match, in: query, description: 'Field code to upsert custom-object records on (match existing → update).', schema: { type: string } }
+        - { name: normalize, in: query, description: 'Comma-separated cleansing rules applied to string values: trim, lower, upper, collapse.', schema: { type: string } }
       requestBody:
         content:
           multipart/form-data:
