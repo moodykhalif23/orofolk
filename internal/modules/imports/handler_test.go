@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"b2bcommerce/internal/apikey"
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/server"
 	"b2bcommerce/internal/store"
@@ -236,5 +237,77 @@ func TestImportObjectUpsertByMatchField(t *testing.T) {
 	_ = pool.QueryRow(ctx, `SELECT data->>'name' FROM object_records WHERE organization_id=1 AND object_type_id=$1 AND deleted_at IS NULL`, typeID).Scan(&name)
 	if name != "Acme Corp" {
 		t.Errorf("name=%q, want updated to %q", name, "Acme Corp")
+	}
+}
+
+// TestIngestWithAPIKey is the slice-4 headline: a supplier authenticates with a
+// programmatic key scoped to ONLY import.ingest and feeds records in one call —
+// validated, applied and recorded with no separate commit. It also proves least
+// privilege (the key can't browse runs) and that discovery stays reachable.
+func TestIngestWithAPIKey(t *testing.T) {
+	h, _, pool := newServer(t) // the JWT is unused here — we authenticate with an API key
+	ctx := context.Background()
+
+	var typeID int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO object_types (organization_id, code, label) VALUES (1, 'imp_partner', 'Partner') RETURNING id`).Scan(&typeID); err != nil {
+		t.Fatalf("seed type: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_fields (object_type_id, organization_id, code, label, data_type, validation, sort_order)
+		 VALUES ($1, 1, 'email', 'Email', 'text', '{}'::jsonb, 0), ($1, 1, 'tier', 'Tier', 'number', '{"max":3}'::jsonb, 1)`, typeID); err != nil {
+		t.Fatalf("seed fields: %v", err)
+	}
+
+	// Mint a supplier key carrying ONLY import.ingest.
+	raw, prefix, hash, err := apikey.Generate()
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO api_keys (organization_id, name, prefix, key_hash, scopes) VALUES (1, 'Supplier feed', $1, $2, $3)`,
+		prefix, hash, []string{"import.ingest"}); err != nil {
+		t.Fatalf("seed key: %v", err)
+	}
+
+	// One valid row, one the field rule rejects — fed in a single call as the key.
+	body := []map[string]any{{"email": "a@x.com", "tier": 2}, {"email": "b@x.com", "tier": 9}}
+	rr := doJSON(t, h, http.MethodPost, "/admin/imports/ingest?target=object:imp_partner&format=json&match=email", raw, body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("ingest: status %d, body %s", rr.Code, rr.Body.String())
+	}
+	var res struct {
+		Applied int `json:"applied"`
+		Created int `json:"created"`
+		Errors  int `json:"errors"`
+		Run     struct {
+			Status string `json:"status"`
+		} `json:"run"`
+		Results []map[string]any `json:"results"`
+	}
+	_ = json.Unmarshal(rr.Body.Bytes(), &res)
+	if res.Applied != 1 || res.Created != 1 || res.Errors != 1 {
+		t.Fatalf("ingest applied=%d created=%d errors=%d, want 1/1/1; body %s", res.Applied, res.Created, res.Errors, rr.Body.String())
+	}
+	if res.Run.Status != "committed" {
+		t.Errorf("run status=%q, want committed (applied in one call)", res.Run.Status)
+	}
+	if len(res.Results) != 2 {
+		t.Errorf("results len=%d, want 2 (one per row)", len(res.Results))
+	}
+
+	// The valid record landed immediately — no commit step.
+	var n int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM object_records WHERE organization_id=1 AND object_type_id=$1 AND deleted_at IS NULL`, typeID).Scan(&n)
+	if n != 1 {
+		t.Errorf("records=%d after ingest, want 1 (only the valid row)", n)
+	}
+
+	// Least privilege: an ingest-only key can reach discovery but not browse runs.
+	if tg := doJSON(t, h, http.MethodGet, "/admin/imports/targets", raw, nil); tg.Code != http.StatusOK {
+		t.Errorf("targets with ingest key = %d, want 200 (discovery is allowed)", tg.Code)
+	}
+	if list := doJSON(t, h, http.MethodGet, "/admin/imports/runs", raw, nil); list.Code != http.StatusForbidden {
+		t.Errorf("runs with ingest-only key = %d, want 403 (no import.view)", list.Code)
 	}
 }

@@ -17,6 +17,7 @@ import PageHeader from '@/components/PageHeader.vue'
 type ImportTarget = components['schemas']['ImportTarget']
 type ImportRun = components['schemas']['ImportRun']
 type ImportRow = components['schemas']['ImportRow']
+type ImportFieldSpec = components['schemas']['ImportFieldSpec']
 
 const route = useRoute()
 const toast = useToast()
@@ -45,6 +46,55 @@ const normalizeOptions = [
 const targetOptions = computed(() => targets.value.map((t) => ({ label: t.label, value: t.key })))
 const selected = computed(() => targets.value.find((t) => t.key === target.value) ?? null)
 const matchOptions = computed(() => (selected.value?.columns ?? []).map((c) => ({ label: c, value: c })))
+
+// Partner-ingest contract: the same engine, reached in one call by a supplier
+// API key scoped to import.ingest. Tucked away — most users use the wizard above.
+const showApi = ref(false)
+const fields = computed<ImportFieldSpec[]>(() => selected.value?.fields ?? [])
+const ingestUrl = computed(() => {
+  const base = apiBase || window.location.origin
+  const params = new URLSearchParams({ target: target.value })
+  if (matchField.value) params.set('match', matchField.value)
+  return `${base}/admin/imports/ingest?${params.toString()}`
+})
+function placeholderFor(f: ImportFieldSpec): unknown {
+  switch (f.data_type) {
+    case 'number':
+    case 'price':
+      return 0
+    case 'boolean':
+      return true
+    case 'multiselect':
+      return f.options?.slice(0, 1) ?? []
+    case 'select':
+      return f.options?.[0] ?? '…'
+    case 'date':
+      return '2026-01-01'
+    case 'json':
+      return {}
+    default:
+      return '…'
+  }
+}
+const curlSample = computed(() => {
+  const obj: Record<string, unknown> = {}
+  for (const f of fields.value.slice(0, 6)) if (f.code) obj[f.code] = placeholderFor(f)
+  const body = JSON.stringify([obj])
+  return (
+    `curl -X POST "${ingestUrl.value}" \\\n` +
+    `  -H "Authorization: Bearer tgk_…" \\\n` +
+    `  -H "Content-Type: application/json" \\\n` +
+    `  -d '${body}'`
+  )
+})
+async function copy(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.add({ severity: 'success', summary: 'Copied to clipboard', life: 1500 })
+  } catch {
+    /* clipboard blocked — the text is selectable */
+  }
+}
 const canCommit = computed(
   () => !!run.value && run.value.status === 'validated' && ((run.value.create_rows ?? 0) + (run.value.update_rows ?? 0)) > 0,
 )
@@ -209,6 +259,49 @@ onMounted(() => {
     </div>
     <p v-if="selected" class="muted small">Columns: <code>{{ (selected.columns ?? []).join(', ') }}</code></p>
 
+    <!-- Partner / API ingest contract -->
+    <div v-if="selected" class="api-panel">
+      <button type="button" class="api-toggle" @click="showApi = !showApi">
+        <i :class="showApi ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" />
+        Feed this in via API <span class="muted">— for partners &amp; integrations</span>
+      </button>
+      <div v-if="showApi" class="api-body">
+        <p class="muted small mb">
+          A supplier can push <strong>{{ selected.label }}</strong> straight in with a single call —
+          no preview/commit step. Mint an
+          <RouterLink :to="{ name: 'api-keys' }">API key</RouterLink> scoped to
+          <code>import.ingest</code> and share the contract below. Valid rows apply; rejected rows
+          come back with a reason.
+        </p>
+        <div class="endpoint">
+          <Tag value="POST" severity="contrast" />
+          <code class="url">{{ ingestUrl }}</code>
+          <Button icon="pi pi-copy" text rounded size="small" title="Copy URL" @click="copy(ingestUrl)" />
+        </div>
+        <table class="fields">
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Rules</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="f in fields" :key="f.code">
+              <td><code>{{ f.code }}</code></td>
+              <td class="muted">{{ f.data_type }}</td>
+              <td>
+                <Tag v-if="f.required" value="required" severity="warn" />
+                <span v-else class="muted">optional</span>
+              </td>
+              <td class="muted small">{{ f.rule || (f.options?.length ? f.options.join(' | ') : '—') }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="sample-head">
+          <span class="muted small">Sample request</span>
+          <Button icon="pi pi-copy" label="Copy" text size="small" @click="copy(curlSample)" />
+        </div>
+        <pre class="sample">{{ curlSample }}</pre>
+      </div>
+    </div>
+
     <!-- Dry-run preview -->
     <template v-if="run">
       <div class="stats">
@@ -264,4 +357,30 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .sl { color: var(--p-text-muted-color, #64748b); font-size: 0.8rem; }
 .commitbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.25rem 0 0.75rem; }
 .bad { color: #b91c1c; }
+
+/* Partner / API ingest contract */
+.api-panel { margin: 0.5rem 0 0.25rem; }
+.api-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem; background: none; border: 0;
+  padding: 0.3rem 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--p-text-color, #1e293b);
+}
+.api-toggle .pi { font-size: 0.75rem; }
+.api-body {
+  border: 1px solid var(--teggo-border, #e2e8f0); border-radius: var(--teggo-radius, 3px);
+  background: var(--teggo-surface, #fff); padding: 0.9rem 1rem; margin-top: 0.4rem; max-width: 52rem;
+}
+.endpoint { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem; }
+.endpoint .url {
+  flex: 1; overflow-x: auto; white-space: nowrap; padding: 0.35rem 0.55rem;
+  background: var(--teggo-muted-bg, #f1f5f9); border-radius: var(--teggo-radius, 3px); font-size: 0.82rem;
+}
+.fields { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 0.85rem; }
+.fields th { text-align: left; font-weight: 600; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--teggo-border, #e2e8f0); }
+.fields td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--teggo-border, #f1f5f9); vertical-align: top; }
+.sample-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+.sample {
+  margin: 0; padding: 0.7rem 0.85rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.5;
+  background: #0f172a; color: #e2e8f0; border-radius: var(--teggo-radius, 3px);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 </style>

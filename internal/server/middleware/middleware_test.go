@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"b2bcommerce/internal/auth"
 )
 
 func okHandler() http.Handler {
@@ -54,6 +57,36 @@ func TestMaxBytes(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(strings.Repeat("x", 64))))
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("over-limit status = %d, want 413", rec.Code)
+	}
+}
+
+func TestRequireAnyPermission(t *testing.T) {
+	h := RequireAnyPermission("import.view", "import.ingest")(okHandler())
+	call := func(perms ...string) int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/admin/imports/targets", nil)
+		if perms != nil {
+			ctx := context.WithValue(req.Context(), claimsKey, &auth.Claims{Permissions: perms})
+			req = req.WithContext(ctx)
+		}
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// Holding either listed permission is enough.
+	if code := call("import.view"); code != http.StatusOK {
+		t.Errorf("with import.view = %d, want 200", code)
+	}
+	if code := call("import.ingest"); code != http.StatusOK {
+		t.Errorf("with import.ingest = %d, want 200 (a supplier key reaches discovery)", code)
+	}
+	// Holding neither is forbidden, even with other permissions.
+	if code := call("orders.view"); code != http.StatusForbidden {
+		t.Errorf("with unrelated perm = %d, want 403", code)
+	}
+	// No claims at all is unauthenticated.
+	if code := call(); code != http.StatusUnauthorized {
+		t.Errorf("with no claims = %d, want 401", code)
 	}
 }
 

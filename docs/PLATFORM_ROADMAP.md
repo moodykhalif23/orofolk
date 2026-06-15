@@ -186,7 +186,7 @@ products and every custom object type, all on one engine. Next: **Phase 3
 
 ---
 
-## Phase 3 — Onboarding at scale · **Slices 1–3 shipped**
+## Phase 3 — Onboarding at scale · **COMPLETE** (slices 1–4 shipped)
 
 | Deliverable | Builds on | Effort |
 |---|---|---|
@@ -224,9 +224,29 @@ options, and `.xlsx` acceptance. Verified: real-Postgres tests (object
 upsert-by-match; products + objects flow), an XLSX round-trip unit test, the
 isolation gate, and client + admin typechecks.
 
-**Remaining for Phase 3:** slice 4 — **supplier onboarding** (API-key-scoped import
-endpoints + per-target templates so external partners feed data directly, closing the
-loop with Phase-0 keys).
+**Shipped this iteration (slice 4 — supplier onboarding):** a **one-shot ingest
+endpoint** (`POST /admin/imports/ingest`) validates AND applies rows in a single
+call — no dry-run/commit round trip — so an external partner can feed data straight
+in; the run is still recorded (status `committed`) and every row's outcome returned,
+so rejects come back with a reason while valid rows land. It's scoped to a new
+**`import.ingest`** permission (migration `0072`, granted to every org's admin so an
+admin can mint a supplier key carrying it); a supplier key holds *only* that scope —
+it can feed data and discover targets, nothing else (least privilege, proven in test).
+Target discovery now carries a **machine-readable schema** per column (code, type,
+required, allowed values, rule summary) — the "per-target template" a partner codes
+against — reachable by both an interactive admin and an ingest-scoped key via a new
+`RequireAnyPermission` gate. The Import screen gained a **partner-API contract panel**
+(endpoint, field table, copy-able `curl`, link to mint a scoped key). The upload and
+commit paths were refactored onto shared `prepare`/`planRows`/`stageRun`/`applyRun`
+helpers that ingest reuses, so all three paths share one validated pipeline. Verified:
+real-Postgres ingest **authenticated by an actual API key** (valid row applied + bad
+row rejected in one call, run committed, least-privilege 403 on runs, discovery 200),
+the `RequireAnyPermission` unit test, the existing upload/commit suite (no drift from
+the refactor), the isolation gate, sqlc deterministic, and client + admin typechecks.
+
+**Phase 3 is complete** — the generic engine takes products and any custom object
+type, via CSV/XLSX/JSON, through the UI or a scoped partner key, all on one validated,
+matched, cleansed pipeline. Next: **Phase 4 (syndication & distribution / feeds)**.
 
 ---
 

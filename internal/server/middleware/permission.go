@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"b2bcommerce/internal/server/response"
 )
@@ -43,6 +44,32 @@ func RequirePermission(perm string) func(http.Handler) http.Handler {
 				}
 			}
 			response.Fail(w, http.StatusForbidden, "forbidden", "missing permission: "+perm)
+		})
+	}
+}
+
+// RequireAnyPermission ensures the authenticated principal holds at least one of
+// the given permissions. Used where two distinct roles legitimately reach the
+// same endpoint — e.g. import target/template discovery, which both an
+// interactive admin (import.view) and a scoped supplier key (import.ingest)
+// need. Must run after Authenticator.
+func RequireAnyPermission(perms ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := ClaimsFrom(r.Context())
+			if !ok {
+				response.Fail(w, http.StatusUnauthorized, "unauthorized", "not authenticated")
+				return
+			}
+			for _, held := range claims.Permissions {
+				for _, want := range perms {
+					if held == want {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+			response.Fail(w, http.StatusForbidden, "forbidden", "missing permission: "+strings.Join(perms, " or "))
 		})
 	}
 }

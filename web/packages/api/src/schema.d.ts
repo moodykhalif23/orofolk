@@ -4372,6 +4372,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/imports/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description One-shot partner ingest — validate and apply rows in a single call (no separate dry-run/commit). Scoped to import.ingest, the permission a supplier API key carries. */
+        post: operations["adminIngestImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/imports/runs": {
         parameters: {
             query?: never;
@@ -8320,6 +8337,16 @@ export interface components {
             key?: string;
             label?: string;
             columns?: string[];
+            fields?: components["schemas"]["ImportFieldSpec"][];
+        };
+        /** @description One importable column of a target — the machine-readable template a partner codes against. */
+        ImportFieldSpec: {
+            code?: string;
+            label?: string;
+            data_type?: string;
+            required?: boolean;
+            options?: string[];
+            rule?: string;
         };
         ImportTargetList: {
             targets?: components["schemas"]["ImportTarget"][];
@@ -8354,6 +8381,21 @@ export interface components {
         ImportRunResult: {
             run?: components["schemas"]["ImportRun"];
             preview?: components["schemas"]["ImportRow"][];
+        };
+        ImportRowResult: {
+            row_number?: number;
+            /** @enum {string} */
+            status?: "create" | "update" | "error";
+            message?: string;
+        };
+        /** @description Outcome of a one-shot ingest — counts plus every row's result. */
+        ImportIngestResult: {
+            run?: components["schemas"]["ImportRun"];
+            applied?: number;
+            created?: number;
+            updated?: number;
+            errors?: number;
+            results?: components["schemas"]["ImportRowResult"][];
         };
         ListWrapperImportRun: {
             items?: components["schemas"]["ImportRun"][];
@@ -16383,6 +16425,45 @@ export interface operations {
                 };
             };
             400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminIngestImport: {
+        parameters: {
+            query: {
+                target: string;
+                format?: "csv" | "json" | "xlsx";
+                /** @description Field code to upsert custom-object records on (match existing → update). */
+                match?: string;
+                /** @description Comma-separated cleansing rules applied to string values: trim, lower, upper, collapse. */
+                normalize?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+                "application/json": {
+                    [key: string]: unknown;
+                }[];
+            };
+        };
+        responses: {
+            /** @description Ingested */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportIngestResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
         };
     };
     adminListImportRuns: {

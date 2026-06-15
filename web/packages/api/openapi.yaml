@@ -3525,6 +3525,17 @@ components:
         key: { type: string }
         label: { type: string }
         columns: { type: array, items: { type: string } }
+        fields: { type: array, items: { $ref: '#/components/schemas/ImportFieldSpec' } }
+    ImportFieldSpec:
+      type: object
+      description: One importable column of a target — the machine-readable template a partner codes against.
+      properties:
+        code: { type: string }
+        label: { type: string }
+        data_type: { type: string }
+        required: { type: boolean }
+        options: { type: array, items: { type: string } }
+        rule: { type: string }
     ImportTargetList:
       type: object
       properties:
@@ -3556,6 +3567,22 @@ components:
       properties:
         run: { $ref: '#/components/schemas/ImportRun' }
         preview: { type: array, items: { $ref: '#/components/schemas/ImportRow' } }
+    ImportRowResult:
+      type: object
+      properties:
+        row_number: { type: integer }
+        status: { type: string, enum: [create, update, error] }
+        message: { type: string }
+    ImportIngestResult:
+      type: object
+      description: Outcome of a one-shot ingest — counts plus every row's result.
+      properties:
+        run: { $ref: '#/components/schemas/ImportRun' }
+        applied: { type: integer }
+        created: { type: integer }
+        updated: { type: integer }
+        errors: { type: integer }
+        results: { type: array, items: { $ref: '#/components/schemas/ImportRowResult' } }
     ListWrapperImportRun:
       type: object
       properties:
@@ -7033,6 +7060,27 @@ paths:
       responses:
         '201': { description: 'Dry run staged', content: { application/json: { schema: { $ref: '#/components/schemas/ImportRunResult' } } } }
         '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/imports/ingest:
+    post:
+      tags: [Imports]
+      operationId: adminIngestImport
+      description: 'One-shot partner ingest — validate and apply rows in a single call (no separate dry-run/commit). Scoped to import.ingest, the permission a supplier API key carries.'
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: target, in: query, required: true, schema: { type: string } }
+        - { name: format, in: query, schema: { type: string, enum: [csv, json, xlsx] } }
+        - { name: match, in: query, description: 'Field code to upsert custom-object records on (match existing → update).', schema: { type: string } }
+        - { name: normalize, in: query, description: 'Comma-separated cleansing rules applied to string values: trim, lower, upper, collapse.', schema: { type: string } }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema: { type: object, properties: { file: { type: string, format: binary } } }
+          application/json:
+            schema: { type: array, items: { type: object, additionalProperties: true } }
+      responses:
+        '200': { description: 'Ingested', content: { application/json: { schema: { $ref: '#/components/schemas/ImportIngestResult' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
   /admin/imports/runs:
     get:
       tags: [Imports]

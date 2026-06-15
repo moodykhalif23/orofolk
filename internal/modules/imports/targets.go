@@ -23,6 +23,19 @@ type Verdict struct {
 	Message string
 }
 
+// FieldSpec describes one importable column of a target: its key, type, whether
+// it's required, the allowed values (select types) and a short rule summary. It
+// is the machine-readable "template" a partner integration codes against —
+// richer than the bare column list the CSV header carries.
+type FieldSpec struct {
+	Code     string   `json:"code"`
+	Label    string   `json:"label,omitempty"`
+	DataType string   `json:"data_type"`
+	Required bool     `json:"required"`
+	Options  []string `json:"options,omitempty"`
+	Rule     string   `json:"rule,omitempty"`
+}
+
 // Target is one thing the engine can import into. Plan validates and classifies
 // a parsed row without writing; Apply persists a planned row on commit. Both
 // take a *gen.Queries so the same target works inside or outside a transaction.
@@ -30,6 +43,7 @@ type Target interface {
 	Key() string
 	Label() string
 	Columns() []string
+	Schema() []FieldSpec
 	Plan(ctx context.Context, q *gen.Queries, org int64, row map[string]any) Verdict
 	Apply(ctx context.Context, q *gen.Queries, org int64, data json.RawMessage, status string) error
 }
@@ -79,6 +93,23 @@ func (p *productTarget) Key() string   { return "products" }
 func (p *productTarget) Label() string { return "Products" }
 func (p *productTarget) Columns() []string {
 	return []string{"sku", "name", "slug", "type", "status", "unit", "cost_price", "description", "attributes"}
+}
+
+// Schema describes the product columns. sku/name/slug are required (enforced in
+// Plan); the rest default when omitted. `attributes` is a JSON object validated
+// against the org's attribute rules.
+func (p *productTarget) Schema() []FieldSpec {
+	return []FieldSpec{
+		{Code: "sku", Label: "SKU", DataType: "text", Required: true},
+		{Code: "name", Label: "Name", DataType: "text", Required: true},
+		{Code: "slug", Label: "Slug", DataType: "text", Required: true},
+		{Code: "type", Label: "Type", DataType: "text", Rule: "defaults to simple"},
+		{Code: "status", Label: "Status", DataType: "text", Rule: "defaults to draft"},
+		{Code: "unit", Label: "Unit", DataType: "text", Rule: "defaults to each"},
+		{Code: "cost_price", Label: "Cost price", DataType: "price", Rule: "defaults to 0"},
+		{Code: "description", Label: "Description", DataType: "text"},
+		{Code: "attributes", Label: "Attributes", DataType: "json", Rule: "JSON object, validated against attribute rules"},
+	}
 }
 
 type productData struct {
@@ -181,6 +212,23 @@ func (o *objectTarget) Columns() []string {
 		cols[i] = f.Code
 	}
 	return cols
+}
+
+// Schema describes each defined field — type, required flag, allowed values and
+// a rule summary — derived from the same field definitions Plan validates with.
+func (o *objectTarget) Schema() []FieldSpec {
+	out := make([]FieldSpec, len(o.fields))
+	for i, f := range o.fields {
+		out[i] = FieldSpec{
+			Code:     f.Code,
+			Label:    f.Label,
+			DataType: f.DataType,
+			Required: f.IsRequired,
+			Options:  validation.ParseOptions(f.Options),
+			Rule:     ruleSummary(validation.ParseRule(f.Validation)),
+		}
+	}
+	return out
 }
 
 func (o *objectTarget) Plan(ctx context.Context, q *gen.Queries, org int64, row map[string]any) Verdict {
@@ -346,6 +394,41 @@ func orDefault(s, def string) string {
 		return def
 	}
 	return s
+}
+
+// ruleSummary renders a validation.Rule as a short human phrase for a target's
+// schema (empty when the rule constrains nothing).
+func ruleSummary(r validation.Rule) string {
+	num := func(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+	var parts []string
+	if r.Pattern != nil && *r.Pattern != "" {
+		parts = append(parts, "matches /"+*r.Pattern+"/")
+	}
+	switch {
+	case r.MinLength != nil && r.MaxLength != nil:
+		parts = append(parts, fmt.Sprintf("%d–%d chars", *r.MinLength, *r.MaxLength))
+	case r.MinLength != nil:
+		parts = append(parts, fmt.Sprintf("≥ %d chars", *r.MinLength))
+	case r.MaxLength != nil:
+		parts = append(parts, fmt.Sprintf("≤ %d chars", *r.MaxLength))
+	}
+	switch {
+	case r.Min != nil && r.Max != nil:
+		parts = append(parts, num(*r.Min)+"–"+num(*r.Max))
+	case r.Min != nil:
+		parts = append(parts, "≥ "+num(*r.Min))
+	case r.Max != nil:
+		parts = append(parts, "≤ "+num(*r.Max))
+	}
+	switch {
+	case r.MinSelect != nil && r.MaxSelect != nil:
+		parts = append(parts, fmt.Sprintf("%d–%d selections", *r.MinSelect, *r.MaxSelect))
+	case r.MinSelect != nil:
+		parts = append(parts, fmt.Sprintf("≥ %d selections", *r.MinSelect))
+	case r.MaxSelect != nil:
+		parts = append(parts, fmt.Sprintf("≤ %d selections", *r.MaxSelect))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // importOptions are per-run import settings, stored on the run so a commit

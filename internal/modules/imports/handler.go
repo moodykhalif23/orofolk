@@ -7,6 +7,7 @@ package imports
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -42,9 +43,17 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.Use(authMW)
 		ar.Use(mw.RequireAudience("admin"))
 
-		ar.With(mw.RequirePermission("import.view")).Get("/admin/imports/targets", h.listTargets)
-		ar.With(mw.RequirePermission("import.view")).Get("/admin/imports/template", h.template)
+		// Target/template discovery is reachable by an interactive admin
+		// (import.view) AND by a scoped supplier key (import.ingest), so a partner
+		// can learn a target's schema before feeding it.
+		discover := mw.RequireAnyPermission("import.view", "import.ingest")
+		ar.With(discover).Get("/admin/imports/targets", h.listTargets)
+		ar.With(discover).Get("/admin/imports/template", h.template)
+
 		ar.With(mw.RequirePermission("import.manage")).Post("/admin/imports", h.upload)
+		// One-shot partner ingest: validate + apply in a single call (Phase 3
+		// slice 4). Scoped to import.ingest — the permission a supplier key carries.
+		ar.With(mw.RequirePermission("import.ingest")).Post("/admin/imports/ingest", h.ingest)
 		ar.With(mw.RequirePermission("import.view")).Get("/admin/imports/runs", h.listRuns)
 		ar.With(mw.RequirePermission("import.view")).Get("/admin/imports/runs/{id}", h.getRun)
 		ar.With(mw.RequirePermission("import.view")).Get("/admin/imports/runs/{id}/rows", h.listRows)
@@ -65,7 +74,9 @@ func (h *Handler) listTargets(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]map[string]any, 0, len(targets))
 	for _, t := range targets {
-		items = append(items, map[string]any{"key": t.Key(), "label": t.Label(), "columns": t.Columns()})
+		items = append(items, map[string]any{
+			"key": t.Key(), "label": t.Label(), "columns": t.Columns(), "fields": t.Schema(),
+		})
 	}
 	response.JSON(w, http.StatusOK, map[string]any{"targets": items})
 }
@@ -90,130 +101,19 @@ func (h *Handler) template(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
-	org, ok := orgID(r)
-	if !ok {
-		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
+	p, done := h.prepare(w, r)
+	if done {
 		return
 	}
-	key := r.URL.Query().Get("target")
-	opts := importOptions{
-		MatchField: r.URL.Query().Get("match"),
-		Normalize:  splitParam(r.URL.Query().Get("normalize")),
-	}
-	target, err := resolveTarget(r.Context(), h.q, org, key, opts.MatchField)
+	out, create, update, errs := planRows(r.Context(), h.q, p.org, p.target, p.rows)
+	run, err := h.stageRun(r.Context(), p.org, p.key, p.format, p.filename, p.opts, out, create, update, errs, actorID(r))
 	if err != nil {
-		response.Fail(w, http.StatusBadRequest, "bad_request", "unknown import target")
-		return
-	}
-	format := r.URL.Query().Get("format")
-	var rows []map[string]any
-	var filename string
-	if format == "json" {
-		if err := json.NewDecoder(r.Body).Decode(&rows); err != nil {
-			response.Fail(w, http.StatusBadRequest, "bad_request", "body must be a JSON array of objects")
-			return
-		}
-	} else {
-		file, hdr, ferr := r.FormFile("file")
-		if ferr != nil {
-			response.Fail(w, http.StatusBadRequest, "bad_request", "a CSV or XLSX file is required (multipart field 'file')")
-			return
-		}
-		defer file.Close()
-		if hdr != nil {
-			filename = hdr.Filename
-		}
-		raw, rerr := io.ReadAll(io.LimitReader(file, 25<<20))
-		if rerr != nil {
-			response.Fail(w, http.StatusBadRequest, "bad_request", "could not read the uploaded file")
-			return
-		}
-		if format == "" { // infer from the filename when not given
-			if strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
-				format = "xlsx"
-			} else {
-				format = "csv"
-			}
-		}
-		if format == "xlsx" {
-			rows, err = parseXLSX(raw)
-		} else {
-			format = "csv"
-			rows, err = parseCSV(bytes.NewReader(raw))
-		}
-		if err != nil {
-			response.Fail(w, http.StatusBadRequest, "bad_request", err.Error())
-			return
-		}
-	}
-	normalizeRows(rows, opts.Normalize)
-	if len(rows) == 0 {
-		response.Fail(w, http.StatusBadRequest, "bad_request", "no rows found")
-		return
-	}
-	if len(rows) > maxImportRows {
-		rows = rows[:maxImportRows]
-	}
-
-	// Dry run: plan every row, tally outcomes — no writes to the target.
-	type planned struct {
-		n int
-		v Verdict
-	}
-	out := make([]planned, 0, len(rows))
-	var create, update, errs int
-	for i, row := range rows {
-		v := target.Plan(r.Context(), h.q, org, row)
-		switch v.Status {
-		case "create":
-			create++
-		case "update":
-			update++
-		default:
-			v.Status = "error"
-			errs++
-		}
-		out = append(out, planned{n: i + 1, v: v})
-	}
-
-	// Persist the run and its rows atomically.
-	tx, err := h.pool.Begin(r.Context())
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not stage import")
-		return
-	}
-	defer tx.Rollback(r.Context())
-	qtx := h.q.WithTx(tx)
-	optsJSON, _ := json.Marshal(opts)
-	run, err := qtx.CreateImportRun(r.Context(), gen.CreateImportRunParams{
-		OrganizationID: org, Target: key, Format: format, SourceFilename: filename, Options: optsJSON,
-		TotalRows: int32(len(out)), CreateRows: int32(create), UpdateRows: int32(update), ErrorRows: int32(errs),
-		CreatedBy: actorID(r),
-	})
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not create import run")
-		return
-	}
-	for _, p := range out {
-		data := p.v.Data
-		if len(data) == 0 {
-			data = []byte("{}")
-		}
-		if err := qtx.CreateImportRow(r.Context(), gen.CreateImportRowParams{
-			ImportRunID: run.ID, OrganizationID: org, RowNumber: int32(p.n),
-			Data: data, Status: p.v.Status, Message: p.v.Message,
-		}); err != nil {
-			response.Fail(w, http.StatusInternalServerError, "internal", "could not stage rows")
-			return
-		}
-	}
-	if err := tx.Commit(r.Context()); err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not stage import")
 		return
 	}
 
 	audit.SetEntity(r.Context(), "import_runs", run.ID)
-	audit.SetSummary(r.Context(), "Staged import of "+key+" ("+strconv.Itoa(len(out))+" rows)")
+	audit.SetSummary(r.Context(), "Staged import of "+p.key+" ("+strconv.Itoa(len(out))+" rows)")
 
 	preview := make([]map[string]any, 0, previewLimit)
 	for _, p := range out {
@@ -226,6 +126,50 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	response.JSON(w, http.StatusCreated, map[string]any{"run": runView(run), "preview": preview})
+}
+
+// ingest is the one-shot partner path (Phase 3 slice 4): an API-key-scoped
+// caller uploads rows that are validated, staged AND applied in a single call —
+// no separate dry-run/commit round trip. The run is still recorded so it shows
+// in history alongside interactive imports, and every row's outcome is returned
+// so a partner can act on rejects. Valid rows apply even when others are
+// rejected by validation; an apply that fails at the database rolls the applied
+// batch back (all-or-nothing on the applied set, matching commit).
+func (h *Handler) ingest(w http.ResponseWriter, r *http.Request) {
+	p, done := h.prepare(w, r)
+	if done {
+		return
+	}
+	out, create, update, errs := planRows(r.Context(), h.q, p.org, p.target, p.rows)
+	run, err := h.stageRun(r.Context(), p.org, p.key, p.format, p.filename, p.opts, out, create, update, errs, actorID(r))
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not stage import")
+		return
+	}
+	applied, fail := h.applyRun(r.Context(), p.org, run, p.target)
+	if fail != nil {
+		response.Fail(w, fail.status, fail.code, fail.msg)
+		return
+	}
+	if updated, e := h.q.GetImportRun(r.Context(), gen.GetImportRunParams{OrganizationID: p.org, ID: run.ID}); e == nil {
+		run = updated // reflect committed status + committed_at
+	}
+
+	audit.SetEntity(r.Context(), "import_runs", run.ID)
+	audit.SetSummary(r.Context(), "Ingested "+p.key+" ("+strconv.Itoa(applied)+" applied, "+strconv.Itoa(errs)+" rejected)")
+
+	results := make([]map[string]any, 0, len(out))
+	for _, p := range out {
+		row := map[string]any{"row_number": p.n, "status": p.v.Status}
+		if p.v.Message != "" {
+			row["message"] = p.v.Message
+		}
+		results = append(results, row)
+	}
+	response.JSON(w, http.StatusOK, map[string]any{
+		"run": runView(run), "applied": applied, "created": create, "updated": update, "errors": errs,
+		"results": results,
+	})
 }
 
 func (h *Handler) listRuns(w http.ResponseWriter, r *http.Request) {
@@ -300,35 +244,9 @@ func (h *Handler) commit(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusConflict, "conflict", "the import target no longer exists")
 		return
 	}
-	rows, err := h.q.ListCommittableImportRows(r.Context(), run.ID)
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not read staged rows")
-		return
-	}
-
-	tx, err := h.pool.Begin(r.Context())
-	if err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not commit import")
-		return
-	}
-	defer tx.Rollback(r.Context())
-	qtx := h.q.WithTx(tx)
-	applied := 0
-	for _, row := range rows {
-		if err := target.Apply(r.Context(), qtx, org, row.Data, row.Status); err != nil {
-			// All-or-nothing: the dry run already filtered invalid rows, so a failure
-			// here (e.g. a duplicate slug between two rows) rolls the whole batch back.
-			response.Fail(w, http.StatusConflict, "conflict", "row "+strconv.Itoa(int(row.RowNumber))+" could not be applied")
-			return
-		}
-		applied++
-	}
-	if err := qtx.MarkImportRunCommitted(r.Context(), gen.MarkImportRunCommittedParams{OrganizationID: org, ID: run.ID}); err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not finalize import")
-		return
-	}
-	if err := tx.Commit(r.Context()); err != nil {
-		response.Fail(w, http.StatusInternalServerError, "internal", "could not commit import")
+	applied, fail := h.applyRun(r.Context(), org, run, target)
+	if fail != nil {
+		response.Fail(w, fail.status, fail.code, fail.msg)
 		return
 	}
 
@@ -354,6 +272,198 @@ func (h *Handler) loadRun(w http.ResponseWriter, r *http.Request) (gen.ImportRun
 		return gen.ImportRun{}, false
 	}
 	return run, true
+}
+
+// ---- shared pipeline ------------------------------------------------------
+
+// planned is one row's dry-run outcome (1-based row number + verdict).
+type planned struct {
+	n int
+	v Verdict
+}
+
+// failure is an HTTP error to surface from a shared step; nil means success.
+type failure struct {
+	status int
+	code   string
+	msg    string
+}
+
+// prepared is everything the upload and ingest paths share once the request is
+// resolved and parsed: the org, the target, its key, the run options and the
+// normalized rows ready to plan.
+type prepared struct {
+	org      int64
+	target   Target
+	key      string
+	opts     importOptions
+	rows     []map[string]any
+	format   string
+	filename string
+}
+
+// prepare resolves the target and parses + normalizes the body, shared by the
+// dry-run upload and the one-shot ingest. When done=true it has already written
+// an error response and the caller must return.
+func (h *Handler) prepare(w http.ResponseWriter, r *http.Request) (prepared, bool) {
+	org, ok := orgID(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
+		return prepared{}, true
+	}
+	key := r.URL.Query().Get("target")
+	opts := importOptions{
+		MatchField: r.URL.Query().Get("match"),
+		Normalize:  splitParam(r.URL.Query().Get("normalize")),
+	}
+	target, err := resolveTarget(r.Context(), h.q, org, key, opts.MatchField)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "unknown import target")
+		return prepared{}, true
+	}
+	rows, format, filename, perr := parseRows(r, r.URL.Query().Get("format"))
+	if perr != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", perr.Error())
+		return prepared{}, true
+	}
+	normalizeRows(rows, opts.Normalize)
+	if len(rows) == 0 {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "no rows found")
+		return prepared{}, true
+	}
+	if len(rows) > maxImportRows {
+		rows = rows[:maxImportRows]
+	}
+	return prepared{org: org, target: target, key: key, opts: opts, rows: rows, format: format, filename: filename}, false
+}
+
+// parseRows reads the request body into rows per the format. "json" decodes a
+// JSON array body; "csv"/"xlsx"/"" read the multipart "file" field (inferring
+// the format from the filename when empty). It returns the resolved format and
+// the uploaded filename.
+func parseRows(r *http.Request, format string) (rows []map[string]any, outFormat, filename string, err error) {
+	if format == "json" {
+		if e := json.NewDecoder(r.Body).Decode(&rows); e != nil {
+			return nil, "", "", errors.New("body must be a JSON array of objects")
+		}
+		return rows, "json", "", nil
+	}
+	file, hdr, ferr := r.FormFile("file")
+	if ferr != nil {
+		return nil, "", "", errors.New("a CSV or XLSX file is required (multipart field 'file')")
+	}
+	defer file.Close()
+	if hdr != nil {
+		filename = hdr.Filename
+	}
+	raw, rerr := io.ReadAll(io.LimitReader(file, 25<<20))
+	if rerr != nil {
+		return nil, "", "", errors.New("could not read the uploaded file")
+	}
+	if format == "" { // infer from the filename when not given
+		if strings.HasSuffix(strings.ToLower(filename), ".xlsx") {
+			format = "xlsx"
+		} else {
+			format = "csv"
+		}
+	}
+	if format == "xlsx" {
+		rows, err = parseXLSX(raw)
+	} else {
+		format = "csv"
+		rows, err = parseCSV(bytes.NewReader(raw))
+	}
+	if err != nil {
+		return nil, "", "", err
+	}
+	return rows, format, filename, nil
+}
+
+// planRows is the dry run: every row is classified by the target (create /
+// update / error) and tallied. Nothing is written.
+func planRows(ctx context.Context, q *gen.Queries, org int64, target Target, rows []map[string]any) (out []planned, create, update, errs int) {
+	out = make([]planned, 0, len(rows))
+	for i, row := range rows {
+		v := target.Plan(ctx, q, org, row)
+		switch v.Status {
+		case "create":
+			create++
+		case "update":
+			update++
+		default:
+			v.Status = "error"
+			errs++
+		}
+		out = append(out, planned{n: i + 1, v: v})
+	}
+	return out, create, update, errs
+}
+
+// stageRun persists a dry run — the import_run plus a row per planned outcome —
+// in one transaction. Nothing is applied to the target.
+func (h *Handler) stageRun(ctx context.Context, org int64, key, format, filename string, opts importOptions, out []planned, create, update, errs int, actor *int64) (gen.ImportRun, error) {
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return gen.ImportRun{}, err
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.q.WithTx(tx)
+	optsJSON, _ := json.Marshal(opts)
+	run, err := qtx.CreateImportRun(ctx, gen.CreateImportRunParams{
+		OrganizationID: org, Target: key, Format: format, SourceFilename: filename, Options: optsJSON,
+		TotalRows: int32(len(out)), CreateRows: int32(create), UpdateRows: int32(update), ErrorRows: int32(errs),
+		CreatedBy: actor,
+	})
+	if err != nil {
+		return gen.ImportRun{}, err
+	}
+	for _, p := range out {
+		data := p.v.Data
+		if len(data) == 0 {
+			data = []byte("{}")
+		}
+		if err := qtx.CreateImportRow(ctx, gen.CreateImportRowParams{
+			ImportRunID: run.ID, OrganizationID: org, RowNumber: int32(p.n),
+			Data: data, Status: p.v.Status, Message: p.v.Message,
+		}); err != nil {
+			return gen.ImportRun{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return gen.ImportRun{}, err
+	}
+	return run, nil
+}
+
+// applyRun applies a staged run's create/update rows in one transaction and
+// marks it committed, returning the number applied. All-or-nothing: a row that
+// fails at the database (e.g. a duplicate slug between two rows) rolls the whole
+// applied batch back. Shared by interactive commit and one-shot ingest.
+func (h *Handler) applyRun(ctx context.Context, org int64, run gen.ImportRun, target Target) (int, *failure) {
+	rows, err := h.q.ListCommittableImportRows(ctx, run.ID)
+	if err != nil {
+		return 0, &failure{http.StatusInternalServerError, "internal", "could not read staged rows"}
+	}
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		return 0, &failure{http.StatusInternalServerError, "internal", "could not commit import"}
+	}
+	defer tx.Rollback(ctx)
+	qtx := h.q.WithTx(tx)
+	applied := 0
+	for _, row := range rows {
+		if err := target.Apply(ctx, qtx, org, row.Data, row.Status); err != nil {
+			return 0, &failure{http.StatusConflict, "conflict", "row " + strconv.Itoa(int(row.RowNumber)) + " could not be applied"}
+		}
+		applied++
+	}
+	if err := qtx.MarkImportRunCommitted(ctx, gen.MarkImportRunCommittedParams{OrganizationID: org, ID: run.ID}); err != nil {
+		return 0, &failure{http.StatusInternalServerError, "internal", "could not finalize import"}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, &failure{http.StatusInternalServerError, "internal", "could not commit import"}
+	}
+	return applied, nil
 }
 
 // ---- helpers -------------------------------------------------------------
