@@ -91,3 +91,63 @@ func TestCatalogCompletenessScoring(t *testing.T) {
 		t.Errorf("DQ-MISSING missing=%v, want [dqtest_material]", missing.Missing)
 	}
 }
+
+// TestObjectCompleteness proves the SAME completeness scoring generalizes to
+// custom objects: a type with a required field, one complete record and one
+// missing it, yields the expected overview + worst-offenders detail.
+func TestObjectCompleteness(t *testing.T) {
+	pool := testsupport.NewDB(t)
+	q := gen.New(pool)
+	ctx := context.Background()
+
+	var typeID int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO object_types (organization_id, code, label) VALUES ($1, 'dqsupplier', 'Supplier') RETURNING id`,
+		demoOrg).Scan(&typeID); err != nil {
+		t.Fatalf("insert type: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_fields (object_type_id, organization_id, code, label, data_type, is_required)
+		 VALUES ($1, $2, 'rating', 'Rating', 'number', true)`, typeID, demoOrg); err != nil {
+		t.Fatalf("insert field: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_records (object_type_id, organization_id, data) VALUES
+		 ($1, $2, '{"rating":5}'::jsonb), ($1, $2, '{}'::jsonb)`, typeID, demoOrg); err != nil {
+		t.Fatalf("insert records: %v", err)
+	}
+
+	rows, err := q.ObjectTypeCompleteness(ctx, demoOrg)
+	if err != nil {
+		t.Fatalf("overview: %v", err)
+	}
+	var sup *gen.ObjectTypeCompletenessRow
+	for i := range rows {
+		if rows[i].Code == "dqsupplier" {
+			sup = &rows[i]
+		}
+	}
+	if sup == nil {
+		t.Fatal("supplier type missing from overview")
+	}
+	if sup.RecordsScored != 2 || sup.CompleteCount != 1 || sup.IncompleteCount != 1 {
+		t.Errorf("supplier scored=%d complete=%d incomplete=%d, want 2/1/1", sup.RecordsScored, sup.CompleteCount, sup.IncompleteCount)
+	}
+	if sup.AvgCompleteness != 50 {
+		t.Errorf("supplier avg_completeness=%v, want 50", sup.AvgCompleteness)
+	}
+
+	worst, err := q.ObjectRecordCompletenessWorst(ctx, gen.ObjectRecordCompletenessWorstParams{
+		OrganizationID: demoOrg, ObjectTypeID: typeID, RowLimit: 50,
+	})
+	if err != nil {
+		t.Fatalf("worst: %v", err)
+	}
+	if len(worst) != 1 {
+		t.Fatalf("worst len=%d, want 1 (only the incomplete record)", len(worst))
+	}
+	if worst[0].RequiredTotal != 1 || worst[0].RequiredPresent != 0 ||
+		len(worst[0].Missing) != 1 || worst[0].Missing[0] != "rating" {
+		t.Errorf("worst row = %+v, want 1/0 missing [rating]", worst[0])
+	}
+}

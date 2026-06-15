@@ -34,6 +34,8 @@ func (h *Handler) Routes(r chi.Router, authMW func(http.Handler) http.Handler) {
 		ar.Use(authMW)
 		ar.Use(mw.RequireAudience("admin"))
 		ar.With(mw.RequirePermission("dataquality.view")).Get("/admin/data-health/catalog", h.catalog)
+		ar.With(mw.RequirePermission("dataquality.view")).Get("/admin/data-health/objects", h.objectsOverview)
+		ar.With(mw.RequirePermission("dataquality.view")).Get("/admin/data-health/objects/{code}", h.objectDetail)
 	})
 }
 
@@ -89,6 +91,75 @@ func (h *Handler) catalog(w http.ResponseWriter, r *http.Request) {
 		},
 		"worst": items,
 	})
+}
+
+// objectsOverview scores every custom object type for the org — the same
+// completeness question as the catalog, answered per model.
+func (h *Handler) objectsOverview(w http.ResponseWriter, r *http.Request) {
+	c, ok := mw.ClaimsFrom(r.Context())
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
+		return
+	}
+	rows, err := h.q.ObjectTypeCompleteness(r.Context(), c.OrgID)
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not compute completeness")
+		return
+	}
+	items := make([]map[string]any, 0, len(rows))
+	for _, t := range rows {
+		items = append(items, map[string]any{
+			"code": t.Code, "label": t.Label,
+			"records_total": t.RecordsTotal, "records_scored": t.RecordsScored,
+			"avg_completeness": round1(t.AvgCompleteness),
+			"complete_count":   t.CompleteCount, "incomplete_count": t.IncompleteCount,
+		})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// objectDetail lists the least-complete records of one object type, with the
+// required fields each is missing.
+func (h *Handler) objectDetail(w http.ResponseWriter, r *http.Request) {
+	c, ok := mw.ClaimsFrom(r.Context())
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
+		return
+	}
+	t, err := h.q.GetObjectTypeByCode(r.Context(), gen.GetObjectTypeByCodeParams{OrganizationID: c.OrgID, Code: chi.URLParam(r, "code")})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "object type not found")
+		return
+	}
+	limit := defaultWorstLimit
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, e := strconv.Atoi(v); e == nil && n > 0 {
+			limit = n
+		}
+	}
+	if limit > maxWorstLimit {
+		limit = maxWorstLimit
+	}
+	worst, err := h.q.ObjectRecordCompletenessWorst(r.Context(), gen.ObjectRecordCompletenessWorstParams{
+		OrganizationID: c.OrgID, ObjectTypeID: t.ID, RowLimit: int32(limit),
+	})
+	if err != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not list incomplete records")
+		return
+	}
+	items := make([]map[string]any, 0, len(worst))
+	for _, p := range worst {
+		pct := 0.0
+		if p.RequiredTotal > 0 {
+			pct = float64(p.RequiredPresent) / float64(p.RequiredTotal) * 100
+		}
+		items = append(items, map[string]any{
+			"id": p.ID, "public_id": p.PublicID.String(),
+			"required_total": p.RequiredTotal, "required_present": p.RequiredPresent,
+			"completeness": round1(pct), "missing": p.Missing,
+		})
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"code": t.Code, "label": t.Label, "worst": items})
 }
 
 // round1 rounds a percentage to one decimal place for display.

@@ -3489,6 +3489,35 @@ components:
         items: { type: array, items: { $ref: '#/components/schemas/ObjectRecord' } }
         page: { type: integer }
         total: { type: integer }
+    ObjectTypeHealth:
+      type: object
+      properties:
+        code: { type: string }
+        label: { type: string }
+        records_total: { type: integer }
+        records_scored: { type: integer }
+        avg_completeness: { type: number }
+        complete_count: { type: integer }
+        incomplete_count: { type: integer }
+    ListWrapperObjectTypeHealth:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ObjectTypeHealth' } }
+    ObjectRecordHealthItem:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        required_total: { type: integer }
+        required_present: { type: integer }
+        completeness: { type: number }
+        missing: { type: array, items: { type: string } }
+    ObjectHealth:
+      type: object
+      properties:
+        code: { type: string }
+        label: { type: string }
+        worst: { type: array, items: { $ref: '#/components/schemas/ObjectRecordHealthItem' } }
 
   responses:
     ErrorResponse:
@@ -6797,6 +6826,23 @@ paths:
       parameters: [ { name: limit, in: query, required: false, schema: { type: integer } } ]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogHealth' } } } }
+  /admin/data-health/objects:
+    get:
+      tags: [DataQuality]
+      operationId: adminObjectDataHealth
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperObjectTypeHealth' } } } }
+  /admin/data-health/objects/{code}:
+    parameters: [ { name: code, in: path, required: true, schema: { type: string } } ]
+    get:
+      tags: [DataQuality]
+      operationId: adminObjectTypeDataHealth
+      security: [{ adminAuth: [] }]
+      parameters: [ { name: limit, in: query, schema: { type: integer } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectHealth' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
   /admin/object-types:
     get:
       tags: [Objects]

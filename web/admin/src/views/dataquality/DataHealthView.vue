@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { api, errMessage } from '@/lib/client'
@@ -12,25 +13,43 @@ import EmptyState from '@/components/EmptyState.vue'
 
 type Summary = components['schemas']['CatalogHealthSummary']
 type Item = components['schemas']['CatalogHealthItem']
+type ObjType = components['schemas']['ObjectTypeHealth']
+type ObjItem = components['schemas']['ObjectRecordHealthItem']
 
 const loading = ref(false)
 const error = ref('')
 const summary = ref<Summary | null>(null)
 const worst = ref<Item[]>([])
+const objectTypes = ref<ObjType[]>([])
+
+const objectDialogOpen = ref(false)
+const objectDetailLabel = ref('')
+const objectWorst = ref<ObjItem[]>([])
+const objectLoading = ref(false)
 
 async function load() {
   loading.value = true
   error.value = ''
-  const { data, error: e } = await api.GET('/admin/data-health/catalog', {
-    params: { query: { limit: 50 } },
-  })
-  loading.value = false
-  if (e) {
-    error.value = errMessage(e, 'Failed to load catalog health')
-    return
+  const { data: cat, error: catErr } = await api.GET('/admin/data-health/catalog', { params: { query: { limit: 50 } } })
+  if (catErr) {
+    error.value = errMessage(catErr, 'Failed to load catalog health')
+  } else {
+    summary.value = cat?.summary ?? null
+    worst.value = cat?.worst ?? []
   }
-  summary.value = data?.summary ?? null
-  worst.value = data?.worst ?? []
+  const { data: obj } = await api.GET('/admin/data-health/objects')
+  objectTypes.value = obj?.items ?? []
+  loading.value = false
+}
+
+async function openObjectDetail(code: string, label: string) {
+  objectDetailLabel.value = label
+  objectWorst.value = []
+  objectDialogOpen.value = true
+  objectLoading.value = true
+  const { data } = await api.GET('/admin/data-health/objects/{code}', { params: { path: { code } } })
+  objectLoading.value = false
+  objectWorst.value = data?.worst ?? []
 }
 
 const avg = computed(() => Math.round((summary.value?.avg_completeness ?? 0) * 10) / 10)
@@ -42,7 +61,7 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <PageHeader title="Catalog data health">
+    <PageHeader title="Data health">
       <template #actions>
         <Button icon="pi pi-refresh" severity="secondary" text :loading="loading" @click="load" />
       </template>
@@ -78,7 +97,7 @@ onMounted(load)
       </div>
     </div>
 
-    <h3>Needs attention</h3>
+    <h3>Products needing attention</h3>
     <DataTable :value="worst" dataKey="id" stripedRows :loading="loading">
       <template #empty>
         <EmptyState
@@ -104,6 +123,50 @@ onMounted(load)
         </template>
       </Column>
     </DataTable>
+
+    <h3 class="section-top">Custom objects</h3>
+    <DataTable :value="objectTypes" dataKey="code" stripedRows :loading="loading">
+      <template #empty>
+        <EmptyState icon="pi pi-database" title="No custom objects" message="Define types under Settings → Custom objects to track their completeness here." />
+      </template>
+      <Column field="label" header="Object" />
+      <Column header="Completeness" style="width: 16rem">
+        <template #body="{ data }">
+          <div class="cell-complete">
+            <div class="bar"><div class="bar-fill" :class="tier(data.avg_completeness ?? 0)" :style="{ width: (data.avg_completeness ?? 0) + '%' }" /></div>
+            <span class="cell-pct">{{ data.avg_completeness ?? 0 }}%</span>
+          </div>
+        </template>
+      </Column>
+      <Column header="Records"><template #body="{ data }"><span class="muted">{{ data.records_scored ?? 0 }} / {{ data.records_total ?? 0 }}</span></template></Column>
+      <Column header="Complete"><template #body="{ data }"><span class="ok-text">{{ data.complete_count ?? 0 }}</span></template></Column>
+      <Column header="Incomplete"><template #body="{ data }"><span class="bad-text">{{ data.incomplete_count ?? 0 }}</span></template></Column>
+      <Column header="" style="width: 8rem">
+        <template #body="{ data }">
+          <Button v-if="(data.incomplete_count ?? 0) > 0" icon="pi pi-search" label="Gaps" text size="small" @click="openObjectDetail(data.code, data.label)" />
+        </template>
+      </Column>
+    </DataTable>
+
+    <Dialog v-model:visible="objectDialogOpen" modal :header="`Incomplete ${objectDetailLabel} records`" :style="{ width: '44rem' }">
+      <DataTable :value="objectWorst" dataKey="id" stripedRows :loading="objectLoading" scrollable scrollHeight="60vh">
+        <template #empty>No incomplete records.</template>
+        <Column header="Record"><template #body="{ data }"><code>{{ String(data.public_id ?? '').slice(0, 8) }}</code></template></Column>
+        <Column header="Completeness" style="width: 14rem">
+          <template #body="{ data }">
+            <div class="cell-complete">
+              <div class="bar"><div class="bar-fill" :class="tier(data.completeness ?? 0)" :style="{ width: (data.completeness ?? 0) + '%' }" /></div>
+              <span class="cell-pct">{{ data.completeness ?? 0 }}%</span>
+            </div>
+          </template>
+        </Column>
+        <Column header="Missing required">
+          <template #body="{ data }">
+            <Tag v-for="code in data.missing ?? []" :key="code" :value="code" severity="warn" class="miss" />
+          </template>
+        </Column>
+      </DataTable>
+    </Dialog>
   </div>
 </template>
 
@@ -146,4 +209,7 @@ h3 { margin: 1.5rem 0 0.5rem; }
 .cell-pct { font-weight: 700; font-size: 0.85rem; min-width: 2.8rem; text-align: right; }
 .cell-frac { font-size: 0.78rem; min-width: 2.5rem; }
 .miss { margin: 0 0.25rem 0.25rem 0; }
+.section-top { margin-top: 2.25rem; }
+.ok-text { color: #15803d; font-weight: 700; }
+.bad-text { color: #b91c1c; font-weight: 700; }
 </style>

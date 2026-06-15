@@ -4183,6 +4183,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/data-health/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminObjectDataHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/data-health/objects/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        get: operations["adminObjectTypeDataHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/object-types": {
         parameters: {
             query?: never;
@@ -8137,6 +8171,32 @@ export interface components {
             items?: components["schemas"]["ObjectRecord"][];
             page?: number;
             total?: number;
+        };
+        ObjectTypeHealth: {
+            code?: string;
+            label?: string;
+            records_total?: number;
+            records_scored?: number;
+            avg_completeness?: number;
+            complete_count?: number;
+            incomplete_count?: number;
+        };
+        ListWrapperObjectTypeHealth: {
+            items?: components["schemas"]["ObjectTypeHealth"][];
+        };
+        ObjectRecordHealthItem: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            required_total?: number;
+            required_present?: number;
+            completeness?: number;
+            missing?: string[];
+        };
+        ObjectHealth: {
+            code?: string;
+            label?: string;
+            worst?: components["schemas"]["ObjectRecordHealthItem"][];
         };
     };
     responses: {
@@ -15717,6 +15777,51 @@ export interface operations {
                     "application/json": components["schemas"]["CatalogHealth"];
                 };
             };
+        };
+    };
+    adminObjectDataHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperObjectTypeHealth"];
+                };
+            };
+        };
+    };
+    adminObjectTypeDataHealth: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectHealth"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListObjectTypes: {

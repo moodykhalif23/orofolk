@@ -7,6 +7,8 @@ package gen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const catalogCompletenessSummary = `-- name: CatalogCompletenessSummary :one
@@ -121,6 +123,150 @@ func (q *Queries) CatalogCompletenessWorst(ctx context.Context, arg CatalogCompl
 			&i.RequiredTotal,
 			&i.RequiredPresent,
 			&i.Missing,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const objectRecordCompletenessWorst = `-- name: ObjectRecordCompletenessWorst :many
+WITH rf AS (
+  SELECT r.id, r.public_id, f.code AS field_code,
+         ((r.data -> f.code) IS NOT NULL
+          AND (r.data -> f.code) NOT IN ('null'::jsonb, '""'::jsonb, '[]'::jsonb, '{}'::jsonb)) AS present
+  FROM object_records r
+  JOIN object_fields f ON f.object_type_id = r.object_type_id AND f.is_required = true
+  WHERE r.organization_id = $1 AND r.object_type_id = $2 AND r.deleted_at IS NULL
+)
+SELECT id, public_id,
+  count(*)::int AS required_total,
+  count(*) FILTER (WHERE present)::int AS required_present,
+  COALESCE(array_agg(field_code ORDER BY field_code) FILTER (WHERE NOT present), '{}')::text[] AS missing
+FROM rf
+GROUP BY id, public_id
+HAVING count(*) FILTER (WHERE NOT present) > 0
+ORDER BY count(*) FILTER (WHERE present)::float8 / count(*) ASC
+LIMIT $3
+`
+
+type ObjectRecordCompletenessWorstParams struct {
+	OrganizationID int64 `json:"organization_id"`
+	ObjectTypeID   int64 `json:"object_type_id"`
+	RowLimit       int32 `json:"row_limit"`
+}
+
+type ObjectRecordCompletenessWorstRow struct {
+	ID              int64     `json:"id"`
+	PublicID        uuid.UUID `json:"public_id"`
+	RequiredTotal   int32     `json:"required_total"`
+	RequiredPresent int32     `json:"required_present"`
+	Missing         []string  `json:"missing"`
+}
+
+// ObjectRecordCompletenessWorst lists the least-complete records of one type,
+// with exactly which required fields each is missing (the enrichment work-list).
+func (q *Queries) ObjectRecordCompletenessWorst(ctx context.Context, arg ObjectRecordCompletenessWorstParams) ([]ObjectRecordCompletenessWorstRow, error) {
+	rows, err := q.db.Query(ctx, objectRecordCompletenessWorst, arg.OrganizationID, arg.ObjectTypeID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ObjectRecordCompletenessWorstRow
+	for rows.Next() {
+		var i ObjectRecordCompletenessWorstRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.RequiredTotal,
+			&i.RequiredPresent,
+			&i.Missing,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const objectTypeCompleteness = `-- name: ObjectTypeCompleteness :many
+
+WITH req AS (
+  SELECT object_type_id, code FROM object_fields
+  WHERE organization_id = $1 AND is_required = true
+),
+rf AS (
+  SELECT r.id, r.object_type_id,
+         ((r.data -> req.code) IS NOT NULL
+          AND (r.data -> req.code) NOT IN ('null'::jsonb, '""'::jsonb, '[]'::jsonb, '{}'::jsonb)) AS present
+  FROM object_records r
+  JOIN req ON req.object_type_id = r.object_type_id
+  WHERE r.organization_id = $1 AND r.deleted_at IS NULL
+),
+per_record AS (
+  SELECT id, object_type_id,
+         count(*) AS req_total,
+         count(*) FILTER (WHERE present) AS req_present
+  FROM rf
+  GROUP BY id, object_type_id
+)
+SELECT t.id, t.code, t.label,
+  (SELECT count(*) FROM object_records orr
+     WHERE orr.organization_id = $1 AND orr.object_type_id = t.id AND orr.deleted_at IS NULL)::int AS records_total,
+  count(pr.id)::int AS records_scored,
+  COALESCE(avg(pr.req_present::float8 / pr.req_total) * 100, 100)::float8 AS avg_completeness,
+  count(pr.id) FILTER (WHERE pr.req_present = pr.req_total)::int AS complete_count,
+  count(pr.id) FILTER (WHERE pr.req_present < pr.req_total)::int AS incomplete_count
+FROM object_types t
+LEFT JOIN per_record pr ON pr.object_type_id = t.id
+WHERE t.organization_id = $1
+GROUP BY t.id, t.code, t.label
+ORDER BY t.label
+`
+
+type ObjectTypeCompletenessRow struct {
+	ID              int64   `json:"id"`
+	Code            string  `json:"code"`
+	Label           string  `json:"label"`
+	RecordsTotal    int32   `json:"records_total"`
+	RecordsScored   int32   `json:"records_scored"`
+	AvgCompleteness float64 `json:"avg_completeness"`
+	CompleteCount   int32   `json:"complete_count"`
+	IncompleteCount int32   `json:"incomplete_count"`
+}
+
+// ===== Custom-object completeness (Phase 2 slice 3) ========================
+// The same "present means a meaningful JSON value" rule, now against each custom
+// object type's REQUIRED fields — so data-health answers for every model, not
+// just products.
+// ObjectTypeCompleteness scores every object type for an org: how complete its
+// records are against the type's required fields. Types with no required fields
+// (or no records) report 100% / 0 scored.
+func (q *Queries) ObjectTypeCompleteness(ctx context.Context, organizationID int64) ([]ObjectTypeCompletenessRow, error) {
+	rows, err := q.db.Query(ctx, objectTypeCompleteness, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ObjectTypeCompletenessRow
+	for rows.Next() {
+		var i ObjectTypeCompletenessRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Label,
+			&i.RecordsTotal,
+			&i.RecordsScored,
+			&i.AvgCompleteness,
+			&i.CompleteCount,
+			&i.IncompleteCount,
 		); err != nil {
 			return nil, err
 		}

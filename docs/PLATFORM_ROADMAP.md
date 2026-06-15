@@ -140,7 +140,7 @@ every plan.
 
 ---
 
-## Phase 2 — Generic data modeling *(the platform unlock)* · **Slices 1–2 shipped**
+## Phase 2 — Generic data modeling *(the platform unlock)* · **Shipped**
 
 Model anything — assets, locations, contracts, suppliers — not just products.
 This is what turns Teggo from "a commerce app with flexible product fields" into
@@ -170,10 +170,19 @@ objects** — a types list (create/edit/delete) and a per-type detail with a
 **schema-driven record form** that renders one typed input per field and surfaces
 the engine's `422` violations inline. Verified: admin `vue-tsc` clean.
 
-**Remaining for Phase 2:** slice 3 — **generalize completeness scoring + the
-data-health view to custom objects** (the scoring SQL targets products only
-today), so "is my data complete?" answers for every object type, not just the
-catalog.
+**Shipped this iteration (slice 3 — completeness generalized):** the same scoring
+rule now runs over each custom object type's required fields — new queries
+(`ObjectTypeCompleteness`, `ObjectRecordCompletenessWorst`), endpoints
+`GET /admin/data-health/objects` (per-type overview) and
+`/admin/data-health/objects/{code}` (worst records + the fields each is missing),
+and the **Data health** screen gained a **Custom objects** section with per-type
+scores and a drill-in to incomplete records. Verified: real-Postgres test (type +
+required field → complete/incomplete records → correct overview + worst), the full
+dataquality + isolation suites, and client + admin typechecks.
+
+**Phase 2 is complete** — completeness *and* validation now work uniformly across
+products and every custom object type, all on one engine. Next: **Phase 3
+(onboarding / ETL)**.
 
 ---
 

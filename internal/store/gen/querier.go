@@ -799,6 +799,17 @@ type Querier interface {
 	// NewCustomerCountWindow counts accounts whose FIRST ever non-cancelled order
 	// falls inside the window — new-logo acquisition for the period.
 	NewCustomerCountWindow(ctx context.Context, arg NewCustomerCountWindowParams) (int64, error)
+	// ObjectRecordCompletenessWorst lists the least-complete records of one type,
+	// with exactly which required fields each is missing (the enrichment work-list).
+	ObjectRecordCompletenessWorst(ctx context.Context, arg ObjectRecordCompletenessWorstParams) ([]ObjectRecordCompletenessWorstRow, error)
+	// ===== Custom-object completeness (Phase 2 slice 3) ========================
+	// The same "present means a meaningful JSON value" rule, now against each custom
+	// object type's REQUIRED fields — so data-health answers for every model, not
+	// just products.
+	// ObjectTypeCompleteness scores every object type for an org: how complete its
+	// records are against the type's required fields. Types with no required fields
+	// (or no records) report 100% / 0 scored.
+	ObjectTypeCompleteness(ctx context.Context, organizationID int64) ([]ObjectTypeCompletenessRow, error)
 	// PipelineBoard: per-stage open count, total and probability-weighted amounts
 	// (Pack 2 §1.4). Sums cast to text via the numeric override; count is bigint.
 	PipelineBoard(ctx context.Context, pipelineID int64) ([]PipelineBoardRow, error)
