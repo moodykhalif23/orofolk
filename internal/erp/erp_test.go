@@ -23,7 +23,9 @@ func TestSignVerify(t *testing.T) {
 }
 
 func TestIdempotencyKeyStable(t *testing.T) {
-	if IdempotencyKey("order", 5, "upsert") != IdempotencyKey("order", 5, "upsert") {
+	a := IdempotencyKey("order", 5, "upsert")
+	b := IdempotencyKey("order", 5, "upsert")
+	if a != b {
 		t.Error("idempotency key must be stable")
 	}
 	if IdempotencyKey("order", 5, "upsert") == IdempotencyKey("invoice", 5, "upsert") {
