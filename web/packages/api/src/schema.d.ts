@@ -4324,6 +4324,124 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/imports/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListImportTargets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminImportTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListImportRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetImportRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports/runs/{id}/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListImportRows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/imports/runs/{id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCommitImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/identity-providers": {
         parameters: {
             query?: never;
@@ -8197,6 +8315,52 @@ export interface components {
             code?: string;
             label?: string;
             worst?: components["schemas"]["ObjectRecordHealthItem"][];
+        };
+        ImportTarget: {
+            key?: string;
+            label?: string;
+            columns?: string[];
+        };
+        ImportTargetList: {
+            targets?: components["schemas"]["ImportTarget"][];
+        };
+        ImportRun: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            target?: string;
+            format?: string;
+            source_filename?: string;
+            /** @enum {string} */
+            status?: "validated" | "committed" | "failed";
+            total_rows?: number;
+            create_rows?: number;
+            update_rows?: number;
+            error_rows?: number;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            committed_at?: string;
+        };
+        ImportRow: {
+            row_number?: number;
+            /** @enum {string} */
+            status?: "create" | "update" | "error";
+            message?: string;
+            data?: {
+                [key: string]: unknown;
+            };
+        };
+        ImportRunResult: {
+            run?: components["schemas"]["ImportRun"];
+            preview?: components["schemas"]["ImportRow"][];
+        };
+        ListWrapperImportRun: {
+            items?: components["schemas"]["ImportRun"][];
+        };
+        ImportRowList: {
+            items?: components["schemas"]["ImportRow"][];
+            page?: number;
         };
     };
     responses: {
@@ -16141,6 +16305,174 @@ export interface operations {
                 content?: never;
             };
             404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListImportTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportTargetList"];
+                };
+            };
+        };
+    };
+    adminImportTemplate: {
+        parameters: {
+            query: {
+                target: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV template */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateImport: {
+        parameters: {
+            query: {
+                target: string;
+                format?: "csv" | "json";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Dry run staged */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRunResult"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListImportRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperImportRun"];
+                };
+            };
+        };
+    };
+    adminGetImportRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRun"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListImportRows: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowList"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCommitImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Committed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        committed?: number;
+                    };
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
         };
     };
     adminListIdentityProviders: {

@@ -69,10 +69,6 @@ type Result struct {
 	Selected  []SelectedOption `json:"selected"`
 }
 
-// Configure validates the selected option ids against the definition and prices
-// the configuration. It always returns a Result (Valid=false with Errors on a
-// bad configuration) rather than erroring, so callers can surface every problem
-// at once.
 func Configure(def Definition, selectedIDs []int64) Result {
 	res := Result{BasePrice: def.BasePrice, Currency: def.Currency}
 

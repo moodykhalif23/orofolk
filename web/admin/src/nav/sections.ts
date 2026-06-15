@@ -155,6 +155,7 @@ export const sections: NavSection[] = [
       { label: 'Websites', icon: 'pi pi-globe', routeName: 'websites', permission: 'tenant.view', blurb: 'Storefronts and domains.' },
       { label: 'Configuration', icon: 'pi pi-cog', routeName: 'settings', permission: 'settings.view', blurb: 'Store identity and core settings.' },
       { label: 'Custom objects', icon: 'pi pi-database', routeName: 'object-types', permission: 'object.view', blurb: 'Model and capture any entity beyond products.' },
+      { label: 'Import data', icon: 'pi pi-upload', routeName: 'imports', permission: 'import.view', blurb: 'Bulk-import products and custom objects with a dry-run.' },
       { label: 'Audit log', icon: 'pi pi-shield', routeName: 'audit-log', permission: 'audit.view', blurb: 'Every staff action, recorded.' },
       { label: 'Integrations', icon: 'pi pi-sync', routeName: 'integrations', permission: 'integration.view', blurb: 'Connect external systems.' },
       { label: 'API keys', icon: 'pi pi-key', routeName: 'api-keys', permission: 'apikey.view', blurb: 'Programmatic access tokens for integrations.' },

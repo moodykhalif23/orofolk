@@ -123,6 +123,10 @@ type Querier interface {
 	// SSO / federated identity (PRD §15).
 	// ===== Identity providers ==================================================
 	CreateIdentityProvider(ctx context.Context, arg CreateIdentityProviderParams) (IdentityProvider, error)
+	CreateImportRow(ctx context.Context, arg CreateImportRowParams) error
+	// Generic import engine (Platform roadmap, Phase 3): dry-run runs + per-row
+	// verdicts, applied on commit.
+	CreateImportRun(ctx context.Context, arg CreateImportRunParams) (ImportRun, error)
 	// ===== digest persistence ==================================================
 	CreateInsightDigest(ctx context.Context, arg CreateInsightDigestParams) (InsightDigest, error)
 	// ERP / accounting sync (Pack 2 §4.6).
@@ -378,6 +382,7 @@ type Querier interface {
 	GetIdentityProvider(ctx context.Context, arg GetIdentityProviderParams) (IdentityProvider, error)
 	// GetIdentityProviderByID resolves a provider without org (public login/callback).
 	GetIdentityProviderByID(ctx context.Context, id int64) (IdentityProvider, error)
+	GetImportRun(ctx context.Context, arg GetImportRunParams) (ImportRun, error)
 	GetInsightDigest(ctx context.Context, arg GetInsightDigestParams) (InsightDigest, error)
 	GetInstanceForEntity(ctx context.Context, arg GetInstanceForEntityParams) (WorkflowInstance, error)
 	GetIntegrationConnection(ctx context.Context, arg GetIntegrationConnectionParams) (IntegrationConnection, error)
@@ -586,6 +591,8 @@ type Querier interface {
 	// scoped via the product join so admins can't read across tenants).
 	ListCatalogVisibilityForProduct(ctx context.Context, arg ListCatalogVisibilityForProductParams) ([]CatalogVisibility, error)
 	ListCategories(ctx context.Context, organizationID int64) ([]Category, error)
+	// ListCommittableImportRows returns the rows a commit will apply (create/update).
+	ListCommittableImportRows(ctx context.Context, importRunID int64) ([]ListCommittableImportRowsRow, error)
 	ListConfigRules(ctx context.Context, productID int64) ([]ConfigRule, error)
 	// Hierarchical config settings (migration 0036).
 	ListConfigSettings(ctx context.Context, organizationID int64) ([]ConfigSetting, error)
@@ -610,6 +617,8 @@ type Querier interface {
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
 	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
 	ListIdentityProviders(ctx context.Context, organizationID int64) ([]IdentityProvider, error)
+	ListImportRows(ctx context.Context, arg ListImportRowsParams) ([]ListImportRowsRow, error)
+	ListImportRuns(ctx context.Context, organizationID int64) ([]ImportRun, error)
 	ListInsightDigests(ctx context.Context, arg ListInsightDigestsParams) ([]InsightDigest, error)
 	ListIntegrationConnections(ctx context.Context, organizationID int64) ([]IntegrationConnection, error)
 	ListInventoryLevelsForProduct(ctx context.Context, productID int64) ([]ListInventoryLevelsForProductRow, error)
@@ -777,6 +786,7 @@ type Querier interface {
 	MarkAllNotificationsRead(ctx context.Context, arg MarkAllNotificationsReadParams) error
 	MarkCartConverted(ctx context.Context, id int64) error
 	MarkCartReminded(ctx context.Context, id int64) error
+	MarkImportRunCommitted(ctx context.Context, arg MarkImportRunCommittedParams) error
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
 	MarkLeadConverted(ctx context.Context, arg MarkLeadConvertedParams) (Lead, error)

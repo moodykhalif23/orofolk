@@ -36,6 +36,7 @@ import (
 	"b2bcommerce/internal/modules/field"
 	"b2bcommerce/internal/modules/fxadmin"
 	"b2bcommerce/internal/modules/health"
+	"b2bcommerce/internal/modules/imports"
 	insightsmod "b2bcommerce/internal/modules/insights"
 	"b2bcommerce/internal/modules/integration"
 	"b2bcommerce/internal/modules/marketplace"
@@ -306,6 +307,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	crm.New(st.Pool()).Routes(r, authMW)
 	dataquality.New(st.Pool()).Routes(r, authMW)
 	objects.New(st.Pool()).Routes(r, authMW)
+	imports.New(st.Pool()).Routes(r, authMW)
 	wfadmin.New(st.Pool()).Routes(r, authMW)
 	cms.New(st.Pool(), issuer, o.pageDesigner).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)

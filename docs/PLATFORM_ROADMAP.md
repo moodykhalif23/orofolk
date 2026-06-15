@@ -186,13 +186,37 @@ products and every custom object type, all on one engine. Next: **Phase 3
 
 ---
 
-## Phase 3 — Onboarding at scale
+## Phase 3 — Onboarding at scale · **Slices 1–2 shipped**
 
 | Deliverable | Builds on | Effort |
 |---|---|---|
 | **Generic import engine** — any entity/model, CSV/Excel/JSON, column-mapping UI, dry-run + validation preview (uses Phase 1 rules), per-row results | generalise the product CSV importer | L |
 | **Data matching & cleansing** — dedup on configurable keys, fuzzy match, normalisation on ingest | checksum-dedup precedent in DAM | M |
 | **Supplier onboarding** — scoped API keys (Phase 0) + import templates so partners feed data in | Phase 0 + this engine | S |
+
+**Shipped this iteration (slice 1 — generic import engine):** migration `0070`
+adds `import_runs` + `import_rows`; a target abstraction with **two targets —
+products *and* any custom object type — on one pipeline**; endpoints to list
+targets, download a CSV template, **upload → dry-run** (parse + map + validate
+every row, staged with per-row create/update/error verdicts, *nothing written*),
+preview, and **commit** (apply create/update rows in one transaction). Every row
+is checked by the Phase-1 validation engine; `import.view` / `import.manage` gate
+it. Verified: real-Postgres test (products CSV create/update/error → commit, with
+"nothing before commit" + re-commit-guard assertions; object records JSON with a
+validation rejection), the isolation RLS gate over both tables, and client
+typecheck. Object records are insert-only for now; the legacy product-import
+endpoint stays until the UI moves to the engine.
+
+**Shipped this iteration (slice 2 — import UI):** a reusable **Import data** screen
+(Settings → Import data) — pick a target, download its CSV template, upload, see a
+**dry-run preview** (create/update/error counts + per-row outcomes), then commit,
+with a recent-imports list. Wired in: the product screen's Import button and a new
+Import button on each custom object type route to it, so the UI runs on the engine
+(the legacy inline product importer is retired). Verified: admin `vue-tsc`.
+
+**Remaining for Phase 3:** slice 3 — **matching & cleansing** (configurable dedup
+keys, fuzzy match, normalisation) + **XLSX**; slice 4 — **supplier onboarding**
+(API-key-scoped import endpoints + templates for partners).
 
 ---
 

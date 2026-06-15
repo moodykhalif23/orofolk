@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
@@ -9,7 +9,6 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
-import Dialog from 'primevue/dialog'
 import { api, errMessage } from '@/lib/client'
 import { useAuthStore } from '@/stores/auth'
 import type { components } from '@teggo/api/schema'
@@ -18,9 +17,9 @@ import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 type AdminProduct = components['schemas']['AdminProduct']
-type ImportResult = components['schemas']['ProductImportResult']
 
 const route = useRoute()
+const router = useRouter()
 const products = ref<AdminProduct[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -39,48 +38,11 @@ const confirm = useConfirm()
 const auth = useAuthStore()
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
 const src = (u?: string | null) => (u ? `${apiBase}${u}` : '')
-const importInput = ref<HTMLInputElement | null>(null)
-const importing = ref(false)
 const exporting = ref(false)
-const importResult = ref<ImportResult | null>(null)
-const resultOpen = ref(false)
 
-function pickImport() {
-  importInput.value?.click()
-}
-async function onImportFile(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  importing.value = true
-  try {
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch(`${apiBase}/admin/products/import`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${auth.token ?? ''}` },
-      body: fd,
-    })
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}))
-      throw new Error(b.message ?? `Import failed (${res.status})`)
-    }
-    const result = (await res.json()) as ImportResult
-    importResult.value = result
-    toast.add({
-      severity: result.errors ? 'warn' : 'success',
-      summary: 'Import complete',
-      detail: `${result.created} created · ${result.updated} updated · ${result.errors} error(s)`,
-      life: 4000,
-    })
-    if (result.errors) resultOpen.value = true
-    load()
-  } catch (err) {
-    toast.add({ severity: 'error', summary: errMessage(err, 'Import failed'), life: 4000 })
-  } finally {
-    importing.value = false
-    input.value = ''
-  }
+// Bulk import now runs through the generic import engine (dry-run → commit).
+function goImport() {
+  router.push({ name: 'imports', query: { target: 'products' } })
 }
 async function exportCsv() {
   exporting.value = true
@@ -104,8 +66,6 @@ async function exportCsv() {
     exporting.value = false
   }
 }
-const importErrors = () => importResult.value?.results.filter((r) => r.action === 'error') ?? []
-
 async function load() {
   loading.value = true
   error.value = ''
@@ -179,8 +139,7 @@ onMounted(() => { if (route.query.new) openCreate() })
           <Button icon="pi pi-search" severity="secondary" text @click="load" />
         </span>
         <Button icon="pi pi-download" label="Export" severity="secondary" outlined :loading="exporting" @click="exportCsv" />
-        <Button icon="pi pi-upload" label="Import" severity="secondary" outlined :loading="importing" @click="pickImport" />
-        <input ref="importInput" type="file" accept=".csv,text/csv" hidden @change="onImportFile" />
+        <Button icon="pi pi-upload" label="Import" severity="secondary" outlined @click="goImport" />
         <Button icon="pi pi-plus" label="New product" @click="openCreate" />
       </template>
     </PageHeader>
@@ -239,24 +198,6 @@ onMounted(() => { if (route.query.new) openCreate() })
     </DataTable>
 
     <ProductFormDialog v-model:open="dialogOpen" :product="editing" @saved="onSaved" />
-
-    <!-- Import results — surfaces row-level problems so a bad CSV is fixable. -->
-    <Dialog v-model:visible="resultOpen" modal header="Import results" :style="{ width: '36rem' }">
-      <template v-if="importResult">
-        <p class="muted mb">
-          {{ importResult.created }} created · {{ importResult.updated }} updated ·
-          {{ importResult.errors }} error(s).
-        </p>
-        <DataTable v-if="importResult.errors" :value="importErrors()" dataKey="row" :rows="8" paginator>
-          <Column field="row" header="Row" style="width: 5rem" />
-          <Column field="sku" header="SKU" />
-          <Column field="error" header="Problem" />
-        </DataTable>
-      </template>
-      <template #footer>
-        <Button label="Close" @click="resultOpen = false" />
-      </template>
-    </Dialog>
   </div>
 </template>
 

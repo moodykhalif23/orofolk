@@ -100,6 +100,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'object.view' },
       },
       {
+        path: 'imports',
+        name: 'imports',
+        component: () => import('@/views/imports/ImportView.vue'),
+        meta: { permission: 'import.view' },
+      },
+      {
         path: 'pricing',
         name: 'pricing',
         component: () => import('@/views/pricing/PriceListsView.vue'),

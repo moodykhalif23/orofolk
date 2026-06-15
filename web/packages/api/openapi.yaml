@@ -26,6 +26,7 @@ tags:
   - { name: Webhooks }
   - { name: DataQuality }
   - { name: Objects }
+  - { name: Imports }
 
 components:
   securitySchemes:
@@ -3518,6 +3519,52 @@ components:
         code: { type: string }
         label: { type: string }
         worst: { type: array, items: { $ref: '#/components/schemas/ObjectRecordHealthItem' } }
+    ImportTarget:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        columns: { type: array, items: { type: string } }
+    ImportTargetList:
+      type: object
+      properties:
+        targets: { type: array, items: { $ref: '#/components/schemas/ImportTarget' } }
+    ImportRun:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        target: { type: string }
+        format: { type: string }
+        source_filename: { type: string }
+        status: { type: string, enum: [validated, committed, failed] }
+        total_rows: { type: integer }
+        create_rows: { type: integer }
+        update_rows: { type: integer }
+        error_rows: { type: integer }
+        created_at: { type: string, format: date-time }
+        committed_at: { type: string, format: date-time }
+    ImportRow:
+      type: object
+      properties:
+        row_number: { type: integer }
+        status: { type: string, enum: [create, update, error] }
+        message: { type: string }
+        data: { type: object, additionalProperties: true }
+    ImportRunResult:
+      type: object
+      properties:
+        run: { $ref: '#/components/schemas/ImportRun' }
+        preview: { type: array, items: { $ref: '#/components/schemas/ImportRow' } }
+    ListWrapperImportRun:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ImportRun' } }
+    ImportRowList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ImportRow' } }
+        page: { type: integer }
 
   responses:
     ErrorResponse:
@@ -6953,6 +7000,74 @@ paths:
         '200': { description: Deleted }
         '404': { $ref: '#/components/responses/ErrorResponse' }
 
+  /admin/imports/targets:
+    get:
+      tags: [Imports]
+      operationId: adminListImportTargets
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ImportTargetList' } } } }
+  /admin/imports/template:
+    get:
+      tags: [Imports]
+      operationId: adminImportTemplate
+      security: [{ adminAuth: [] }]
+      parameters: [ { name: target, in: query, required: true, schema: { type: string } } ]
+      responses:
+        '200': { description: CSV template, content: { text/csv: { schema: { type: string } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/imports:
+    post:
+      tags: [Imports]
+      operationId: adminCreateImport
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: target, in: query, required: true, schema: { type: string } }
+        - { name: format, in: query, schema: { type: string, enum: [csv, json] } }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema: { type: object, properties: { file: { type: string, format: binary } } }
+      responses:
+        '201': { description: 'Dry run staged', content: { application/json: { schema: { $ref: '#/components/schemas/ImportRunResult' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/imports/runs:
+    get:
+      tags: [Imports]
+      operationId: adminListImportRuns
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperImportRun' } } } }
+  /admin/imports/runs/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Imports]
+      operationId: adminGetImportRun
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ImportRun' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/imports/runs/{id}/rows:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Imports]
+      operationId: adminListImportRows
+      security: [{ adminAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: page_size, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ImportRowList' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/imports/runs/{id}/commit:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Imports]
+      operationId: adminCommitImport
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Committed, content: { application/json: { schema: { type: object, properties: { committed: { type: integer } } } } } }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
   /admin/identity-providers:
     get:
       tags: [SSO]

@@ -239,6 +239,10 @@ function renderCell(v: unknown): string {
   return String(v)
 }
 
+function goImport() {
+  router.push({ name: 'imports', query: { target: 'object:' + code.value } })
+}
+
 onMounted(loadType)
 </script>
 
@@ -279,7 +283,10 @@ onMounted(loadType)
     <!-- Records -->
     <div class="section-head">
       <h3>Records <span class="muted">({{ recordsTotal }})</span></h3>
-      <Button v-if="canManage && fields.length" icon="pi pi-plus" label="New record" size="small" @click="openRecordCreate" />
+      <div class="section-actions">
+        <Button v-if="canManage && fields.length" icon="pi pi-upload" label="Import" size="small" severity="secondary" outlined @click="goImport" />
+        <Button v-if="canManage && fields.length" icon="pi pi-plus" label="New record" size="small" @click="openRecordCreate" />
+      </div>
     </div>
     <DataTable :value="records" dataKey="id" stripedRows>
       <template #empty>
@@ -358,6 +365,7 @@ onMounted(loadType)
 .mb { margin-bottom: 1rem; }
 .section-head { display: flex; align-items: center; justify-content: space-between; margin: 1.5rem 0 0.5rem; }
 .section-head h3 { margin: 0; }
+.section-actions { display: flex; gap: 0.5rem; }
 .form { display: flex; flex-direction: column; gap: 0.9rem; }
 .field { display: flex; flex-direction: column; gap: 0.3rem; }
 .field label { font-size: 0.8rem; font-weight: 600; }

@@ -372,6 +372,33 @@ type IdentityProvider struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type ImportRow struct {
+	ID             int64  `json:"id"`
+	ImportRunID    int64  `json:"import_run_id"`
+	OrganizationID int64  `json:"organization_id"`
+	RowNumber      int32  `json:"row_number"`
+	Data           []byte `json:"data"`
+	Status         string `json:"status"`
+	Message        string `json:"message"`
+}
+
+type ImportRun struct {
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	OrganizationID int64              `json:"organization_id"`
+	Target         string             `json:"target"`
+	Format         string             `json:"format"`
+	SourceFilename string             `json:"source_filename"`
+	Status         string             `json:"status"`
+	TotalRows      int32              `json:"total_rows"`
+	CreateRows     int32              `json:"create_rows"`
+	UpdateRows     int32              `json:"update_rows"`
+	ErrorRows      int32              `json:"error_rows"`
+	CreatedBy      *int64             `json:"created_by"`
+	CreatedAt      time.Time          `json:"created_at"`
+	CommittedAt    pgtype.Timestamptz `json:"committed_at"`
+}
+
 type InsightDigest struct {
 	ID             int64       `json:"id"`
 	OrganizationID int64       `json:"organization_id"`
