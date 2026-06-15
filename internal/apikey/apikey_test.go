@@ -40,10 +40,11 @@ func TestGenerateUnique(t *testing.T) {
 
 func TestHashDeterministic(t *testing.T) {
 	const raw = "tgk_deadbeef"
-	if Hash(raw) != Hash(raw) {
+	h := Hash(raw)
+	if h != Hash(raw) {
 		t.Fatal("Hash is not deterministic")
 	}
-	if Hash(raw) == Hash(raw+"x") {
+	if h == Hash(raw+"x") {
 		t.Fatal("distinct inputs collided")
 	}
 }
