@@ -3592,6 +3592,79 @@ components:
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/ImportRow' } }
         page: { type: integer }
+    FeedFieldMap:
+      type: object
+      description: One output column — its value is the constant when set, else the named source field.
+      properties:
+        out: { type: string }
+        src: { type: string }
+        const: { type: string }
+    Feed:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        name: { type: string }
+        source: { type: string }
+        channel: { type: string }
+        format: { type: string, enum: [csv, json, xml] }
+        mapping: { type: array, items: { $ref: '#/components/schemas/FeedFieldMap' } }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FeedInput:
+      type: object
+      required: [name, source]
+      properties:
+        name: { type: string }
+        source: { type: string }
+        channel: { type: string }
+        format: { type: string, enum: [csv, json, xml] }
+        mapping: { type: array, items: { $ref: '#/components/schemas/FeedFieldMap' } }
+        is_active: { type: boolean }
+    FeedSource:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        fields: { type: array, items: { type: string } }
+    FeedSourceList:
+      type: object
+      properties:
+        sources: { type: array, items: { $ref: '#/components/schemas/FeedSource' } }
+        formats: { type: array, items: { type: string } }
+    FeedList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Feed' } }
+    FeedPreview:
+      type: object
+      properties:
+        format: { type: string }
+        channel: { type: string }
+        rows: { type: integer }
+        content: { type: string }
+        missing_required: { type: array, items: { type: string }, description: Required channel fields the mapping does not yet produce. }
+    FeedChannelField:
+      type: object
+      properties:
+        code: { type: string }
+        label: { type: string }
+        required: { type: boolean }
+        example: { type: string }
+    FeedChannel:
+      type: object
+      description: A destination preset — its expected fields, delivery format, and a starter mapping.
+      properties:
+        id: { type: string }
+        label: { type: string }
+        format: { type: string, description: 'Pinned delivery format; empty means the author chooses.' }
+        fields: { type: array, items: { $ref: '#/components/schemas/FeedChannelField' } }
+        preset: { type: array, items: { $ref: '#/components/schemas/FeedFieldMap' } }
+    FeedChannelList:
+      type: object
+      properties:
+        channels: { type: array, items: { $ref: '#/components/schemas/FeedChannel' } }
 
   responses:
     ErrorResponse:
@@ -7117,6 +7190,86 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: Committed, content: { application/json: { schema: { type: object, properties: { committed: { type: integer } } } } } }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/feeds/sources:
+    get:
+      tags: [Feeds]
+      operationId: adminListFeedSources
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FeedSourceList' } } } }
+  /admin/feeds/channels:
+    get:
+      tags: [Feeds]
+      operationId: adminListFeedChannels
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FeedChannelList' } } } }
+  /admin/feeds:
+    get:
+      tags: [Feeds]
+      operationId: adminListFeeds
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FeedList' } } } }
+    post:
+      tags: [Feeds]
+      operationId: adminCreateFeed
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FeedInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Feed' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/feeds/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Feeds]
+      operationId: adminGetFeed
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Feed' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Feeds]
+      operationId: adminUpdateFeed
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/FeedInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Feed' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Feeds]
+      operationId: adminDeleteFeed
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Deleted, content: { application/json: { schema: { type: object, properties: { deleted: { type: boolean } } } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/feeds/{id}/preview:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Feeds]
+      operationId: adminPreviewFeed
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/FeedPreview' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/feeds/{id}/output:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Feeds]
+      operationId: adminFeedOutput
+      description: Generate the full feed document as a download (content type follows the feed's format).
+      security: [{ adminAuth: [] }]
+      responses:
+        '200':
+          description: Generated feed document
+          content:
+            text/csv: { schema: { type: string } }
+            application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } }
+            application/xml: { schema: { type: string } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
         '409': { $ref: '#/components/responses/ErrorResponse' }
   /admin/identity-providers:
     get:

@@ -119,6 +119,10 @@ type Querier interface {
 	CreateExternalIdentity(ctx context.Context, arg CreateExternalIdentityParams) (ExternalIdentity, error)
 	// ===== External refs + sync logs ===========================================
 	CreateExternalRef(ctx context.Context, arg CreateExternalRefParams) (ExternalRef, error)
+	// Syndication feeds (Platform roadmap, Phase 4). A feed projects a source
+	// through a field mapping into a channel format; the row generation reads the
+	// source via the queries below.
+	CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error)
 	CreateFxRate(ctx context.Context, arg CreateFxRateParams) (FxRate, error)
 	// SSO / federated identity (PRD §15).
 	// ===== Identity providers ==================================================
@@ -279,6 +283,7 @@ type Querier interface {
 	DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) (int64, error)
 	DeleteCatalogVisibility(ctx context.Context, arg DeleteCatalogVisibilityParams) (int64, error)
 	DeleteConfigSetting(ctx context.Context, arg DeleteConfigSettingParams) (int64, error)
+	DeleteFeed(ctx context.Context, arg DeleteFeedParams) error
 	DeleteFxRate(ctx context.Context, arg DeleteFxRateParams) (int64, error)
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeleteMerchandisingRule(ctx context.Context, arg DeleteMerchandisingRuleParams) (int64, error)
@@ -379,6 +384,7 @@ type Querier interface {
 	GetEDIDocument(ctx context.Context, arg GetEDIDocumentParams) (EdiDocument, error)
 	// ===== External identities (IdP subject ↔ local user) ======================
 	GetExternalIdentity(ctx context.Context, arg GetExternalIdentityParams) (ExternalIdentity, error)
+	GetFeed(ctx context.Context, arg GetFeedParams) (Feed, error)
 	GetIdentityProvider(ctx context.Context, arg GetIdentityProviderParams) (IdentityProvider, error)
 	// GetIdentityProviderByID resolves a provider without org (public login/callback).
 	GetIdentityProviderByID(ctx context.Context, id int64) (IdentityProvider, error)
@@ -618,6 +624,7 @@ type Querier interface {
 	// passed — the quote-expiry sweep's working set.
 	ListExpirableQuotes(ctx context.Context, validUntil pgtype.Timestamptz) ([]Quote, error)
 	ListFamilyAttributes(ctx context.Context, familyID int64) ([]ListFamilyAttributesRow, error)
+	ListFeeds(ctx context.Context, organizationID int64) ([]Feed, error)
 	ListFieldDevices(ctx context.Context, organizationID int64) ([]ListFieldDevicesRow, error)
 	ListIdentityProviders(ctx context.Context, organizationID int64) ([]IdentityProvider, error)
 	ListImportRows(ctx context.Context, arg ListImportRowsParams) ([]ListImportRowsRow, error)
@@ -698,6 +705,10 @@ type Querier interface {
 	ListProductsAdmin(ctx context.Context, arg ListProductsAdminParams) ([]Product, error)
 	// ---- vendor portal (audience 'vendor') ----------------------------------
 	ListProductsByVendor(ctx context.Context, vendorID *int64) ([]ListProductsByVendorRow, error)
+	// ListProductsForFeed streams a tenant's live products as a feed source: the
+	// structural columns, the primary image, and the attributes JSONB (flattened to
+	// attr.<code> source fields by the engine). Capped by $2.
+	ListProductsForFeed(ctx context.Context, arg ListProductsForFeedParams) ([]ListProductsForFeedRow, error)
 	ListPromotions(ctx context.Context, organizationID int64) ([]Promotion, error)
 	// ListQuoteCurrencies returns the display currencies available from a base
 	// (for the storefront currency selector).
@@ -1013,6 +1024,7 @@ type Querier interface {
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)
 	UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error)
 	UpdateCustomerUser(ctx context.Context, arg UpdateCustomerUserParams) (UpdateCustomerUserRow, error)
+	UpdateFeed(ctx context.Context, arg UpdateFeedParams) (Feed, error)
 	UpdateIdentityProvider(ctx context.Context, arg UpdateIdentityProviderParams) (IdentityProvider, error)
 	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)

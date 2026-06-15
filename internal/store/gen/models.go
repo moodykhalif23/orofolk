@@ -340,6 +340,20 @@ type ExternalRef struct {
 	SyncedAt     pgtype.Timestamptz `json:"synced_at"`
 }
 
+type Feed struct {
+	ID             int64     `json:"id"`
+	PublicID       uuid.UUID `json:"public_id"`
+	OrganizationID int64     `json:"organization_id"`
+	Name           string    `json:"name"`
+	Source         string    `json:"source"`
+	Channel        string    `json:"channel"`
+	Format         string    `json:"format"`
+	Mapping        []byte    `json:"mapping"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type FieldDevice struct {
 	ID             int64              `json:"id"`
 	UserID         int64              `json:"user_id"`

@@ -4459,6 +4459,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/feeds/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListFeedSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListFeedChannels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListFeeds"];
+        put?: never;
+        post: operations["adminCreateFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetFeed"];
+        put: operations["adminUpdateFeed"];
+        post?: never;
+        delete: operations["adminDeleteFeed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminPreviewFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds/{id}/output": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** @description Generate the full feed document as a download (content type follows the feed's format). */
+        get: operations["adminFeedOutput"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/identity-providers": {
         parameters: {
             query?: never;
@@ -8403,6 +8506,75 @@ export interface components {
         ImportRowList: {
             items?: components["schemas"]["ImportRow"][];
             page?: number;
+        };
+        /** @description One output column — its value is the constant when set, else the named source field. */
+        FeedFieldMap: {
+            out?: string;
+            src?: string;
+            const?: string;
+        };
+        Feed: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            name?: string;
+            source?: string;
+            channel?: string;
+            /** @enum {string} */
+            format?: "csv" | "json" | "xml";
+            mapping?: components["schemas"]["FeedFieldMap"][];
+            is_active?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        FeedInput: {
+            name: string;
+            source: string;
+            channel?: string;
+            /** @enum {string} */
+            format?: "csv" | "json" | "xml";
+            mapping?: components["schemas"]["FeedFieldMap"][];
+            is_active?: boolean;
+        };
+        FeedSource: {
+            key?: string;
+            label?: string;
+            fields?: string[];
+        };
+        FeedSourceList: {
+            sources?: components["schemas"]["FeedSource"][];
+            formats?: string[];
+        };
+        FeedList: {
+            items?: components["schemas"]["Feed"][];
+        };
+        FeedPreview: {
+            format?: string;
+            channel?: string;
+            rows?: number;
+            content?: string;
+            /** @description Required channel fields the mapping does not yet produce. */
+            missing_required?: string[];
+        };
+        FeedChannelField: {
+            code?: string;
+            label?: string;
+            required?: boolean;
+            example?: string;
+        };
+        /** @description A destination preset — its expected fields, delivery format, and a starter mapping. */
+        FeedChannel: {
+            id?: string;
+            label?: string;
+            /** @description Pinned delivery format; empty means the author chooses. */
+            format?: string;
+            fields?: components["schemas"]["FeedChannelField"][];
+            preset?: components["schemas"]["FeedFieldMap"][];
+        };
+        FeedChannelList: {
+            channels?: components["schemas"]["FeedChannel"][];
         };
     };
     responses: {
@@ -16557,6 +16729,219 @@ export interface operations {
                     };
                 };
             };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminListFeedSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedSourceList"];
+                };
+            };
+        };
+    };
+    adminListFeedChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedChannelList"];
+                };
+            };
+        };
+    };
+    adminListFeeds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedList"];
+                };
+            };
+        };
+    };
+    adminCreateFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        deleted?: boolean;
+                    };
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminPreviewFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedPreview"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminFeedOutput: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Generated feed document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                    "application/xml": string;
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
             409: components["responses"]["ErrorResponse"];
         };
     };

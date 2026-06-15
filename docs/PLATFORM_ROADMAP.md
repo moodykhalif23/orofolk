@@ -250,7 +250,7 @@ matched, cleansed pipeline. Next: **Phase 4 (syndication & distribution / feeds)
 
 ---
 
-## Phase 4 — Syndication & distribution
+## Phase 4 — Syndication & distribution · **Slices 1–2 shipped**
 
 | Deliverable | Builds on | Effort |
 |---|---|---|
@@ -258,6 +258,51 @@ matched, cleansed pipeline. Next: **Phase 4 (syndication & distribution / feeds)
 | **Channel adapters** — pluggable per destination | adapter-registry pattern (AI/payment/blob already do this) | M |
 
 Outbound webhooks shipped in Phase 0, so this phase is *feeds* specifically.
+
+**Shipped this iteration (slice 1 — feed engine):** a **feed** projects a data
+source (products *or* any custom object type) through an ordered field **mapping**
+into a channel **format** (CSV / JSON / XML) — the outbound twin of the import
+engine (same products/object duo, mapped in reverse). Migration `0073` adds the
+`feeds` table (RLS-isolated; `feed.view` / `feed.manage` perms across all orgs); a
+pure renderer (`internal/feed`) encodes a `Mapping` of `{out, src, const}` over
+`map[string]any` rows, with proper CSV quoting, JSON objects, and namespace-safe
+XML element names; a `Source` abstraction (`internal/modules/feeds`) resolves
+`products` (structural columns + `attr.<code>` flattened from the attributes JSONB)
+or `object:<code>` (the type's fields). Endpoints: list/CRUD feeds, **source
+discovery** (available fields per source), **preview** (first N rows rendered), and
+**output** (the full document as a typed download). Generation builds in memory,
+capped at 50k rows. Verified: renderer unit tests (CSV/JSON/XML projection, const +
+absent-source, XML-name sanitization, value stringify); real-Postgres lifecycle
+(object feed create → preview → CSV output → switch to JSON → delete→404) + a
+products feed proving per-row attribute flattening (`attr.color` → column); the
+isolation gate auto-covers the new table; sqlc deterministic; client + api tsc.
+Channel presets, scheduled regeneration + a pollable feed URL, and the builder UI
+are the remaining slices.
+
+**Shipped this iteration (slice 2 — channel adapters):** a pluggable **channel
+registry** — adding a destination is adding an entry, no engine change (the
+adapter-registry idiom, keyed for runtime selection like import targets). Each
+channel declares its expected **fields** (code/label/required/example), the
+**format** it's delivered in (pinned, e.g. Google → XML), a **starter mapping**, and
+an optional **XML envelope**. Shipped channels: **custom** (any format, no
+requirements — the slice-1 behaviour), **google_shopping** (real **RSS 2.0** with the
+`g:` namespace via a new `feed.XMLEnvelope` — `<rss><channel><item>`, qualified
+`g:id`/`g:price` element names kept under the declared namespace), and **amazon**
+(CSV flat-file preset). The renderer gained `RenderWith` + `XMLEnvelope` (ordered
+root attrs, optional wrapper, constant header elements, qualified-name mode) while
+the generic `<feed>` output is byte-unchanged. A **gap check** reports the required
+channel fields a feed's mapping doesn't yet produce — e.g. a Google feed surfaces
+`g:price` as missing (the product source has no price), which is exactly the
+validation earning its keep. Wired in: `GET /admin/feeds/channels` (presets +
+fields), channel-pinned format on create/update, the envelope at render, and
+`missing_required` on preview. Verified: RSS-envelope renderer unit test; real-Postgres
+google_shopping feed (format coerced to xml, RSS/`g:`-namespace output, `g:price`
+flagged) + unknown-channel 400; the generic + object/products flows still pass (no
+drift); client + api tsc.
+
+**Remaining for Phase 4:** slice 3 — **scheduled regeneration + a stable signed feed
+URL** channels poll (River job + blob artifact, mirroring DAM delivery); slice 4 — the
+**feed-builder UI** (source + channel preset + field mapper + preview + gap check).
 
 ---
 
