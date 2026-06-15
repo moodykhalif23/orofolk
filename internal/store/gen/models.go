@@ -29,6 +29,20 @@ type Activity struct {
 	UpdatedAt      time.Time          `json:"updated_at"`
 }
 
+type ApiKey struct {
+	ID             int64              `json:"id"`
+	OrganizationID int64              `json:"organization_id"`
+	Name           string             `json:"name"`
+	Prefix         string             `json:"prefix"`
+	KeyHash        string             `json:"key_hash"`
+	Scopes         []string           `json:"scopes"`
+	LastUsedAt     pgtype.Timestamptz `json:"last_used_at"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+	CreatedBy      *int64             `json:"created_by"`
+	CreatedAt      time.Time          `json:"created_at"`
+}
+
 type ApprovalRoutingRule struct {
 	ID             int64     `json:"id"`
 	OrganizationID int64     `json:"organization_id"`
@@ -1327,6 +1341,31 @@ type Warehouse struct {
 	OrganizationID int64  `json:"organization_id"`
 	Name           string `json:"name"`
 	IsActive       bool   `json:"is_active"`
+}
+
+type WebhookDelivery struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	EndpointID     int64     `json:"endpoint_id"`
+	EventType      string    `json:"event_type"`
+	Payload        []byte    `json:"payload"`
+	Status         string    `json:"status"`
+	Attempt        int32     `json:"attempt"`
+	ResponseStatus int32     `json:"response_status"`
+	Error          string    `json:"error"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type WebhookEndpoint struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Url            string    `json:"url"`
+	Secret         string    `json:"secret"`
+	Description    string    `json:"description"`
+	EventTypes     []string  `json:"event_types"`
+	IsActive       bool      `json:"is_active"`
+	CreatedBy      *int64    `json:"created_by"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type Website struct {

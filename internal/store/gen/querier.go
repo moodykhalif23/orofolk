@@ -67,6 +67,9 @@ type Querier interface {
 	CountSearchProductsAdmin(ctx context.Context, arg CountSearchProductsAdminParams) (int64, error)
 	CountTransitionLog(ctx context.Context, instanceID int64) (int64, error)
 	CountUnreadNotifications(ctx context.Context, arg CountUnreadNotificationsParams) (int64, error)
+	// Programmatic API keys (Platform roadmap, Phase 0). The raw key is never
+	// stored; authentication resolves a key by the SHA-256 hash of the bearer token.
+	CreateAPIKey(ctx context.Context, arg CreateAPIKeyParams) (CreateAPIKeyRow, error)
 	// ===== Activities ==========================================================
 	CreateActivity(ctx context.Context, arg CreateActivityParams) (Activity, error)
 	CreateApprovalRoutingRule(ctx context.Context, arg CreateApprovalRoutingRuleParams) (ApprovalRoutingRule, error)
@@ -221,6 +224,11 @@ type Querier interface {
 	// Inventory queries — Implementation Pack 1 §8 + §12.4 (ATP).
 	// ===== Warehouses ==========================================================
 	CreateWarehouse(ctx context.Context, arg CreateWarehouseParams) (Warehouse, error)
+	// ===== Deliveries (per-attempt log) ========================================
+	CreateWebhookDelivery(ctx context.Context, arg CreateWebhookDeliveryParams) (WebhookDelivery, error)
+	// Outbound webhooks / event subscriptions (Platform roadmap, Phase 0).
+	// ===== Endpoints ===========================================================
+	CreateWebhookEndpoint(ctx context.Context, arg CreateWebhookEndpointParams) (WebhookEndpoint, error)
 	CreateWebsite(ctx context.Context, arg CreateWebsiteParams) (Website, error)
 	CreateWorkflowInstance(ctx context.Context, arg CreateWorkflowInstanceParams) (WorkflowInstance, error)
 	// CustomerAncestors returns all ancestors of a customer, nearest first
@@ -269,6 +277,7 @@ type Querier interface {
 	DeleteShoppingListItem(ctx context.Context, arg DeleteShoppingListItemParams) (int64, error)
 	DeleteSubscriptionItems(ctx context.Context, subscriptionID int64) error
 	DeleteTaxRate(ctx context.Context, arg DeleteTaxRateParams) error
+	DeleteWebhookEndpoint(ctx context.Context, arg DeleteWebhookEndpointParams) error
 	// DistinctTranslationLocales lists configured locales across an org's products
 	// (for the storefront locale selector).
 	DistinctTranslationLocales(ctx context.Context, organizationID int64) ([]string, error)
@@ -288,6 +297,10 @@ type Querier interface {
 	FinishReportRun(ctx context.Context, arg FinishReportRunParams) (FinishReportRunRow, error)
 	// FirstStage returns the lowest-sort_order stage of a pipeline (the entry stage).
 	FirstStage(ctx context.Context, pipelineID int64) (PipelineStage, error)
+	GetAPIKey(ctx context.Context, arg GetAPIKeyParams) (GetAPIKeyRow, error)
+	// GetAPIKeyByHash resolves a key for authentication (org comes from the row).
+	// Excludes revoked and expired keys.
+	GetAPIKeyByHash(ctx context.Context, keyHash string) (ApiKey, error)
 	// GetActiveBudget finds the active budget governing a (customer, cost_center).
 	GetActiveBudget(ctx context.Context, arg GetActiveBudgetParams) (CustomerBudget, error)
 	// Cart & shopping list queries — Implementation Pack 1 §5.
@@ -474,6 +487,10 @@ type Querier interface {
 	// portal authentication (email is citext, so case-insensitive).
 	GetVendorUserForLogin(ctx context.Context, arg GetVendorUserForLoginParams) (GetVendorUserForLoginRow, error)
 	GetWarehouse(ctx context.Context, arg GetWarehouseParams) (Warehouse, error)
+	GetWebhookDelivery(ctx context.Context, arg GetWebhookDeliveryParams) (WebhookDelivery, error)
+	GetWebhookEndpoint(ctx context.Context, arg GetWebhookEndpointParams) (WebhookEndpoint, error)
+	// GetWebhookEndpointByID resolves an endpoint for delivery (org from the row).
+	GetWebhookEndpointByID(ctx context.Context, id int64) (WebhookEndpoint, error)
 	GetWebsite(ctx context.Context, arg GetWebsiteParams) (Website, error)
 	// Multi-org / multi-website tenancy queries — PRD §4.
 	// GetWebsiteByDomain resolves the website (and thus org) serving a request host.
@@ -496,6 +513,7 @@ type Querier interface {
 	IncrementPromotionRedeemed(ctx context.Context, id int64) error
 	IncrementUsage(ctx context.Context, arg IncrementUsageParams) (int64, error)
 	LatestInsightDigest(ctx context.Context, organizationID int64) (InsightDigest, error)
+	ListAPIKeys(ctx context.Context, organizationID int64) ([]ListAPIKeysRow, error)
 	// ListAbandonedCarts returns active carts with items that have gone idle past
 	// the cutoff and weren't reminded since their last change. $1 = idle cutoff.
 	ListAbandonedCarts(ctx context.Context, updatedAt time.Time) ([]ListAbandonedCartsRow, error)
@@ -522,6 +540,9 @@ type Querier interface {
 	// (customer_id NULL) or this specific customer.
 	ListActiveRebateProgramsForCustomer(ctx context.Context, arg ListActiveRebateProgramsForCustomerParams) ([]RebateProgram, error)
 	ListActiveVendorUserIDs(ctx context.Context, vendorID int64) ([]int64, error)
+	// ListActiveWebhookEndpointsForEvent returns the active endpoints in an org that
+	// subscribe to an event (an empty event_types array means "all events").
+	ListActiveWebhookEndpointsForEvent(ctx context.Context, arg ListActiveWebhookEndpointsForEventParams) ([]WebhookEndpoint, error)
 	// Approval routing rules (migration 0033).
 	ListApprovalRoutingRules(ctx context.Context, organizationID int64) ([]ApprovalRoutingRule, error)
 	// ListApprovedReviews powers the storefront PDP reviews list.
@@ -715,6 +736,8 @@ type Querier interface {
 	ListVendorUsers(ctx context.Context, vendorID int64) ([]ListVendorUsersRow, error)
 	ListVendors(ctx context.Context, organizationID int64) ([]Vendor, error)
 	ListWarehouses(ctx context.Context, organizationID int64) ([]Warehouse, error)
+	ListWebhookDeliveries(ctx context.Context, arg ListWebhookDeliveriesParams) ([]WebhookDelivery, error)
+	ListWebhookEndpoints(ctx context.Context, organizationID int64) ([]WebhookEndpoint, error)
 	ListWebsites(ctx context.Context, organizationID int64) ([]Website, error)
 	ListWorkflowDefinitions(ctx context.Context, organizationID int64) ([]WorkflowDefinition, error)
 	ListWorkflowStates(ctx context.Context, definitionID int64) ([]WorkflowState, error)
@@ -819,7 +842,14 @@ type Querier interface {
 	// RevenueWindow is the headline rollup for one window: order count + gross
 	// revenue (excluding cancelled). Run twice (current + prior) for growth.
 	RevenueWindow(ctx context.Context, arg RevenueWindowParams) (RevenueWindowRow, error)
+	// RevokeAPIKey soft-revokes a key (it stops authenticating immediately).
+	RevokeAPIKey(ctx context.Context, arg RevokeAPIKeyParams) error
 	RevokeCustomerInvite(ctx context.Context, arg RevokeCustomerInviteParams) (int64, error)
+	// RotateAPIKey swaps in a new secret (hash + prefix) for an existing key and
+	// clears any prior revocation.
+	RotateAPIKey(ctx context.Context, arg RotateAPIKeyParams) (RotateAPIKeyRow, error)
+	// RotateWebhookSecret swaps the signing secret.
+	RotateWebhookSecret(ctx context.Context, arg RotateWebhookSecretParams) (WebhookEndpoint, error)
 	// SalesSummary is the headline KPI rollup since a date.
 	SalesSummary(ctx context.Context, arg SalesSummaryParams) (SalesSummaryRow, error)
 	// SearchActiveProducts: full-text product search (PRD §14, Postgres FTS).
@@ -918,6 +948,9 @@ type Querier interface {
 	// TopProducts ranks products by revenue in a calendar month, joined to product
 	// names. The month is the first day of the target month.
 	TopProducts(ctx context.Context, arg TopProductsParams) ([]TopProductsRow, error)
+	// TouchAPIKey records last use, debounced to at most once a minute so an
+	// authenticated request does not write on every call.
+	TouchAPIKey(ctx context.Context, id int64) error
 	TouchUserLogin(ctx context.Context, id int64) error
 	UpdateActivity(ctx context.Context, arg UpdateActivityParams) (Activity, error)
 	UpdateAutomationRule(ctx context.Context, arg UpdateAutomationRuleParams) (AutomationRule, error)
@@ -941,6 +974,7 @@ type Querier interface {
 	UpdateTradingPartner(ctx context.Context, arg UpdateTradingPartnerParams) (TradingPartner, error)
 	UpdateVendor(ctx context.Context, arg UpdateVendorParams) (Vendor, error)
 	UpdateVendorProduct(ctx context.Context, arg UpdateVendorProductParams) (UpdateVendorProductRow, error)
+	UpdateWebhookEndpoint(ctx context.Context, arg UpdateWebhookEndpointParams) (WebhookEndpoint, error)
 	UpdateWebsite(ctx context.Context, arg UpdateWebsiteParams) (Website, error)
 	// UpdateWorkflowTransitionConfig edits a transition's guards/actions JSONB,
 	// org-scoped via its definition (admin low-code editing).

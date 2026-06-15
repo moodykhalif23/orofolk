@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"b2bcommerce/internal/apikey"
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/tenantctx"
@@ -14,9 +15,24 @@ type ctxKey int
 
 const claimsKey ctxKey = iota
 
-// Authenticator parses the Bearer token and stores claims in the request context.
-// It rejects requests without a valid token.
+// KeyVerifier resolves a raw API-key bearer token ("tgk_…") to claims. It is
+// implemented by *apikey.Service. A nil verifier disables API-key auth, leaving
+// JWT-only behaviour.
+type KeyVerifier interface {
+	VerifyKey(ctx context.Context, raw string) (*auth.Claims, error)
+}
+
+// Authenticator parses the Bearer token (JWT only) and stores claims in the
+// request context. It rejects requests without a valid token.
 func Authenticator(issuer *auth.Issuer) func(http.Handler) http.Handler {
+	return AuthenticatorWithKeys(issuer, nil)
+}
+
+// AuthenticatorWithKeys is Authenticator that also accepts programmatic API
+// keys: a bearer value with the apikey.Prefix is verified against the key store,
+// anything else is parsed as a JWT. Either path yields claims that are used
+// identically downstream (audience, permission, org-arming).
+func AuthenticatorWithKeys(issuer *auth.Issuer, keys KeyVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := r.Header.Get("Authorization")
@@ -24,17 +40,25 @@ func Authenticator(issuer *auth.Issuer) func(http.Handler) http.Handler {
 				response.Fail(w, http.StatusUnauthorized, "unauthorized", "missing bearer token")
 				return
 			}
-			claims, err := issuer.Parse(strings.TrimPrefix(h, "Bearer "))
+			token := strings.TrimPrefix(h, "Bearer ")
+			claims, err := resolveClaims(r.Context(), issuer, keys, token)
 			if err != nil {
 				response.Fail(w, http.StatusUnauthorized, "unauthorized", "invalid token")
 				return
 			}
 			ctx := context.WithValue(r.Context(), claimsKey, claims)
-
 			ctx = tenantctx.WithOrg(ctx, claims.OrgID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// resolveClaims picks API-key vs JWT verification by the token's shape.
+func resolveClaims(ctx context.Context, issuer *auth.Issuer, keys KeyVerifier, token string) (*auth.Claims, error) {
+	if keys != nil && strings.HasPrefix(token, apikey.Prefix) {
+		return keys.VerifyKey(ctx, token)
+	}
+	return issuer.Parse(token)
 }
 
 // OptionalAuthenticator parses a Bearer token when present and stores the

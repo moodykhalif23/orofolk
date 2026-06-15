@@ -19,6 +19,8 @@ import (
 	"b2bcommerce/internal/pdf"
 	"b2bcommerce/internal/queue/jobs"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/tenantctx"
+	"b2bcommerce/internal/webhook"
 )
 
 // NewWorkerClient builds the worker-side river client. renderer is used by the
@@ -45,7 +47,8 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.InvoicePDFWorker{Pool: pool, Renderer: renderer})
 	river.AddWorker(workers, &jobs.AutomationActionWorker{Registry: reg})
 	river.AddWorker(workers, &jobs.ScheduledEmitWorker{Dispatcher: dispatcher})
-	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher, Notify: notifier})
+	river.AddWorker(workers, &jobs.DispatchEventWorker{Dispatcher: dispatcher, Notify: notifier, Pool: pool, Webhooks: enq})
+	river.AddWorker(workers, &jobs.DeliverWebhookWorker{Pool: pool, Deliverer: webhook.NewDeliverer()})
 	river.AddWorker(workers, &jobs.GenerateRenditionWorker{Pool: pool, Store: store, Proc: proc})
 	river.AddWorker(workers, &jobs.RunReportSchedulesWorker{Pool: pool, Mailer: enq})
 	river.AddWorker(workers, &jobs.ERPSyncWorker{Pool: pool})
@@ -192,7 +195,19 @@ func (e *Enqueuer) EmitEvent(ctx context.Context, event string, payload map[stri
 	if err != nil {
 		return err
 	}
-	_, err = e.ic.Insert(ctx, jobs.DispatchEventArgs{Event: event, Payload: pl}, nil)
+	// Carry the emitting tenant onto the job so the worker can fan the event out
+	// to that org's outbound webhook endpoints (0 when unarmed — webhooks skip).
+	org, _ := tenantctx.OrgFrom(ctx)
+	_, err = e.ic.Insert(ctx, jobs.DispatchEventArgs{Event: event, Payload: pl, OrganizationID: org}, nil)
+	return err
+}
+
+// EnqueueWebhook schedules delivery of one event to one subscribed endpoint
+// (used by the event fan-out and by a manual replay).
+func (e *Enqueuer) EnqueueWebhook(ctx context.Context, org, endpointID int64, event string, payload json.RawMessage) error {
+	_, err := e.ic.Insert(ctx, jobs.DeliverWebhookArgs{
+		OrganizationID: org, EndpointID: endpointID, Event: event, Payload: payload,
+	}, nil)
 	return err
 }
 

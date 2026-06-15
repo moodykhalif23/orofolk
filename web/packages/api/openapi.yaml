@@ -22,6 +22,8 @@ tags:
   - { name: VendorPortal }
   - { name: Assistant }
   - { name: Platform }
+  - { name: ApiKeys }
+  - { name: Webhooks }
 
 components:
   securitySchemes:
@@ -3312,6 +3314,77 @@ components:
         features: { type: array, items: { type: string } }
         limits: { type: object, additionalProperties: { type: integer, format: int64 } }
         usage: { type: object, additionalProperties: { type: integer, format: int64 } }
+    ApiKey:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        prefix: { type: string }
+        scopes: { type: array, items: { type: string } }
+        status: { type: string, enum: [active, expired, revoked] }
+        last_used_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    ApiKeyInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        scopes: { type: array, items: { type: string } }
+        expires_at: { type: string, format: date-time }
+    ApiKeyCreated:
+      allOf:
+        - $ref: '#/components/schemas/ApiKey'
+        - type: object
+          properties:
+            key: { type: string, description: 'The raw secret, shown exactly once at creation/rotation.' }
+    ListWrapperApiKey:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ApiKey' } }
+    WebhookEndpoint:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        url: { type: string }
+        description: { type: string }
+        event_types: { type: array, items: { type: string } }
+        is_active: { type: boolean }
+        has_secret: { type: boolean }
+        created_at: { type: string, format: date-time }
+    WebhookEndpointInput:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+        description: { type: string }
+        event_types: { type: array, items: { type: string } }
+        is_active: { type: boolean }
+    WebhookEndpointCreated:
+      allOf:
+        - $ref: '#/components/schemas/WebhookEndpoint'
+        - type: object
+          properties:
+            secret: { type: string, description: 'HMAC signing secret, shown exactly once at creation/rotation.' }
+    ListWrapperWebhookEndpoint:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/WebhookEndpoint' } }
+    WebhookDelivery:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        event_type: { type: string }
+        status: { type: string, enum: [success, failed] }
+        attempt: { type: integer }
+        response_status: { type: integer }
+        error: { type: string }
+        created_at: { type: string, format: date-time }
+    ListWrapperWebhookDelivery:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/WebhookDelivery' } }
 
   responses:
     ErrorResponse:
@@ -6497,6 +6570,107 @@ paths:
       security: [{ adminAuth: [] }]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperSyncLog' } } } }
+  /admin/api-keys:
+    get:
+      tags: [ApiKeys]
+      operationId: adminListApiKeys
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperApiKey' } } } }
+    post:
+      tags: [ApiKeys]
+      operationId: adminCreateApiKey
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ApiKeyInput' } } } }
+      responses:
+        '201': { description: 'Created — the raw key is returned once in the "key" field', content: { application/json: { schema: { $ref: '#/components/schemas/ApiKeyCreated' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/api-keys/{id}/rotate:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [ApiKeys]
+      operationId: adminRotateApiKey
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: 'Rotated — the new raw key is returned once', content: { application/json: { schema: { $ref: '#/components/schemas/ApiKeyCreated' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/api-keys/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    delete:
+      tags: [ApiKeys]
+      operationId: adminRevokeApiKey
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Revoked }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/webhooks:
+    get:
+      tags: [Webhooks]
+      operationId: adminListWebhooks
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperWebhookEndpoint' } } } }
+    post:
+      tags: [Webhooks]
+      operationId: adminCreateWebhook
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpointInput' } } } }
+      responses:
+        '201': { description: 'Created — the signing secret is returned once', content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpointCreated' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/webhooks/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Webhooks]
+      operationId: adminGetWebhook
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpoint' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Webhooks]
+      operationId: adminUpdateWebhook
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpointInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpoint' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Webhooks]
+      operationId: adminDeleteWebhook
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/webhooks/{id}/rotate-secret:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Webhooks]
+      operationId: adminRotateWebhookSecret
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: 'Rotated — the new secret is returned once', content: { application/json: { schema: { $ref: '#/components/schemas/WebhookEndpointCreated' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/webhooks/{id}/deliveries:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Webhooks]
+      operationId: adminListWebhookDeliveries
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperWebhookDelivery' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/webhooks/deliveries/{id}/replay:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Webhooks]
+      operationId: adminReplayWebhookDelivery
+      security: [{ adminAuth: [] }]
+      responses:
+        '202': { description: Accepted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '503': { $ref: '#/components/responses/ErrorResponse' }
   /admin/identity-providers:
     get:
       tags: [SSO]

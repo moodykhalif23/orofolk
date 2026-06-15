@@ -129,6 +129,7 @@ func main() {
 	handler := server.New(st, issuer,
 		server.WithInvoicePDF(enq),
 		server.WithNotifier(enq),
+		server.WithWebhookEnqueuer(enq),
 		server.WithRebateSettle(enq),
 		server.WithInsightDigest(enq),
 		server.WithPlatform(cfg.PlatformBaseDomain, cfg.SignupVerifyURL),

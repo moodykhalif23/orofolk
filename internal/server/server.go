@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"b2bcommerce/internal/ai"
+	"b2bcommerce/internal/apikey"
 	"b2bcommerce/internal/audit"
 	"b2bcommerce/internal/auth"
 	"b2bcommerce/internal/billing"
@@ -18,6 +19,7 @@ import (
 	"b2bcommerce/internal/imageproc"
 	"b2bcommerce/internal/inventory"
 	"b2bcommerce/internal/modules/account"
+	"b2bcommerce/internal/modules/apikeys"
 	"b2bcommerce/internal/modules/assistant"
 	auditmod "b2bcommerce/internal/modules/audit"
 	authmod "b2bcommerce/internal/modules/auth"
@@ -51,6 +53,7 @@ import (
 	"b2bcommerce/internal/modules/subscription"
 	taxmod "b2bcommerce/internal/modules/tax"
 	"b2bcommerce/internal/modules/tenancy"
+	"b2bcommerce/internal/modules/webhooks"
 	"b2bcommerce/internal/modules/wfadmin"
 	"b2bcommerce/internal/notify"
 	"b2bcommerce/internal/payments/gateway"
@@ -94,6 +97,7 @@ type options struct {
 	platformDomain string
 	signupVerify   string
 	secrets        *secretbox.Box
+	webhookEnq     webhooks.Replayer
 }
 
 // Option configures optional server dependencies.
@@ -208,6 +212,14 @@ func WithSecrets(box *secretbox.Box) Option {
 	return func(o *options) { o.secrets = box }
 }
 
+// WithWebhookEnqueuer wires the queue so the webhooks module can replay a
+// delivery off the request path. Without it, the replay endpoint reports it is
+// unavailable (endpoint management still works; live deliveries still fire from
+// the worker, which has its own queue access).
+func WithWebhookEnqueuer(e webhooks.Replayer) Option {
+	return func(o *options) { o.webhookEnq = e }
+}
+
 // New builds the fully-wired HTTP handler.
 func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	var o options
@@ -252,7 +264,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	// after the org gate — same claims, same fail-open posture.
 	billingSvc := billing.NewService(st.Queries(), 30*time.Second)
 	planGate := billing.Gate(billingSvc)
-	authn := mw.Authenticator(issuer)
+	authn := mw.AuthenticatorWithKeys(issuer, apikey.NewService(st.Pool()))
 	optAuthn := mw.OptionalAuthenticator(issuer)
 	// Audit middleware records every state-changing admin/vendor request. It sits
 	// innermost (after claims are set) so it can attribute the actor and read any
@@ -310,6 +322,8 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	taxmod.New(st.Pool()).Routes(r, authMW)
 	shippingmod.NewWithProvider(st.Pool(), o.shipProvider).Routes(r, authMW)
 	erpmod.New(st.Pool()).Routes(r, authMW)
+	apikeys.New(st.Pool()).Routes(r, authMW)
+	webhooks.New(st.Pool()).WithEnqueuer(o.webhookEnq).Routes(r, authMW)
 	ssomod.New(st.Pool(), issuer).Routes(r, authMW)
 	notifications.New(st.Pool(), o.rtAuthorizer, o.rtKey, o.rtCluster).Routes(r, authMW)
 
