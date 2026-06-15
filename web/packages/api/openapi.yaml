@@ -24,6 +24,7 @@ tags:
   - { name: Platform }
   - { name: ApiKeys }
   - { name: Webhooks }
+  - { name: DataQuality }
 
 components:
   securitySchemes:
@@ -3385,6 +3386,30 @@ components:
       type: object
       properties:
         items: { type: array, items: { $ref: '#/components/schemas/WebhookDelivery' } }
+    CatalogHealthSummary:
+      type: object
+      properties:
+        products_total: { type: integer }
+        products_with_family: { type: integer }
+        products_scored: { type: integer }
+        avg_completeness: { type: number }
+        complete_count: { type: integer }
+        incomplete_count: { type: integer }
+    CatalogHealthItem:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        sku: { type: string }
+        name: { type: string }
+        required_total: { type: integer }
+        required_present: { type: integer }
+        completeness: { type: number }
+        missing: { type: array, items: { type: string } }
+    CatalogHealth:
+      type: object
+      properties:
+        summary: { $ref: '#/components/schemas/CatalogHealthSummary' }
+        worst: { type: array, items: { $ref: '#/components/schemas/CatalogHealthItem' } }
 
   responses:
     ErrorResponse:
@@ -6671,6 +6696,14 @@ paths:
         '202': { description: Accepted }
         '404': { $ref: '#/components/responses/ErrorResponse' }
         '503': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/data-health/catalog:
+    get:
+      tags: [DataQuality]
+      operationId: adminCatalogDataHealth
+      security: [{ adminAuth: [] }]
+      parameters: [ { name: limit, in: query, required: false, schema: { type: integer } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogHealth' } } } }
   /admin/identity-providers:
     get:
       tags: [SSO]

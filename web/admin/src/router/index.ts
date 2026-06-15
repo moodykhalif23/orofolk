@@ -82,6 +82,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'attribute.view' },
       },
       {
+        path: 'data-health',
+        name: 'data-health',
+        component: () => import('@/views/dataquality/DataHealthView.vue'),
+        meta: { permission: 'dataquality.view' },
+      },
+      {
         path: 'pricing',
         name: 'pricing',
         component: () => import('@/views/pricing/PriceListsView.vue'),

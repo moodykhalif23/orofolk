@@ -4149,6 +4149,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/data-health/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminCatalogDataHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/identity-providers": {
         parameters: {
             query?: never;
@@ -7894,6 +7910,28 @@ export interface components {
         };
         ListWrapperWebhookDelivery: {
             items?: components["schemas"]["WebhookDelivery"][];
+        };
+        CatalogHealthSummary: {
+            products_total?: number;
+            products_with_family?: number;
+            products_scored?: number;
+            avg_completeness?: number;
+            complete_count?: number;
+            incomplete_count?: number;
+        };
+        CatalogHealthItem: {
+            /** Format: int64 */
+            id?: number;
+            sku?: string;
+            name?: string;
+            required_total?: number;
+            required_present?: number;
+            completeness?: number;
+            missing?: string[];
+        };
+        CatalogHealth: {
+            summary?: components["schemas"]["CatalogHealthSummary"];
+            worst?: components["schemas"]["CatalogHealthItem"][];
         };
     };
     responses: {
@@ -15425,6 +15463,28 @@ export interface operations {
             };
             404: components["responses"]["ErrorResponse"];
             503: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCatalogDataHealth: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogHealth"];
+                };
+            };
         };
     };
     adminListIdentityProviders: {

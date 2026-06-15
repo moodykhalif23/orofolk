@@ -96,7 +96,7 @@ provisioning template).
 
 ---
 
-## Phase 1 — Data quality & completeness *(the strategic headline)*
+## Phase 1 — Data quality & completeness *(the strategic headline)* · **Slice 1 shipped**
 
 "Is my catalog complete and correct?" — the purest expression of *visualise the
 slightest data into meaning*.
@@ -109,6 +109,23 @@ slightest data into meaning*.
 
 Architected against families, so when Phase 2 generalises families to any
 object, this scores everything automatically. Gate as a premium feature.
+
+**Shipped this iteration (slice 1 — completeness scoring + dashboard):** the
+scoring SQL (`internal/store/queries/dataquality.sql` — per-product score against
+its family's *required* attributes, treating JSON `null`/`""`/`[]`/`{}` as
+unfilled), the `GET /admin/data-health/catalog` endpoint
+(`internal/modules/dataquality`, gated by a new `dataquality.view` permission —
+migration `0067`, granted to existing tenants' admin/staff/viewer), OpenAPI +
+regenerated client, and the **Catalog → Data health** admin screen (org score,
+fully-complete vs incomplete counts, and a worst-offenders table showing each
+product's missing required attributes — the enrichment work-list). Verified:
+`sqlc` deterministic, `go build`/`vet` clean, a real-Postgres scoring test
+(`internal/modules/dataquality/scoring_test.go`), and admin + client typechecks.
+
+**Remaining for Phase 1:** the **validation rules engine** (per-attribute
+constraints — regex/range/allowed-values — applied on write and import), a
+**completeness trend** over time, and a premium feature-gate decision (currently
+permission-gated only, so it's visible on every plan).
 
 ---
 

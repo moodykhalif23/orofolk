@@ -49,6 +49,14 @@ type Querier interface {
 	AttachOrdersToPayout(ctx context.Context, arg AttachOrdersToPayoutParams) (int64, error)
 	// AvailableToPromise sums available across warehouses for a set of products (§12.4).
 	AvailableToPromise(ctx context.Context, dollar_1 []int64) ([]AvailableToPromiseRow, error)
+	// Data quality / catalog completeness (Platform roadmap, Phase 1). A product's
+	// "completeness" is how many of the REQUIRED attributes in its attribute family
+	// carry a meaningful value in the product's attributes JSONB. "Meaningful" means
+	// the key is present and the value is not JSON null, "", [] or {} — so a set
+	// multiselect or boolean-false counts as filled, an empty one does not. Products
+	// with no family, or a family with no required attributes, are simply not scored.
+	CatalogCompletenessSummary(ctx context.Context, organizationID int64) (CatalogCompletenessSummaryRow, error)
+	CatalogCompletenessWorst(ctx context.Context, arg CatalogCompletenessWorstParams) ([]CatalogCompletenessWorstRow, error)
 	// CategoryDescendantIDs returns the category and all of its descendants
 	// (subtree, Pack 1 §12.3). $1 root id, $2 organization_id.
 	CategoryDescendantIDs(ctx context.Context, arg CategoryDescendantIDsParams) ([]int64, error)

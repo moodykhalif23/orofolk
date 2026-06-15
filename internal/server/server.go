@@ -30,6 +30,7 @@ import (
 	"b2bcommerce/internal/modules/crm"
 	"b2bcommerce/internal/modules/customers"
 	"b2bcommerce/internal/modules/dam"
+	"b2bcommerce/internal/modules/dataquality"
 	erpmod "b2bcommerce/internal/modules/erp"
 	"b2bcommerce/internal/modules/exports"
 	"b2bcommerce/internal/modules/field"
@@ -302,6 +303,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	otc.New(st.Pool(), o.pdf, o.notifier, gwResolver, issuer).Routes(r, authMW)
 	inventory.New(st.Pool()).Routes(r, authMW)
 	crm.New(st.Pool()).Routes(r, authMW)
+	dataquality.New(st.Pool()).Routes(r, authMW)
 	wfadmin.New(st.Pool()).Routes(r, authMW)
 	cms.New(st.Pool(), issuer, o.pageDesigner).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)
