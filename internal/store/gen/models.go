@@ -551,6 +551,43 @@ type Notification struct {
 	CreatedAt      time.Time          `json:"created_at"`
 }
 
+type ObjectField struct {
+	ID             int64     `json:"id"`
+	ObjectTypeID   int64     `json:"object_type_id"`
+	OrganizationID int64     `json:"organization_id"`
+	Code           string    `json:"code"`
+	Label          string    `json:"label"`
+	DataType       string    `json:"data_type"`
+	Options        []byte    `json:"options"`
+	Validation     []byte    `json:"validation"`
+	IsRequired     bool      `json:"is_required"`
+	SortOrder      int32     `json:"sort_order"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type ObjectRecord struct {
+	ID             int64              `json:"id"`
+	PublicID       uuid.UUID          `json:"public_id"`
+	ObjectTypeID   int64              `json:"object_type_id"`
+	OrganizationID int64              `json:"organization_id"`
+	Data           []byte             `json:"data"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type ObjectType struct {
+	ID             int64     `json:"id"`
+	OrganizationID int64     `json:"organization_id"`
+	Code           string    `json:"code"`
+	Label          string    `json:"label"`
+	LabelPlural    string    `json:"label_plural"`
+	Description    string    `json:"description"`
+	IsActive       bool      `json:"is_active"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type Opportunity struct {
 	ID             int64              `json:"id"`
 	PublicID       uuid.UUID          `json:"public_id"`

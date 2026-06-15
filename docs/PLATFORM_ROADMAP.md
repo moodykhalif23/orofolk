@@ -140,7 +140,7 @@ every plan.
 
 ---
 
-## Phase 2 — Generic data modeling *(the platform unlock)*
+## Phase 2 — Generic data modeling *(the platform unlock)* · **Slices 1–2 shipped**
 
 Model anything — assets, locations, contracts, suppliers — not just products.
 This is what turns Teggo from "a commerce app with flexible product fields" into
@@ -153,6 +153,27 @@ a platform.
 | **Generic CRUD + RLS + API** — every custom type gets org-scoped endpoints, RLS policy, audit, permissions automatically | RLS convention + isolation test gate, module pattern | L |
 
 Retroactively supercharges Phase 1 and unblocks Phases 3–4.
+
+**Shipped this iteration (slice 1 — custom-object backend):** three RLS-isolated
+tables (migration `0069`: `object_types`, `object_fields`, `object_records`) and a
+generic `objects` module with full CRUD for **types**, their **field schema**, and
+**records** — records are validated against their type's fields by the **same
+Phase-1 engine** (so `{"rating":6}` is rejected `422` against a `max:5` rule),
+with audit capture and `object.view`/`object.manage` gating. A type with records
+can't be dropped (`409` guard). Verified: real-Postgres flow test (define type →
+field rule → record reject/accept → list → delete-guard → 404), the isolation RLS
+gate over all three new tables, sqlc deterministic, client typecheck clean.
+
+**Shipped this iteration (slice 2 — no-code builder UI):** **Settings → Custom
+objects** — a types list (create/edit/delete) and a per-type detail with a
+**field-schema builder** (the AttributesView rule editor, reused) plus a
+**schema-driven record form** that renders one typed input per field and surfaces
+the engine's `422` violations inline. Verified: admin `vue-tsc` clean.
+
+**Remaining for Phase 2:** slice 3 — **generalize completeness scoring + the
+data-health view to custom objects** (the scoring SQL targets products only
+today), so "is my data complete?" answers for every object type, not just the
+catalog.
 
 ---
 

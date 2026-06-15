@@ -4183,6 +4183,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/object-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["adminListObjectTypes"];
+        put?: never;
+        post: operations["adminCreateObjectType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/object-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetObjectType"];
+        put: operations["adminUpdateObjectType"];
+        post?: never;
+        delete: operations["adminDeleteObjectType"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/object-types/{id}/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["adminCreateObjectField"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/object-fields/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["adminUpdateObjectField"];
+        post?: never;
+        delete: operations["adminDeleteObjectField"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/objects/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        get: operations["adminListObjectRecords"];
+        put?: never;
+        post: operations["adminCreateObjectRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/objects/{code}/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        get: operations["adminGetObjectRecord"];
+        put: operations["adminUpdateObjectRecord"];
+        post?: never;
+        delete: operations["adminDeleteObjectRecord"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/identity-providers": {
         parameters: {
             query?: never;
@@ -7962,6 +8069,74 @@ export interface components {
         CatalogHealth: {
             summary?: components["schemas"]["CatalogHealthSummary"];
             worst?: components["schemas"]["CatalogHealthItem"][];
+        };
+        ObjectType: {
+            /** Format: int64 */
+            id?: number;
+            code?: string;
+            label?: string;
+            label_plural?: string;
+            description?: string;
+            is_active?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+            fields?: components["schemas"]["ObjectField"][];
+        };
+        ObjectTypeInput: {
+            code: string;
+            label: string;
+            label_plural?: string;
+            description?: string;
+            is_active?: boolean;
+        };
+        ObjectField: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            object_type_id?: number;
+            code?: string;
+            label?: string;
+            /** @enum {string} */
+            data_type?: "text" | "number" | "boolean" | "select" | "multiselect" | "date" | "file" | "price";
+            options?: string[] | null;
+            validation?: components["schemas"]["AttributeValidation"];
+            is_required?: boolean;
+            sort_order?: number;
+        };
+        ObjectFieldInput: {
+            code: string;
+            label: string;
+            /** @enum {string} */
+            data_type: "text" | "number" | "boolean" | "select" | "multiselect" | "date" | "file" | "price";
+            options?: string[] | null;
+            validation?: components["schemas"]["AttributeValidation"];
+            is_required?: boolean;
+            sort_order?: number;
+        };
+        ObjectRecord: {
+            /** Format: int64 */
+            id?: number;
+            public_id?: string;
+            data?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        ObjectRecordInput: {
+            data?: {
+                [key: string]: unknown;
+            };
+        };
+        ListWrapperObjectType: {
+            items?: components["schemas"]["ObjectType"][];
+        };
+        ObjectRecordList: {
+            items?: components["schemas"]["ObjectRecord"][];
+            page?: number;
+            total?: number;
         };
     };
     responses: {
@@ -15542,6 +15717,325 @@ export interface operations {
                     "application/json": components["schemas"]["CatalogHealth"];
                 };
             };
+        };
+    };
+    adminListObjectTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListWrapperObjectType"];
+                };
+            };
+        };
+    };
+    adminCreateObjectType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectTypeInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectType"];
+                };
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetObjectType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectType"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateObjectType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectTypeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectType"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteObjectType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateObjectField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectFieldInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectField"];
+                };
+            };
+            400: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateObjectField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectFieldInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectField"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteObjectField: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    adminListObjectRecords: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectRecordList"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminCreateObjectRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectRecordInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectRecord"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminGetObjectRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectRecord"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminUpdateObjectRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjectRecordInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectRecord"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            422: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminDeleteObjectRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListIdentityProviders: {

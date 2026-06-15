@@ -41,6 +41,7 @@ import (
 	"b2bcommerce/internal/modules/marketplace"
 	"b2bcommerce/internal/modules/merch"
 	"b2bcommerce/internal/modules/notifications"
+	"b2bcommerce/internal/modules/objects"
 	"b2bcommerce/internal/modules/otc"
 	platformmod "b2bcommerce/internal/modules/platform"
 	"b2bcommerce/internal/modules/pricing"
@@ -304,6 +305,7 @@ func New(st *store.Store, issuer *auth.Issuer, opts ...Option) http.Handler {
 	inventory.New(st.Pool()).Routes(r, authMW)
 	crm.New(st.Pool()).Routes(r, authMW)
 	dataquality.New(st.Pool()).Routes(r, authMW)
+	objects.New(st.Pool()).Routes(r, authMW)
 	wfadmin.New(st.Pool()).Routes(r, authMW)
 	cms.New(st.Pool(), issuer, o.pageDesigner).Routes(r, authMW)
 	reporting.New(st.Pool()).Routes(r, authMW)

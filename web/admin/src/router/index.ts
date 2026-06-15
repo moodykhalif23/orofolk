@@ -88,6 +88,18 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'dataquality.view' },
       },
       {
+        path: 'custom-objects',
+        name: 'object-types',
+        component: () => import('@/views/objects/ObjectTypesView.vue'),
+        meta: { permission: 'object.view' },
+      },
+      {
+        path: 'custom-objects/:id',
+        name: 'object-type-detail',
+        component: () => import('@/views/objects/ObjectTypeDetailView.vue'),
+        meta: { permission: 'object.view' },
+      },
+      {
         path: 'pricing',
         name: 'pricing',
         component: () => import('@/views/pricing/PriceListsView.vue'),

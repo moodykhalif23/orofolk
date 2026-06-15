@@ -25,6 +25,7 @@ tags:
   - { name: ApiKeys }
   - { name: Webhooks }
   - { name: DataQuality }
+  - { name: Objects }
 
 components:
   securitySchemes:
@@ -3423,6 +3424,71 @@ components:
       properties:
         summary: { $ref: '#/components/schemas/CatalogHealthSummary' }
         worst: { type: array, items: { $ref: '#/components/schemas/CatalogHealthItem' } }
+    ObjectType:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        code: { type: string }
+        label: { type: string }
+        label_plural: { type: string }
+        description: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        fields: { type: array, items: { $ref: '#/components/schemas/ObjectField' } }
+    ObjectTypeInput:
+      type: object
+      required: [code, label]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        label_plural: { type: string }
+        description: { type: string }
+        is_active: { type: boolean }
+    ObjectField:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        object_type_id: { type: integer, format: int64 }
+        code: { type: string }
+        label: { type: string }
+        data_type: { type: string, enum: [text, number, boolean, select, multiselect, date, file, price] }
+        options: { type: array, items: { type: string }, nullable: true }
+        validation: { $ref: '#/components/schemas/AttributeValidation' }
+        is_required: { type: boolean }
+        sort_order: { type: integer }
+    ObjectFieldInput:
+      type: object
+      required: [code, label, data_type]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        data_type: { type: string, enum: [text, number, boolean, select, multiselect, date, file, price] }
+        options: { type: array, items: { type: string }, nullable: true }
+        validation: { $ref: '#/components/schemas/AttributeValidation' }
+        is_required: { type: boolean }
+        sort_order: { type: integer }
+    ObjectRecord:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        public_id: { type: string }
+        data: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ObjectRecordInput:
+      type: object
+      properties:
+        data: { type: object, additionalProperties: true }
+    ListWrapperObjectType:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ObjectType' } }
+    ObjectRecordList:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ObjectRecord' } }
+        page: { type: integer }
+        total: { type: integer }
 
   responses:
     ErrorResponse:
@@ -6731,6 +6797,116 @@ paths:
       parameters: [ { name: limit, in: query, required: false, schema: { type: integer } } ]
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CatalogHealth' } } } }
+  /admin/object-types:
+    get:
+      tags: [Objects]
+      operationId: adminListObjectTypes
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ListWrapperObjectType' } } } }
+    post:
+      tags: [Objects]
+      operationId: adminCreateObjectType
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectTypeInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectType' } } } }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/object-types/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Objects]
+      operationId: adminGetObjectType
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectType' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Objects]
+      operationId: adminUpdateObjectType
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectTypeInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectType' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Objects]
+      operationId: adminDeleteObjectType
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/object-types/{id}/fields:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Objects]
+      operationId: adminCreateObjectField
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectFieldInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectField' } } } }
+        '400': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/object-fields/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    put:
+      tags: [Objects]
+      operationId: adminUpdateObjectField
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectFieldInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectField' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Objects]
+      operationId: adminDeleteObjectField
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+  /admin/objects/{code}:
+    parameters: [ { name: code, in: path, required: true, schema: { type: string } } ]
+    get:
+      tags: [Objects]
+      operationId: adminListObjectRecords
+      security: [{ adminAuth: [] }]
+      parameters: [ { name: page, in: query, schema: { type: integer } }, { name: page_size, in: query, schema: { type: integer } } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecordList' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Objects]
+      operationId: adminCreateObjectRecord
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecordInput' } } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecord' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '422': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/objects/{code}/{id}:
+    parameters: [ { name: code, in: path, required: true, schema: { type: string } }, { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    get:
+      tags: [Objects]
+      operationId: adminGetObjectRecord
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecord' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Objects]
+      operationId: adminUpdateObjectRecord
+      security: [{ adminAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecordInput' } } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ObjectRecord' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '422': { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Objects]
+      operationId: adminDeleteObjectRecord
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Deleted }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+
   /admin/identity-providers:
     get:
       tags: [SSO]

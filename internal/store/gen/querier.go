@@ -67,6 +67,8 @@ type Querier interface {
 	CountCustomers(ctx context.Context, organizationID int64) (int64, error)
 	// CountLowStock is the org-wide count of low-stock lines (dashboard badge).
 	CountLowStock(ctx context.Context, organizationID int64) (int64, error)
+	CountObjectRecords(ctx context.Context, arg CountObjectRecordsParams) (int64, error)
+	CountObjectRecordsForType(ctx context.Context, objectTypeID int64) (int64, error)
 	CountPresets(ctx context.Context, organizationID int64) (int64, error)
 	CountProductImages(ctx context.Context, productID int64) (int64, error)
 	CountProductsAdmin(ctx context.Context, organizationID int64) (int64, error)
@@ -138,6 +140,14 @@ type Querier interface {
 	CreateMenu(ctx context.Context, arg CreateMenuParams) (Menu, error)
 	CreateMerchandisingRule(ctx context.Context, arg CreateMerchandisingRuleParams) (MerchandisingRule, error)
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
+	// ===== Object fields =======================================================
+	CreateObjectField(ctx context.Context, arg CreateObjectFieldParams) (ObjectField, error)
+	// ===== Object records ======================================================
+	CreateObjectRecord(ctx context.Context, arg CreateObjectRecordParams) (ObjectRecord, error)
+	// Generic data modeling (Platform roadmap, Phase 2): custom object types, their
+	// field schema, and records validated against that schema.
+	// ===== Object types ========================================================
+	CreateObjectType(ctx context.Context, arg CreateObjectTypeParams) (ObjectType, error)
 	// ===== Opportunities =======================================================
 	CreateOpportunity(ctx context.Context, arg CreateOpportunityParams) (Opportunity, error)
 	CreateOption(ctx context.Context, arg CreateOptionParams) (ProductOption, error)
@@ -268,6 +278,8 @@ type Querier interface {
 	DeleteFxRate(ctx context.Context, arg DeleteFxRateParams) (int64, error)
 	DeleteMediaTags(ctx context.Context, mediaAssetID int64) error
 	DeleteMerchandisingRule(ctx context.Context, arg DeleteMerchandisingRuleParams) (int64, error)
+	DeleteObjectField(ctx context.Context, arg DeleteObjectFieldParams) error
+	DeleteObjectType(ctx context.Context, arg DeleteObjectTypeParams) error
 	DeletePriceAdjustmentRule(ctx context.Context, arg DeletePriceAdjustmentRuleParams) (int64, error)
 	DeleteProductImage(ctx context.Context, arg DeleteProductImageParams) (int64, error)
 	DeleteProductTranslation(ctx context.Context, arg DeleteProductTranslationParams) (int64, error)
@@ -397,6 +409,10 @@ type Querier interface {
 	GetMediaByIDInternal(ctx context.Context, id int64) (MediaAsset, error)
 	GetMediaByPublicID(ctx context.Context, publicID uuid.UUID) (MediaAsset, error)
 	GetMenuByCode(ctx context.Context, arg GetMenuByCodeParams) (Menu, error)
+	GetObjectField(ctx context.Context, arg GetObjectFieldParams) (ObjectField, error)
+	GetObjectRecord(ctx context.Context, arg GetObjectRecordParams) (ObjectRecord, error)
+	GetObjectType(ctx context.Context, arg GetObjectTypeParams) (ObjectType, error)
+	GetObjectTypeByCode(ctx context.Context, arg GetObjectTypeByCodeParams) (ObjectType, error)
 	GetOpportunity(ctx context.Context, arg GetOpportunityParams) (Opportunity, error)
 	GetOptionGroup(ctx context.Context, id int64) (ProductOptionGroup, error)
 	GetOrderByID(ctx context.Context, arg GetOrderByIDParams) (Order, error)
@@ -620,6 +636,9 @@ type Querier interface {
 	// ListMerchandisingRulesForScope feeds the storefront search reorder.
 	ListMerchandisingRulesForScope(ctx context.Context, arg ListMerchandisingRulesForScopeParams) ([]ListMerchandisingRulesForScopeRow, error)
 	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
+	ListObjectFieldsForType(ctx context.Context, objectTypeID int64) ([]ObjectField, error)
+	ListObjectRecords(ctx context.Context, arg ListObjectRecordsParams) ([]ObjectRecord, error)
+	ListObjectTypes(ctx context.Context, organizationID int64) ([]ObjectType, error)
 	// ListOpenInvoicesForOrg returns the org's unpaid (issued/overdue) invoices for
 	// the AR-aging report.
 	ListOpenInvoicesForOrg(ctx context.Context, organizationID int64) ([]ListOpenInvoicesForOrgRow, error)
@@ -931,6 +950,7 @@ type Querier interface {
 	// used to cap new shipment quantities (§7 AC).
 	ShippedQtyForOrderItem(ctx context.Context, orderItemID int64) (string, error)
 	SoftDeleteCustomer(ctx context.Context, arg SoftDeleteCustomerParams) (int64, error)
+	SoftDeleteObjectRecord(ctx context.Context, arg SoftDeleteObjectRecordParams) (int64, error)
 	SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductParams) (int64, error)
 	SoftDeleteVendor(ctx context.Context, arg SoftDeleteVendorParams) error
 	// SpendForCustomerPeriod totals non-cancelled order value for a customer and
@@ -972,6 +992,9 @@ type Querier interface {
 	UpdateIdentityProvider(ctx context.Context, arg UpdateIdentityProviderParams) (IdentityProvider, error)
 	UpdateIntegrationConnection(ctx context.Context, arg UpdateIntegrationConnectionParams) (IntegrationConnection, error)
 	UpdateMediaMeta(ctx context.Context, arg UpdateMediaMetaParams) (MediaAsset, error)
+	UpdateObjectField(ctx context.Context, arg UpdateObjectFieldParams) (ObjectField, error)
+	UpdateObjectRecord(ctx context.Context, arg UpdateObjectRecordParams) (ObjectRecord, error)
+	UpdateObjectType(ctx context.Context, arg UpdateObjectTypeParams) (ObjectType, error)
 	UpdatePage(ctx context.Context, arg UpdatePageParams) (ContentPage, error)
 	UpdatePlan(ctx context.Context, arg UpdatePlanParams) (Plan, error)
 	UpdatePriceList(ctx context.Context, arg UpdatePriceListParams) (PriceList, error)
