@@ -23,6 +23,7 @@ import (
 	mw "b2bcommerce/internal/server/middleware"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/validation"
 )
 
 type Handler struct {
@@ -96,6 +97,7 @@ func (h *Handler) RoutesWithOptionalAuth(r chi.Router, authMW, optAuthMW func(ht
 
 		ar.With(mw.RequirePermission("attribute.view")).Get("/admin/attributes", h.listAttributes)
 		ar.With(mw.RequirePermission("attribute.manage")).Post("/admin/attributes", h.createAttribute)
+		ar.With(mw.RequirePermission("attribute.manage")).Put("/admin/attributes/{id}", h.updateAttribute)
 		ar.With(mw.RequirePermission("attribute.view")).Get("/admin/attribute-families", h.listFamilies)
 		ar.With(mw.RequirePermission("attribute.manage")).Post("/admin/attribute-families", h.createFamily)
 	})
@@ -201,6 +203,44 @@ func toAdminProduct(p gen.Product) adminProduct {
 		ParentID: p.ParentID, AttributeFamilyID: p.AttributeFamilyID,
 		CostPrice: p.CostPrice,
 	}
+}
+
+// loadAttrDefs builds the org's attribute definitions keyed by code, for the
+// validation engine.
+func (h *Handler) loadAttrDefs(ctx context.Context, org int64) (map[string]validation.AttrDef, error) {
+	rows, err := h.q.ListAttributes(ctx, org)
+	if err != nil {
+		return nil, err
+	}
+	defs := make(map[string]validation.AttrDef, len(rows))
+	for _, a := range rows {
+		defs[a.Code] = validation.AttrDef{
+			Code:     a.Code,
+			DataType: a.DataType,
+			Options:  validation.ParseOptions(a.Options),
+			Rule:     validation.ParseRule(a.Validation),
+		}
+	}
+	return defs, nil
+}
+
+// attrViolations validates an attributes payload against the org's attribute
+// rules (one-shot, for the single-product write paths).
+func (h *Handler) attrViolations(ctx context.Context, org int64, attrs json.RawMessage) ([]validation.Violation, error) {
+	defs, err := h.loadAttrDefs(ctx, org)
+	if err != nil {
+		return nil, err
+	}
+	return validation.ValidateAttributes(defs, attrs), nil
+}
+
+// writeViolations responds 422 with the attribute violations.
+func writeViolations(w http.ResponseWriter, vs []validation.Violation) {
+	response.JSON(w, http.StatusUnprocessableEntity, map[string]any{
+		"code":       "validation_failed",
+		"message":    "one or more attributes failed validation",
+		"violations": vs,
+	})
 }
 
 // ---- Storefront ----------------------------------------------------------
@@ -925,6 +965,13 @@ func (h *Handler) adminCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.defaults()
+	if vs, derr := h.attrViolations(r.Context(), org, req.Attributes); derr != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load attribute rules")
+		return
+	} else if len(vs) > 0 {
+		writeViolations(w, vs)
+		return
+	}
 	params := gen.CreateProductParams{
 		OrganizationID: org, Sku: req.SKU, Type: req.Type, Name: req.Name, Slug: req.Slug,
 		Description: req.Description, Status: req.Status, Attributes: req.Attributes,
@@ -995,6 +1042,13 @@ func (h *Handler) adminUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.defaults()
+	if vs, derr := h.attrViolations(r.Context(), org, req.Attributes); derr != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load attribute rules")
+		return
+	} else if len(vs) > 0 {
+		writeViolations(w, vs)
+		return
+	}
 	before, _ := h.q.GetProductByID(r.Context(), gen.GetProductByIDParams{OrganizationID: org, ID: id})
 	params := gen.UpdateProductParams{
 		OrganizationID: org, ID: id, Sku: req.SKU, Type: req.Type, Name: req.Name, Slug: req.Slug,
@@ -1190,6 +1244,7 @@ func (h *Handler) createAttribute(w http.ResponseWriter, r *http.Request) {
 		Options       json.RawMessage `json:"options"`
 		IsFilterable  bool            `json:"is_filterable"`
 		IsVariantAxis bool            `json:"is_variant_axis"`
+		Validation    json.RawMessage `json:"validation"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" || req.Label == "" || req.DataType == "" {
 		response.Fail(w, http.StatusBadRequest, "bad_request", "code, label, data_type are required")
@@ -1198,12 +1253,48 @@ func (h *Handler) createAttribute(w http.ResponseWriter, r *http.Request) {
 	a, err := h.q.CreateAttribute(r.Context(), gen.CreateAttributeParams{
 		OrganizationID: org, Code: req.Code, Label: req.Label, DataType: req.DataType,
 		Options: req.Options, IsFilterable: req.IsFilterable, IsVariantAxis: req.IsVariantAxis,
+		Validation: rawJSON(req.Validation),
 	})
 	if err != nil {
 		response.Fail(w, http.StatusInternalServerError, "internal", "could not create attribute")
 		return
 	}
 	response.JSON(w, http.StatusCreated, a)
+}
+
+func (h *Handler) updateAttribute(w http.ResponseWriter, r *http.Request) {
+	org, ok := orgID(r)
+	if !ok {
+		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
+		return
+	}
+	id, err := pathID(r)
+	if err != nil {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "invalid id")
+		return
+	}
+	var req struct {
+		Label         string          `json:"label"`
+		DataType      string          `json:"data_type"`
+		Options       json.RawMessage `json:"options"`
+		IsFilterable  bool            `json:"is_filterable"`
+		IsVariantAxis bool            `json:"is_variant_axis"`
+		Validation    json.RawMessage `json:"validation"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Label == "" || req.DataType == "" {
+		response.Fail(w, http.StatusBadRequest, "bad_request", "label and data_type are required")
+		return
+	}
+	a, err := h.q.UpdateAttribute(r.Context(), gen.UpdateAttributeParams{
+		OrganizationID: org, ID: id, Label: req.Label, DataType: req.DataType,
+		Options: req.Options, IsFilterable: req.IsFilterable, IsVariantAxis: req.IsVariantAxis,
+		Validation: rawJSON(req.Validation),
+	})
+	if err != nil {
+		response.Fail(w, http.StatusNotFound, "not_found", "attribute not found")
+		return
+	}
+	response.JSON(w, http.StatusOK, a)
 }
 
 func (h *Handler) listFamilies(w http.ResponseWriter, r *http.Request) {

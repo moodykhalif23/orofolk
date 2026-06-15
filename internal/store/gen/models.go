@@ -62,6 +62,7 @@ type Attribute struct {
 	Options        []byte `json:"options"`
 	IsFilterable   bool   `json:"is_filterable"`
 	IsVariantAxis  bool   `json:"is_variant_axis"`
+	Validation     []byte `json:"validation"`
 }
 
 type AttributeFamily struct {

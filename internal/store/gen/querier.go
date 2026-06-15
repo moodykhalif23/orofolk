@@ -961,6 +961,9 @@ type Querier interface {
 	TouchAPIKey(ctx context.Context, id int64) error
 	TouchUserLogin(ctx context.Context, id int64) error
 	UpdateActivity(ctx context.Context, arg UpdateActivityParams) (Activity, error)
+	// UpdateAttribute edits an attribute in place. The code is immutable — it is the
+	// JSONB key products store values under, so changing it would orphan data.
+	UpdateAttribute(ctx context.Context, arg UpdateAttributeParams) (Attribute, error)
 	UpdateAutomationRule(ctx context.Context, arg UpdateAutomationRuleParams) (AutomationRule, error)
 	UpdateCartItemPrice(ctx context.Context, arg UpdateCartItemPriceParams) error
 	UpdateCartItemQuantity(ctx context.Context, arg UpdateCartItemQuantityParams) (CartItem, error)

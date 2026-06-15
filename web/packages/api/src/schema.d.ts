@@ -357,6 +357,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/attributes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["adminUpdateAttribute"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/attribute-families": {
         parameters: {
             query?: never;
@@ -4984,6 +5002,7 @@ export interface components {
             options?: string[] | null;
             is_filterable?: boolean;
             is_variant_axis?: boolean;
+            validation?: components["schemas"]["AttributeValidation"];
         };
         AttributeInput: {
             code: string;
@@ -4993,6 +5012,17 @@ export interface components {
             options?: string[] | null;
             is_filterable?: boolean;
             is_variant_axis?: boolean;
+            validation?: components["schemas"]["AttributeValidation"];
+        };
+        /** @description Optional per-attribute constraints. Pattern/length apply to text; min/max to number & price; min_select/max_select to multiselect. */
+        AttributeValidation: {
+            pattern?: string;
+            min_length?: number;
+            max_length?: number;
+            min?: number;
+            max?: number;
+            min_select?: number;
+            max_select?: number;
         };
         AttributeFamily: {
             /** Format: int64 */
@@ -8651,6 +8681,33 @@ export interface operations {
                     "application/json": components["schemas"]["Attribute"];
                 };
             };
+        };
+    };
+    adminUpdateAttribute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttributeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Attribute"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListAttributeFamilies: {

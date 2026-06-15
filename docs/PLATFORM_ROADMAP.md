@@ -96,7 +96,7 @@ provisioning template).
 
 ---
 
-## Phase 1 — Data quality & completeness *(the strategic headline)* · **Slice 1 shipped**
+## Phase 1 — Data quality & completeness *(the strategic headline)* · **Shipped**
 
 "Is my catalog complete and correct?" — the purest expression of *visualise the
 slightest data into meaning*.
@@ -122,10 +122,21 @@ product's missing required attributes — the enrichment work-list). Verified:
 `sqlc` deterministic, `go build`/`vet` clean, a real-Postgres scoring test
 (`internal/modules/dataquality/scoring_test.go`), and admin + client typechecks.
 
-**Remaining for Phase 1:** the **validation rules engine** (per-attribute
-constraints — regex/range/allowed-values — applied on write and import), a
-**completeness trend** over time, and a premium feature-gate decision (currently
-permission-gated only, so it's visible on every plan).
+**Shipped this iteration (slice 2 — validation rules engine):** per-attribute
+constraints stored on the attribute (migration `0068` adds `attributes.validation`),
+a pure engine (`internal/validation`) enforcing regex + length (text), numeric
+range (number/price), and selection-count + allowed-values (multiselect/select),
+wired into **both** product writes (`adminCreate`/`adminUpdate` → `422` with the
+violation list) and **CSV import** (per-row rejection). Attributes are now editable
+(`PUT /admin/attributes/{id}`), and the admin **Catalog → Attributes** screen
+authors rules + allowed options per type. Verified: engine unit tests, an
+end-to-end real-Postgres test (invalid value → 422, valid → 201), the full catalog
+suite still green, and client + admin typechecks clean.
+
+**Remaining for Phase 1 (optional polish, neither blocks Phase 2):** a
+**completeness trend** over time, and a **premium feature-gate** decision —
+data-health + validation are permission-gated only today, so they're visible on
+every plan.
 
 ---
 

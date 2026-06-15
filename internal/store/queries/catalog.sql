@@ -237,8 +237,16 @@ SELECT category_id FROM product_categories WHERE product_id = $1;
 
 -- name: CreateAttribute :one
 INSERT INTO attributes (
-  organization_id, code, label, data_type, options, is_filterable, is_variant_axis
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
+  organization_id, code, label, data_type, options, is_filterable, is_variant_axis, validation
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- UpdateAttribute edits an attribute in place. The code is immutable — it is the
+-- JSONB key products store values under, so changing it would orphan data.
+-- name: UpdateAttribute :one
+UPDATE attributes
+SET label = $3, data_type = $4, options = $5, is_filterable = $6, is_variant_axis = $7, validation = $8
+WHERE organization_id = $1 AND id = $2
 RETURNING *;
 
 -- name: ListAttributes :many

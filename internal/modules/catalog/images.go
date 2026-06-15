@@ -22,6 +22,7 @@ import (
 	"b2bcommerce/internal/changelog"
 	"b2bcommerce/internal/server/response"
 	"b2bcommerce/internal/store/gen"
+	"b2bcommerce/internal/validation"
 )
 
 // maxProductImages caps a product's gallery so listings stay clean and uploads
@@ -196,6 +197,13 @@ func (h *Handler) importCSV(w http.ResponseWriter, r *http.Request) {
 		response.Fail(w, http.StatusUnauthorized, "unauthorized", "no claims")
 		return
 	}
+	// Load the org's attribute rules once; each row's attributes are validated
+	// against them, so a bad value is rejected on import exactly as on a write.
+	defs, derr := h.loadAttrDefs(r.Context(), org)
+	if derr != nil {
+		response.Fail(w, http.StatusInternalServerError, "internal", "could not load attribute rules")
+		return
+	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		response.Fail(w, http.StatusBadRequest, "bad_request", "a CSV file is required (multipart field 'file')")
@@ -268,6 +276,11 @@ func (h *Handler) importCSV(w http.ResponseWriter, r *http.Request) {
 			pr.Attributes = json.RawMessage(a)
 		}
 		pr.defaults()
+		if vs := validation.ValidateAttributes(defs, pr.Attributes); len(vs) > 0 {
+			entry.Action, entry.Error = "error", vs[0].Code+": "+vs[0].Message
+			results, errCount = append(results, entry), errCount+1
+			continue
+		}
 
 		existing, lookupErr := h.q.GetProductBySKU(r.Context(), gen.GetProductBySKUParams{OrganizationID: org, Sku: sku})
 		switch {

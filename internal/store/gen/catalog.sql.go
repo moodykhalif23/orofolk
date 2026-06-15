@@ -157,9 +157,9 @@ func (q *Queries) CountSearchProductsAdmin(ctx context.Context, arg CountSearchP
 const createAttribute = `-- name: CreateAttribute :one
 
 INSERT INTO attributes (
-  organization_id, code, label, data_type, options, is_filterable, is_variant_axis
-) VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, organization_id, code, label, data_type, options, is_filterable, is_variant_axis
+  organization_id, code, label, data_type, options, is_filterable, is_variant_axis, validation
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, organization_id, code, label, data_type, options, is_filterable, is_variant_axis, validation
 `
 
 type CreateAttributeParams struct {
@@ -170,6 +170,7 @@ type CreateAttributeParams struct {
 	Options        []byte `json:"options"`
 	IsFilterable   bool   `json:"is_filterable"`
 	IsVariantAxis  bool   `json:"is_variant_axis"`
+	Validation     []byte `json:"validation"`
 }
 
 // ===== Attributes & families ==============================================
@@ -182,6 +183,7 @@ func (q *Queries) CreateAttribute(ctx context.Context, arg CreateAttributeParams
 		arg.Options,
 		arg.IsFilterable,
 		arg.IsVariantAxis,
+		arg.Validation,
 	)
 	var i Attribute
 	err := row.Scan(
@@ -193,6 +195,7 @@ func (q *Queries) CreateAttribute(ctx context.Context, arg CreateAttributeParams
 		&i.Options,
 		&i.IsFilterable,
 		&i.IsVariantAxis,
+		&i.Validation,
 	)
 	return i, err
 }
@@ -717,7 +720,7 @@ func (q *Queries) ListAttributeFamilies(ctx context.Context, organizationID int6
 }
 
 const listAttributes = `-- name: ListAttributes :many
-SELECT id, organization_id, code, label, data_type, options, is_filterable, is_variant_axis FROM attributes WHERE organization_id = $1 ORDER BY label
+SELECT id, organization_id, code, label, data_type, options, is_filterable, is_variant_axis, validation FROM attributes WHERE organization_id = $1 ORDER BY label
 `
 
 func (q *Queries) ListAttributes(ctx context.Context, organizationID int64) ([]Attribute, error) {
@@ -738,6 +741,7 @@ func (q *Queries) ListAttributes(ctx context.Context, organizationID int64) ([]A
 			&i.Options,
 			&i.IsFilterable,
 			&i.IsVariantAxis,
+			&i.Validation,
 		); err != nil {
 			return nil, err
 		}
@@ -1339,6 +1343,52 @@ func (q *Queries) SoftDeleteProduct(ctx context.Context, arg SoftDeleteProductPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateAttribute = `-- name: UpdateAttribute :one
+UPDATE attributes
+SET label = $3, data_type = $4, options = $5, is_filterable = $6, is_variant_axis = $7, validation = $8
+WHERE organization_id = $1 AND id = $2
+RETURNING id, organization_id, code, label, data_type, options, is_filterable, is_variant_axis, validation
+`
+
+type UpdateAttributeParams struct {
+	OrganizationID int64  `json:"organization_id"`
+	ID             int64  `json:"id"`
+	Label          string `json:"label"`
+	DataType       string `json:"data_type"`
+	Options        []byte `json:"options"`
+	IsFilterable   bool   `json:"is_filterable"`
+	IsVariantAxis  bool   `json:"is_variant_axis"`
+	Validation     []byte `json:"validation"`
+}
+
+// UpdateAttribute edits an attribute in place. The code is immutable — it is the
+// JSONB key products store values under, so changing it would orphan data.
+func (q *Queries) UpdateAttribute(ctx context.Context, arg UpdateAttributeParams) (Attribute, error) {
+	row := q.db.QueryRow(ctx, updateAttribute,
+		arg.OrganizationID,
+		arg.ID,
+		arg.Label,
+		arg.DataType,
+		arg.Options,
+		arg.IsFilterable,
+		arg.IsVariantAxis,
+		arg.Validation,
+	)
+	var i Attribute
+	err := row.Scan(
+		&i.ID,
+		&i.OrganizationID,
+		&i.Code,
+		&i.Label,
+		&i.DataType,
+		&i.Options,
+		&i.IsFilterable,
+		&i.IsVariantAxis,
+		&i.Validation,
+	)
+	return i, err
 }
 
 const updateProduct = `-- name: UpdateProduct :one

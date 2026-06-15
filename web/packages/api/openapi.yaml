@@ -260,6 +260,7 @@ components:
         options: { type: array, items: { type: string }, nullable: true }
         is_filterable: { type: boolean }
         is_variant_axis: { type: boolean }
+        validation: { $ref: '#/components/schemas/AttributeValidation' }
 
     AttributeInput:
       type: object
@@ -271,6 +272,18 @@ components:
         options: { type: array, items: { type: string }, nullable: true }
         is_filterable: { type: boolean }
         is_variant_axis: { type: boolean }
+        validation: { $ref: '#/components/schemas/AttributeValidation' }
+    AttributeValidation:
+      type: object
+      description: 'Optional per-attribute constraints. Pattern/length apply to text; min/max to number & price; min_select/max_select to multiselect.'
+      properties:
+        pattern: { type: string }
+        min_length: { type: integer }
+        max_length: { type: integer }
+        min: { type: number }
+        max: { type: number }
+        min_select: { type: integer }
+        max_select: { type: integer }
 
     AttributeFamily:
       type: object
@@ -3789,6 +3802,20 @@ paths:
         '201':
           description: Created
           content: { application/json: { schema: { $ref: '#/components/schemas/Attribute' } } }
+  /admin/attributes/{id}:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    put:
+      tags: [Catalog]
+      operationId: adminUpdateAttribute
+      security: [{ adminAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AttributeInput' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Attribute' } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
 
   /admin/attribute-families:
     get:
