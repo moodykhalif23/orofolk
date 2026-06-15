@@ -250,7 +250,7 @@ matched, cleansed pipeline. Next: **Phase 4 (syndication & distribution / feeds)
 
 ---
 
-## Phase 4 — Syndication & distribution · **Slices 1–2 shipped**
+## Phase 4 — Syndication & distribution · **Slices 1–3 shipped**
 
 | Deliverable | Builds on | Effort |
 |---|---|---|
@@ -300,9 +300,26 @@ google_shopping feed (format coerced to xml, RSS/`g:`-namespace output, `g:price
 flagged) + unknown-channel 400; the generic + object/products flows still pass (no
 drift); client + api tsc.
 
-**Remaining for Phase 4:** slice 3 — **scheduled regeneration + a stable signed feed
-URL** channels poll (River job + blob artifact, mirroring DAM delivery); slice 4 — the
-**feed-builder UI** (source + channel preset + field mapper + preview + gap check).
+**Shipped this iteration (slice 3 — scheduled regeneration + signed delivery):** a
+feed can carry a **cadence** (`manual` / `hourly` / `daily`; migration `0074` adds
+schedule + artifact columns). The generation logic moved into a service package
+**`internal/feedgen`** (sources + channels + render + build + sweep), so the
+background worker drives the *same* build path as the HTTP layer — mirroring
+`internal/report` behind its schedule worker. A **build** stores the rendered
+document in the blob store (`feeds/<org>/<public_id>.<ext>`) and stamps
+`last_built_at` / size / next run; an hourly **River periodic** (`run_feed_schedules`)
+sweeps due feeds and regenerates them (a failing feed is recorded and skipped, never
+stalling the sweep). Channels poll a **stable signed delivery URL** — `GET /feeds/{public_id}?exp=&sig=`,
+public and signature-gated via the same `auth.Issuer` HMAC that guards DAM transforms;
+admins also get on-the-fly `/output`, and `POST /admin/feeds/{id}/build` regenerates
+now. Verified: real-Postgres `RunDue` (only due feeds built, artifact stored, next_run
+advanced, manual feed untouched) + the HTTP build→signed-delivery flow (anonymous fetch
+200, tampered signature 403, unbuilt feed 404); slice-1/2 flows still pass through the
+refactor (no drift); isolation gate over `feeds` + new columns; sqlc deterministic;
+client + api tsc.
+
+**Remaining for Phase 4:** slice 4 — the **feed-builder UI** (source + channel preset +
+field mapper + preview with the gap check + schedule + copy the delivery URL).
 
 ---
 

@@ -4552,8 +4552,46 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** @description Generate the full feed document as a download (content type follows the feed's format). */
+        /** @description Generate the full feed document fresh as a download (content type follows the feed's format). */
         get: operations["adminFeedOutput"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/feeds/{id}/build": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Regenerate the stored artifact now (the same build the scheduler runs); returns the refreshed feed. */
+        post: operations["adminBuildFeed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feeds/{publicID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        /** @description Public, signature-gated delivery of a feed's last-built artifact — the URL a marketplace polls. Requires the exp+sig query pair from the feed's url. */
+        get: operations["serveFeed"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8522,8 +8560,19 @@ export interface components {
             channel?: string;
             /** @enum {string} */
             format?: "csv" | "json" | "xml";
+            /** @enum {string} */
+            schedule?: "manual" | "hourly" | "daily";
             mapping?: components["schemas"]["FeedFieldMap"][];
             is_active?: boolean;
+            /** @description Signed */
+            url?: string;
+            /** Format: date-time */
+            next_run_at?: string;
+            /** Format: date-time */
+            last_built_at?: string;
+            /** Format: int64 */
+            last_bytes?: number;
+            last_error?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -8535,6 +8584,8 @@ export interface components {
             channel?: string;
             /** @enum {string} */
             format?: "csv" | "json" | "xml";
+            /** @enum {string} */
+            schedule?: "manual" | "hourly" | "daily";
             mapping?: components["schemas"]["FeedFieldMap"][];
             is_active?: boolean;
         };
@@ -16943,6 +16994,62 @@ export interface operations {
             };
             404: components["responses"]["ErrorResponse"];
             409: components["responses"]["ErrorResponse"];
+        };
+    };
+    adminBuildFeed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Built */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feed"];
+                };
+            };
+            404: components["responses"]["ErrorResponse"];
+            409: components["responses"]["ErrorResponse"];
+            503: components["responses"]["ErrorResponse"];
+        };
+    };
+    serveFeed: {
+        parameters: {
+            query: {
+                exp: string;
+                sig: string;
+            };
+            header?: never;
+            path: {
+                publicID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The feed document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                    "application/xml": string;
+                };
+            };
+            403: components["responses"]["ErrorResponse"];
+            404: components["responses"]["ErrorResponse"];
         };
     };
     adminListIdentityProviders: {

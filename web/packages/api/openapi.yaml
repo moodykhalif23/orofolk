@@ -3608,8 +3608,14 @@ components:
         source: { type: string }
         channel: { type: string }
         format: { type: string, enum: [csv, json, xml] }
+        schedule: { type: string, enum: [manual, hourly, daily] }
         mapping: { type: array, items: { $ref: '#/components/schemas/FeedFieldMap' } }
         is_active: { type: boolean }
+        url: { type: string, description: Signed, pollable delivery URL serving the last-built artifact. }
+        next_run_at: { type: string, format: date-time }
+        last_built_at: { type: string, format: date-time }
+        last_bytes: { type: integer, format: int64 }
+        last_error: { type: string }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     FeedInput:
@@ -3620,6 +3626,7 @@ components:
         source: { type: string }
         channel: { type: string }
         format: { type: string, enum: [csv, json, xml] }
+        schedule: { type: string, enum: [manual, hourly, daily] }
         mapping: { type: array, items: { $ref: '#/components/schemas/FeedFieldMap' } }
         is_active: { type: boolean }
     FeedSource:
@@ -7260,7 +7267,7 @@ paths:
     get:
       tags: [Feeds]
       operationId: adminFeedOutput
-      description: Generate the full feed document as a download (content type follows the feed's format).
+      description: Generate the full feed document fresh as a download (content type follows the feed's format).
       security: [{ adminAuth: [] }]
       responses:
         '200':
@@ -7271,6 +7278,36 @@ paths:
             application/xml: { schema: { type: string } }
         '404': { $ref: '#/components/responses/ErrorResponse' }
         '409': { $ref: '#/components/responses/ErrorResponse' }
+  /admin/feeds/{id}/build:
+    parameters: [ { name: id, in: path, required: true, schema: { type: integer, format: int64 } } ]
+    post:
+      tags: [Feeds]
+      operationId: adminBuildFeed
+      description: Regenerate the stored artifact now (the same build the scheduler runs); returns the refreshed feed.
+      security: [{ adminAuth: [] }]
+      responses:
+        '200': { description: Built, content: { application/json: { schema: { $ref: '#/components/schemas/Feed' } } } }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
+        '409': { $ref: '#/components/responses/ErrorResponse' }
+        '503': { $ref: '#/components/responses/ErrorResponse' }
+  /feeds/{publicID}:
+    parameters: [ { name: publicID, in: path, required: true, schema: { type: string } } ]
+    get:
+      tags: [Feeds]
+      operationId: serveFeed
+      description: Public, signature-gated delivery of a feed's last-built artifact — the URL a marketplace polls. Requires the exp+sig query pair from the feed's url.
+      parameters:
+        - { name: exp, in: query, required: true, schema: { type: string } }
+        - { name: sig, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The feed document
+          content:
+            text/csv: { schema: { type: string } }
+            application/json: { schema: { type: array, items: { type: object, additionalProperties: true } } }
+            application/xml: { schema: { type: string } }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
+        '404': { $ref: '#/components/responses/ErrorResponse' }
   /admin/identity-providers:
     get:
       tags: [SSO]

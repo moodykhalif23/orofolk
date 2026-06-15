@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"b2bcommerce/internal/auth"
+	"b2bcommerce/internal/blob"
 	"b2bcommerce/internal/server"
 	"b2bcommerce/internal/store"
 	"b2bcommerce/internal/testsupport"
@@ -30,7 +31,21 @@ func newServer(t *testing.T) (http.Handler, string, *pgxpool.Pool) {
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
-	return server.New(st, issuer), tok, pool
+	// A real blob store so build + signed delivery work end to end.
+	bs, err := blob.NewFSStore(t.TempDir())
+	if err != nil {
+		t.Fatalf("blob store: %v", err)
+	}
+	return server.New(st, issuer, server.WithMedia(bs, nil)), tok, pool
+}
+
+// doPublic issues an unauthenticated GET (the channel polling a signed feed URL).
+func doPublic(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	return rr
 }
 
 func doJSON(t *testing.T, h http.Handler, method, path, token string, body any) *httptest.ResponseRecorder {
@@ -338,4 +353,88 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// TestFeedScheduledBuildAndSignedDelivery proves slice 3: a scheduled feed is
+// armed with a next run, a build stores an artifact, and the signed delivery URL
+// serves it to an unauthenticated caller — while a tampered signature and an
+// unbuilt feed are refused.
+func TestFeedScheduledBuildAndSignedDelivery(t *testing.T) {
+	h, token, pool := newServer(t)
+	ctx := context.Background()
+
+	var typeID int64
+	if err := pool.QueryRow(ctx,
+		`INSERT INTO object_types (organization_id, code, label) VALUES (1, 'feed_sched', 'Sched') RETURNING id`).Scan(&typeID); err != nil {
+		t.Fatalf("seed type: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_fields (object_type_id, organization_id, code, label, data_type, sort_order)
+		 VALUES ($1, 1, 'name', 'Name', 'text', 0)`, typeID); err != nil {
+		t.Fatalf("seed field: %v", err)
+	}
+	if _, err := pool.Exec(ctx,
+		`INSERT INTO object_records (object_type_id, organization_id, data) VALUES ($1, 1, '{"name":"Acme"}'::jsonb)`, typeID); err != nil {
+		t.Fatalf("seed record: %v", err)
+	}
+
+	// A daily-scheduled feed is armed with a next run.
+	create := doJSON(t, h, http.MethodPost, "/admin/feeds", token, map[string]any{
+		"name": "Sched feed", "source": "object:feed_sched", "format": "csv", "schedule": "daily",
+		"mapping": []map[string]any{{"out": "supplier", "src": "name"}},
+	})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create: status %d, body %s", create.Code, create.Body.String())
+	}
+	var fv struct {
+		ID        int64  `json:"id"`
+		URL       string `json:"url"`
+		Schedule  string `json:"schedule"`
+		NextRunAt string `json:"next_run_at"`
+	}
+	_ = json.Unmarshal(create.Body.Bytes(), &fv)
+	if fv.Schedule != "daily" || fv.NextRunAt == "" {
+		t.Errorf("scheduled feed not armed: schedule=%q next_run_at=%q", fv.Schedule, fv.NextRunAt)
+	}
+	if fv.URL == "" {
+		t.Fatal("feed view returned no signed url")
+	}
+	id := strconv.FormatInt(fv.ID, 10)
+
+	// Before any build, the signed URL has nothing to serve.
+	if pre := doPublic(t, h, fv.URL); pre.Code != http.StatusNotFound {
+		t.Errorf("delivery before build = %d, want 404", pre.Code)
+	}
+
+	// Build now (the same path the scheduler runs).
+	build := doJSON(t, h, http.MethodPost, "/admin/feeds/"+id+"/build", token, nil)
+	if build.Code != http.StatusOK {
+		t.Fatalf("build: status %d, body %s", build.Code, build.Body.String())
+	}
+	var bv struct {
+		URL         string `json:"url"`
+		LastBuiltAt string `json:"last_built_at"`
+		LastBytes   int64  `json:"last_bytes"`
+	}
+	_ = json.Unmarshal(build.Body.Bytes(), &bv)
+	if bv.LastBuiltAt == "" || bv.LastBytes == 0 {
+		t.Errorf("build didn't stamp metadata: last_built_at=%q last_bytes=%d", bv.LastBuiltAt, bv.LastBytes)
+	}
+
+	// The signed URL now serves the stored artifact to an anonymous caller.
+	got := doPublic(t, h, bv.URL)
+	if got.Code != http.StatusOK {
+		t.Fatalf("signed delivery: status %d, body %s", got.Code, got.Body.String())
+	}
+	if ct := got.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/csv") {
+		t.Errorf("delivery content-type=%q, want text/csv", ct)
+	}
+	if body := got.Body.String(); !strings.Contains(body, "supplier") || !strings.Contains(body, "Acme") {
+		t.Errorf("delivered artifact missing data:\n%s", body)
+	}
+
+	// A tampered signature is refused.
+	if tam := doPublic(t, h, strings.Replace(bv.URL, "sig=", "sig=00", 1)); tam.Code != http.StatusForbidden {
+		t.Errorf("tampered signature = %d, want 403", tam.Code)
+	}
 }

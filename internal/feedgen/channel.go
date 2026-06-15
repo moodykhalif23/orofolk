@@ -1,29 +1,28 @@
-package feeds
+package feedgen
 
 import "b2bcommerce/internal/feed"
 
-// channelField is one field a destination expects in the feed. Code is the
+// ChannelField is one field a destination expects in the feed. Code is the
 // output column name a mapping must produce (e.g. "g:price"); Required drives
 // the gap check surfaced on preview.
-type channelField struct {
+type ChannelField struct {
 	Code     string `json:"code"`
 	Label    string `json:"label"`
 	Required bool   `json:"required"`
 	Example  string `json:"example,omitempty"`
 }
 
-// channel is a destination preset (Platform roadmap, Phase 4 slice 2): the
+// Channel is a destination preset (Platform roadmap, Phase 4 slice 2): the
 // output schema a marketplace expects, the format + XML envelope it's delivered
 // in, and a starter mapping. The registry is pluggable — adding a destination is
-// adding an entry here, no engine change (the adapter-registry idiom the AI /
-// payment / blob layers use, keyed for runtime selection like import targets).
-type channel struct {
-	id       string
-	label    string
-	format   string             // pinned delivery format; "" = the author chooses
-	fields   []channelField     // the destination's schema (drives presets + validation)
-	preset   feed.Mapping       // suggested starter mapping (best effort from the product source)
-	envelope *feed.XMLEnvelope  // XML document shape; nil = the generic <feed><item>
+// adding an entry, no engine change (the adapter-registry idiom).
+type Channel struct {
+	ID       string
+	Label    string
+	Format   string             // pinned delivery format; "" = the author chooses
+	Fields   []ChannelField     // the destination's schema (drives presets + validation)
+	Preset   feed.Mapping       // suggested starter mapping (best effort from the product source)
+	Envelope *feed.XMLEnvelope  // XML document shape; nil = the generic <feed><item>
 }
 
 // googleEnvelope is Google Shopping's RSS 2.0 document with the g: namespace.
@@ -43,16 +42,15 @@ var googleEnvelope = &feed.XMLEnvelope{
 	Qualified: true, // keep g:id / g:price etc. under the declared namespace
 }
 
-// registry is the ordered set of channels. order keeps listing stable.
 var (
 	channelOrder = []string{"custom", "google_shopping", "amazon"}
-	channelByID  = map[string]channel{
+	channelByID  = map[string]Channel{
 		"custom": {
-			id: "custom", label: "Custom", format: "", // any format, no required fields
+			ID: "custom", Label: "Custom", Format: "", // any format, no required fields
 		},
 		"google_shopping": {
-			id: "google_shopping", label: "Google Shopping", format: "xml", envelope: googleEnvelope,
-			fields: []channelField{
+			ID: "google_shopping", Label: "Google Shopping", Format: "xml", Envelope: googleEnvelope,
+			Fields: []ChannelField{
 				{Code: "g:id", Label: "ID", Required: true, Example: "SKU-123"},
 				{Code: "title", Label: "Title", Required: true},
 				{Code: "description", Label: "Description", Required: true},
@@ -62,7 +60,7 @@ var (
 				{Code: "g:availability", Label: "Availability", Required: true, Example: "in_stock"},
 				{Code: "g:condition", Label: "Condition", Required: false, Example: "new"},
 			},
-			preset: feed.Mapping{
+			Preset: feed.Mapping{
 				{Out: "g:id", Src: "sku"},
 				{Out: "title", Src: "name"},
 				{Out: "description", Src: "description"},
@@ -71,13 +69,12 @@ var (
 				{Out: "g:availability", Const: "in_stock"},
 				{Out: "g:condition", Const: "new"},
 				// g:price is intentionally unmapped: the product source carries no
-				// price, so the gap check flags it for the author to map (e.g. from
-				// an attr.price). That's the validation earning its keep.
+				// price, so the gap check flags it for the author (e.g. from attr.price).
 			},
 		},
 		"amazon": {
-			id: "amazon", label: "Amazon (flat file)", format: "csv",
-			fields: []channelField{
+			ID: "amazon", Label: "Amazon (flat file)", Format: "csv",
+			Fields: []ChannelField{
 				{Code: "sku", Label: "Seller SKU", Required: true},
 				{Code: "item_name", Label: "Item name", Required: true},
 				{Code: "product_description", Label: "Description", Required: false},
@@ -85,7 +82,7 @@ var (
 				{Code: "quantity", Label: "Quantity", Required: true},
 				{Code: "main_image_url", Label: "Main image URL", Required: false},
 			},
-			preset: feed.Mapping{
+			Preset: feed.Mapping{
 				{Out: "sku", Src: "sku"},
 				{Out: "item_name", Src: "name"},
 				{Out: "product_description", Src: "description"},
@@ -96,9 +93,9 @@ var (
 	}
 )
 
-// resolveChannel returns the channel for an id, defaulting to "custom" for an
+// ResolveChannel returns the channel for an id, defaulting to "custom" for an
 // empty id and reporting ok=false for an unknown one.
-func resolveChannel(id string) (channel, bool) {
+func ResolveChannel(id string) (Channel, bool) {
 	if id == "" {
 		return channelByID["custom"], true
 	}
@@ -106,27 +103,27 @@ func resolveChannel(id string) (channel, bool) {
 	return c, ok
 }
 
-// allChannels lists the registry in stable order.
-func allChannels() []channel {
-	out := make([]channel, 0, len(channelOrder))
+// AllChannels lists the registry in stable order.
+func AllChannels() []Channel {
+	out := make([]Channel, 0, len(channelOrder))
 	for _, id := range channelOrder {
 		out = append(out, channelByID[id])
 	}
 	return out
 }
 
-// effectiveFormat is the channel's pinned format, or the feed's own when the
+// EffectiveFormat is the channel's pinned format, or the feed's own when the
 // channel doesn't pin one (custom).
-func (c channel) effectiveFormat(feedFormat string) string {
-	if c.format != "" {
-		return c.format
+func (c Channel) EffectiveFormat(feedFormat string) string {
+	if c.Format != "" {
+		return c.Format
 	}
 	return feed.NormalizeFormat(feedFormat)
 }
 
-// missingRequired returns the required field codes the mapping does not produce
+// MissingRequired returns the required field codes the mapping does not produce
 // — the gap between what the channel needs and what the feed maps.
-func (c channel) missingRequired(m feed.Mapping) []string {
+func (c Channel) MissingRequired(m feed.Mapping) []string {
 	produced := make(map[string]struct{}, len(m))
 	for _, f := range m {
 		if f.Out != "" {
@@ -134,12 +131,11 @@ func (c channel) missingRequired(m feed.Mapping) []string {
 		}
 	}
 	var missing []string
-	for _, fld := range c.fields {
-		if !fld.Required {
-			continue
-		}
-		if _, ok := produced[fld.Code]; !ok {
-			missing = append(missing, fld.Code)
+	for _, fld := range c.Fields {
+		if fld.Required {
+			if _, ok := produced[fld.Code]; !ok {
+				missing = append(missing, fld.Code)
+			}
 		}
 	}
 	return missing

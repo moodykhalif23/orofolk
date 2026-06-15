@@ -1,4 +1,10 @@
-package feeds
+// Package feedgen is the feed generation service (Platform roadmap, Phase 4):
+// it resolves a feed's data source, projects rows through the channel + mapping
+// into a document (via internal/feed), stores the artifact in the blob store and
+// runs the scheduled-regeneration sweep. It sits below the HTTP module so the
+// background worker can drive the same build path without importing HTTP code —
+// mirroring internal/report behind the report-schedule worker.
+package feedgen
 
 import (
 	"context"
@@ -10,11 +16,12 @@ import (
 	"b2bcommerce/internal/store/gen"
 )
 
-var errUnknownSource = errors.New("unknown feed source")
+// ErrUnknownSource is returned when a feed's source key resolves to nothing.
+var ErrUnknownSource = errors.New("unknown feed source")
 
-// feedRowCap bounds the rows pulled per generation. Slice 1 builds the document
-// in memory (streaming + scheduled delivery come in a later slice), so this
-// keeps a large catalog from exhausting memory; it's logged when it bites.
+// feedRowCap bounds the rows pulled per generation. A build holds the document
+// in memory; this keeps a large catalog from exhausting it. Streaming is a
+// future optimization.
 const feedRowCap = 50000
 
 // Source is one thing a feed can project FROM: it advertises the field codes a
@@ -27,15 +34,15 @@ type Source interface {
 	Rows(ctx context.Context, q *gen.Queries, org int64, limit int) ([]map[string]any, error)
 }
 
-// resolveSource maps a source key — "products" or "object:<code>" — to a Source.
-func resolveSource(ctx context.Context, q *gen.Queries, org int64, key string) (Source, error) {
+// ResolveSource maps a source key — "products" or "object:<code>" — to a Source.
+func ResolveSource(ctx context.Context, q *gen.Queries, org int64, key string) (Source, error) {
 	if key == "products" {
 		return &productSource{attrCodes: attrCodes(ctx, q, org)}, nil
 	}
 	if code, ok := strings.CutPrefix(key, "object:"); ok {
 		t, err := q.GetObjectTypeByCode(ctx, gen.GetObjectTypeByCodeParams{OrganizationID: org, Code: code})
 		if err != nil {
-			return nil, errUnknownSource
+			return nil, ErrUnknownSource
 		}
 		fields, err := q.ListObjectFieldsForType(ctx, t.ID)
 		if err != nil {
@@ -43,12 +50,12 @@ func resolveSource(ctx context.Context, q *gen.Queries, org int64, key string) (
 		}
 		return &objectSource{typ: t, fields: fields}, nil
 	}
-	return nil, errUnknownSource
+	return nil, ErrUnknownSource
 }
 
-// availableSources lists everything projectable for an org: products + one
+// AvailableSources lists everything projectable for an org: products + one
 // source per custom object type.
-func availableSources(ctx context.Context, q *gen.Queries, org int64) ([]Source, error) {
+func AvailableSources(ctx context.Context, q *gen.Queries, org int64) ([]Source, error) {
 	out := []Source{&productSource{attrCodes: attrCodes(ctx, q, org)}}
 	types, err := q.ListObjectTypes(ctx, org)
 	if err != nil {

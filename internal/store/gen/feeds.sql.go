@@ -10,23 +10,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createFeed = `-- name: CreateFeed :one
 
-INSERT INTO feeds (organization_id, name, source, channel, format, mapping, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at
+INSERT INTO feeds (organization_id, name, source, channel, format, mapping, is_active, schedule, next_run_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error
 `
 
 type CreateFeedParams struct {
-	OrganizationID int64  `json:"organization_id"`
-	Name           string `json:"name"`
-	Source         string `json:"source"`
-	Channel        string `json:"channel"`
-	Format         string `json:"format"`
-	Mapping        []byte `json:"mapping"`
-	IsActive       bool   `json:"is_active"`
+	OrganizationID int64              `json:"organization_id"`
+	Name           string             `json:"name"`
+	Source         string             `json:"source"`
+	Channel        string             `json:"channel"`
+	Format         string             `json:"format"`
+	Mapping        []byte             `json:"mapping"`
+	IsActive       bool               `json:"is_active"`
+	Schedule       string             `json:"schedule"`
+	NextRunAt      pgtype.Timestamptz `json:"next_run_at"`
 }
 
 // Syndication feeds (Platform roadmap, Phase 4). A feed projects a source
@@ -41,6 +44,8 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		arg.Format,
 		arg.Mapping,
 		arg.IsActive,
+		arg.Schedule,
+		arg.NextRunAt,
 	)
 	var i Feed
 	err := row.Scan(
@@ -55,6 +60,12 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Schedule,
+		&i.NextRunAt,
+		&i.LastBuiltAt,
+		&i.LastArtifactKey,
+		&i.LastBytes,
+		&i.LastError,
 	)
 	return i, err
 }
@@ -74,7 +85,7 @@ func (q *Queries) DeleteFeed(ctx context.Context, arg DeleteFeedParams) error {
 }
 
 const getFeed = `-- name: GetFeed :one
-SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at FROM feeds WHERE organization_id = $1 AND id = $2
+SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error FROM feeds WHERE organization_id = $1 AND id = $2
 `
 
 type GetFeedParams struct {
@@ -97,12 +108,94 @@ func (q *Queries) GetFeed(ctx context.Context, arg GetFeedParams) (Feed, error) 
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Schedule,
+		&i.NextRunAt,
+		&i.LastBuiltAt,
+		&i.LastArtifactKey,
+		&i.LastBytes,
+		&i.LastError,
 	)
 	return i, err
 }
 
+const getFeedByPublicID = `-- name: GetFeedByPublicID :one
+SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error FROM feeds WHERE public_id = $1
+`
+
+func (q *Queries) GetFeedByPublicID(ctx context.Context, publicID uuid.UUID) (Feed, error) {
+	row := q.db.QueryRow(ctx, getFeedByPublicID, publicID)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.PublicID,
+		&i.OrganizationID,
+		&i.Name,
+		&i.Source,
+		&i.Channel,
+		&i.Format,
+		&i.Mapping,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Schedule,
+		&i.NextRunAt,
+		&i.LastBuiltAt,
+		&i.LastArtifactKey,
+		&i.LastBytes,
+		&i.LastError,
+	)
+	return i, err
+}
+
+const listDueFeeds = `-- name: ListDueFeeds :many
+SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error FROM feeds
+WHERE is_active AND schedule <> 'manual' AND next_run_at IS NOT NULL AND next_run_at <= $1
+ORDER BY next_run_at
+LIMIT 500
+`
+
+// ListDueFeeds returns scheduled feeds whose next run has arrived (cross-org; the
+// scheduler sweep runs unscoped). Bounded so one sweep can't run unboundedly.
+func (q *Queries) ListDueFeeds(ctx context.Context, nextRunAt pgtype.Timestamptz) ([]Feed, error) {
+	rows, err := q.db.Query(ctx, listDueFeeds, nextRunAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Feed
+	for rows.Next() {
+		var i Feed
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.OrganizationID,
+			&i.Name,
+			&i.Source,
+			&i.Channel,
+			&i.Format,
+			&i.Mapping,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Schedule,
+			&i.NextRunAt,
+			&i.LastBuiltAt,
+			&i.LastArtifactKey,
+			&i.LastBytes,
+			&i.LastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFeeds = `-- name: ListFeeds :many
-SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at FROM feeds WHERE organization_id = $1 ORDER BY created_at DESC
+SELECT id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error FROM feeds WHERE organization_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListFeeds(ctx context.Context, organizationID int64) ([]Feed, error) {
@@ -126,6 +219,12 @@ func (q *Queries) ListFeeds(ctx context.Context, organizationID int64) ([]Feed, 
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Schedule,
+			&i.NextRunAt,
+			&i.LastBuiltAt,
+			&i.LastArtifactKey,
+			&i.LastBytes,
+			&i.LastError,
 		); err != nil {
 			return nil, err
 		}
@@ -203,22 +302,77 @@ func (q *Queries) ListProductsForFeed(ctx context.Context, arg ListProductsForFe
 	return items, nil
 }
 
+const markFeedBuildError = `-- name: MarkFeedBuildError :exec
+UPDATE feeds
+   SET last_error = $3, next_run_at = $4
+ WHERE organization_id = $1 AND id = $2
+`
+
+type MarkFeedBuildErrorParams struct {
+	OrganizationID int64              `json:"organization_id"`
+	ID             int64              `json:"id"`
+	LastError      string             `json:"last_error"`
+	NextRunAt      pgtype.Timestamptz `json:"next_run_at"`
+}
+
+// MarkFeedBuildError records a failed build and advances next_run_at so the
+// scheduler doesn't hot-loop on a broken feed.
+func (q *Queries) MarkFeedBuildError(ctx context.Context, arg MarkFeedBuildErrorParams) error {
+	_, err := q.db.Exec(ctx, markFeedBuildError,
+		arg.OrganizationID,
+		arg.ID,
+		arg.LastError,
+		arg.NextRunAt,
+	)
+	return err
+}
+
+const markFeedBuilt = `-- name: MarkFeedBuilt :exec
+UPDATE feeds
+   SET last_built_at = now(), last_artifact_key = $3, last_bytes = $4, last_error = '', next_run_at = $5
+ WHERE organization_id = $1 AND id = $2
+`
+
+type MarkFeedBuiltParams struct {
+	OrganizationID  int64              `json:"organization_id"`
+	ID              int64              `json:"id"`
+	LastArtifactKey string             `json:"last_artifact_key"`
+	LastBytes       int64              `json:"last_bytes"`
+	NextRunAt       pgtype.Timestamptz `json:"next_run_at"`
+}
+
+// MarkFeedBuilt records a successful build: artifact location/size, the build
+// time, and the next scheduled run (null for a manual build).
+func (q *Queries) MarkFeedBuilt(ctx context.Context, arg MarkFeedBuiltParams) error {
+	_, err := q.db.Exec(ctx, markFeedBuilt,
+		arg.OrganizationID,
+		arg.ID,
+		arg.LastArtifactKey,
+		arg.LastBytes,
+		arg.NextRunAt,
+	)
+	return err
+}
+
 const updateFeed = `-- name: UpdateFeed :one
 UPDATE feeds
-   SET name = $3, source = $4, channel = $5, format = $6, mapping = $7, is_active = $8, updated_at = now()
+   SET name = $3, source = $4, channel = $5, format = $6, mapping = $7, is_active = $8,
+       schedule = $9, next_run_at = $10, updated_at = now()
  WHERE organization_id = $1 AND id = $2
-RETURNING id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at
+RETURNING id, public_id, organization_id, name, source, channel, format, mapping, is_active, created_at, updated_at, schedule, next_run_at, last_built_at, last_artifact_key, last_bytes, last_error
 `
 
 type UpdateFeedParams struct {
-	OrganizationID int64  `json:"organization_id"`
-	ID             int64  `json:"id"`
-	Name           string `json:"name"`
-	Source         string `json:"source"`
-	Channel        string `json:"channel"`
-	Format         string `json:"format"`
-	Mapping        []byte `json:"mapping"`
-	IsActive       bool   `json:"is_active"`
+	OrganizationID int64              `json:"organization_id"`
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	Source         string             `json:"source"`
+	Channel        string             `json:"channel"`
+	Format         string             `json:"format"`
+	Mapping        []byte             `json:"mapping"`
+	IsActive       bool               `json:"is_active"`
+	Schedule       string             `json:"schedule"`
+	NextRunAt      pgtype.Timestamptz `json:"next_run_at"`
 }
 
 func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) (Feed, error) {
@@ -231,6 +385,8 @@ func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) (Feed, e
 		arg.Format,
 		arg.Mapping,
 		arg.IsActive,
+		arg.Schedule,
+		arg.NextRunAt,
 	)
 	var i Feed
 	err := row.Scan(
@@ -245,6 +401,12 @@ func (q *Queries) UpdateFeed(ctx context.Context, arg UpdateFeedParams) (Feed, e
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Schedule,
+		&i.NextRunAt,
+		&i.LastBuiltAt,
+		&i.LastArtifactKey,
+		&i.LastBytes,
+		&i.LastError,
 	)
 	return i, err
 }

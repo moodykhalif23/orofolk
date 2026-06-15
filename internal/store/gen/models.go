@@ -341,17 +341,23 @@ type ExternalRef struct {
 }
 
 type Feed struct {
-	ID             int64     `json:"id"`
-	PublicID       uuid.UUID `json:"public_id"`
-	OrganizationID int64     `json:"organization_id"`
-	Name           string    `json:"name"`
-	Source         string    `json:"source"`
-	Channel        string    `json:"channel"`
-	Format         string    `json:"format"`
-	Mapping        []byte    `json:"mapping"`
-	IsActive       bool      `json:"is_active"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID              int64              `json:"id"`
+	PublicID        uuid.UUID          `json:"public_id"`
+	OrganizationID  int64              `json:"organization_id"`
+	Name            string             `json:"name"`
+	Source          string             `json:"source"`
+	Channel         string             `json:"channel"`
+	Format          string             `json:"format"`
+	Mapping         []byte             `json:"mapping"`
+	IsActive        bool               `json:"is_active"`
+	CreatedAt       time.Time          `json:"created_at"`
+	UpdatedAt       time.Time          `json:"updated_at"`
+	Schedule        string             `json:"schedule"`
+	NextRunAt       pgtype.Timestamptz `json:"next_run_at"`
+	LastBuiltAt     pgtype.Timestamptz `json:"last_built_at"`
+	LastArtifactKey string             `json:"last_artifact_key"`
+	LastBytes       int64              `json:"last_bytes"`
+	LastError       string             `json:"last_error"`
 }
 
 type FieldDevice struct {

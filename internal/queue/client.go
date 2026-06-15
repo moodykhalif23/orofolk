@@ -57,6 +57,7 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 	river.AddWorker(workers, &jobs.RunInsightDigestsWorker{Pool: pool, Enq: enq})
 	river.AddWorker(workers, &jobs.InsightDigestWorker{Pool: pool, Narrator: narrator, Mailer: enq})
 	river.AddWorker(workers, &jobs.ExpireDemosWorker{Pool: pool})
+	river.AddWorker(workers, &jobs.RunFeedSchedulesWorker{Pool: pool, Store: store})
 	// Register additional workers here as modules add jobs.
 
 	periodic := []*river.PeriodicJob{
@@ -104,6 +105,14 @@ func NewWorkerClient(pool *pgxpool.Pool, renderer pdf.Renderer, sender email.Sen
 			river.PeriodicInterval(24*time.Hour),
 			func() (river.JobArgs, *river.InsertOpts) {
 				return jobs.ExpireDemosArgs{}, nil
+			},
+			&river.PeriodicJobOpts{RunOnStart: false},
+		),
+		// Hourly: regenerate due syndication feeds (artifact for the signed URL).
+		river.NewPeriodicJob(
+			river.PeriodicInterval(time.Hour),
+			func() (river.JobArgs, *river.InsertOpts) {
+				return jobs.RunFeedSchedulesArgs{}, nil
 			},
 			&river.PeriodicJobOpts{RunOnStart: false},
 		),

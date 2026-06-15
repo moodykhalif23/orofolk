@@ -385,6 +385,7 @@ type Querier interface {
 	// ===== External identities (IdP subject ↔ local user) ======================
 	GetExternalIdentity(ctx context.Context, arg GetExternalIdentityParams) (ExternalIdentity, error)
 	GetFeed(ctx context.Context, arg GetFeedParams) (Feed, error)
+	GetFeedByPublicID(ctx context.Context, publicID uuid.UUID) (Feed, error)
 	GetIdentityProvider(ctx context.Context, arg GetIdentityProviderParams) (IdentityProvider, error)
 	// GetIdentityProviderByID resolves a provider without org (public login/callback).
 	GetIdentityProviderByID(ctx context.Context, id int64) (IdentityProvider, error)
@@ -613,6 +614,9 @@ type Querier interface {
 	ListCustomerUsers(ctx context.Context, customerID int64) ([]ListCustomerUsersRow, error)
 	ListCustomers(ctx context.Context, arg ListCustomersParams) ([]Customer, error)
 	ListCustomersByGroup(ctx context.Context, arg ListCustomersByGroupParams) ([]Customer, error)
+	// ListDueFeeds returns scheduled feeds whose next run has arrived (cross-org; the
+	// scheduler sweep runs unscoped). Bounded so one sweep can't run unboundedly.
+	ListDueFeeds(ctx context.Context, nextRunAt pgtype.Timestamptz) ([]Feed, error)
 	// ListDueReportSchedules returns active schedules whose cadence interval has
 	// elapsed since last_run_at (or that have never run), joined to their definition
 	// so the job can compile + run without a second query.
@@ -800,6 +804,12 @@ type Querier interface {
 	MarkAllNotificationsRead(ctx context.Context, arg MarkAllNotificationsReadParams) error
 	MarkCartConverted(ctx context.Context, id int64) error
 	MarkCartReminded(ctx context.Context, id int64) error
+	// MarkFeedBuildError records a failed build and advances next_run_at so the
+	// scheduler doesn't hot-loop on a broken feed.
+	MarkFeedBuildError(ctx context.Context, arg MarkFeedBuildErrorParams) error
+	// MarkFeedBuilt records a successful build: artifact location/size, the build
+	// time, and the next scheduled run (null for a manual build).
+	MarkFeedBuilt(ctx context.Context, arg MarkFeedBuiltParams) error
 	MarkImportRunCommitted(ctx context.Context, arg MarkImportRunCommittedParams) error
 	// MarkLeadConverted records the conversion result; only converts a not-yet-
 	// converted lead (idempotency guard at the DB level).
